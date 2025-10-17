@@ -1,0 +1,32 @@
+import { type ReactNode } from 'react';
+
+/**
+ * Today Page Layout
+ * Uses parallel routes for modular dashboard sections
+ */
+
+type TodayLayoutProps = {
+  children: ReactNode;
+  stats: ReactNode;
+  alerts: ReactNode;
+  activities: ReactNode;
+};
+
+export default function TodayLayout({ children, stats, alerts, activities }: TodayLayoutProps) {
+  return (
+    <div className="space-y-6">
+      {/* Main content */}
+      {children}
+
+      {/* Parallel route slots */}
+      <div className="space-y-6">
+        {stats}
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {alerts}
+          {activities}
+        </div>
+      </div>
+    </div>
+  );
+}

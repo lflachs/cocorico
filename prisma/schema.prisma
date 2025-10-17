@@ -1,0 +1,353 @@
+// Cocorico Restaurant Stock Management System
+// Database Schema v2.0
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// AUTHENTICATION & USERS
+// ============================================================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  passwordHash  String
+  role          UserRole  @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  stockMovements StockMovement[]
+  sales          Sale[]
+
+  @@index([email])
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+// ============================================================================
+// INVENTORY & PRODUCTS
+// ============================================================================
+
+model Product {
+  id         String    @id @default(cuid())
+  name       String
+  quantity   Float     @default(0)
+  unit       Unit      @default(PC)
+  unitPrice  Float?
+  totalValue Float?
+
+  // Restaurant features
+  trackable Boolean   @default(false)
+  parLevel  Float?
+  category  String?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  movements         StockMovement[]
+  billProducts      BillProduct[]
+  recipeIngredients RecipeIngredient[]
+  disputeProducts   DisputeProduct[]
+
+  @@index([name])
+  @@index([category])
+  @@map("products")
+}
+
+enum Unit {
+  KG  // Kilograms
+  L   // Liters
+  PC  // Pieces
+}
+
+// ============================================================================
+// STOCK MOVEMENTS (Event Sourcing)
+// ============================================================================
+
+model StockMovement {
+  id           String       @id @default(cuid())
+  productId    String
+  movementType MovementType
+  quantity     Float
+  balanceAfter Float
+  movementDate DateTime     @default(now())
+
+  // References
+  billId    String?
+  disputeId String?
+  userId    String?
+
+  // Metadata
+  reason      String
+  description String?
+  unitPrice   Float?
+  totalValue  Float?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  // Relations
+  product Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  bill    Bill?    @relation(fields: [billId], references: [id])
+  dispute Dispute? @relation(fields: [disputeId], references: [id])
+  user    User?    @relation(fields: [userId], references: [id])
+
+  @@index([productId])
+  @@index([movementDate])
+  @@index([billId])
+  @@map("stock_movements")
+}
+
+enum MovementType {
+  IN
+  OUT
+  ADJUSTMENT
+  INITIAL
+}
+
+// ============================================================================
+// BILLS & DOCUMENTS
+// ============================================================================
+
+model Bill {
+  id          String    @id @default(cuid())
+  filename    String
+  supplier    String?
+  billDate    DateTime?
+  totalAmount Float?
+  rawContent  String?   @db.Text
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  products       BillProduct[]
+  disputes       Dispute[]
+  stockMovements StockMovement[]
+
+  @@index([billDate])
+  @@index([supplier])
+  @@map("bills")
+}
+
+model BillProduct {
+  id                  String @id @default(cuid())
+  billId              String
+  productId           String
+  quantityExtracted   Float
+  unitPriceExtracted  Float?
+  totalValueExtracted Float?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  // Relations
+  bill    Bill    @relation(fields: [billId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([billId, productId])
+  @@index([billId])
+  @@index([productId])
+  @@map("bill_products")
+}
+
+// ============================================================================
+// DISPUTES & RETURNS
+// ============================================================================
+
+model Dispute {
+  id             String        @id @default(cuid())
+  billId         String
+  type           DisputeType
+  status         DisputeStatus @default(OPEN)
+  title          String
+  description    String?       @db.Text
+  amountDisputed Float?
+
+  // Resolution
+  resolvedAt      DateTime?
+  resolutionNotes String?   @db.Text
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  bill           Bill              @relation(fields: [billId], references: [id], onDelete: Cascade)
+  products       DisputeProduct[]
+  stockMovements StockMovement[]
+
+  @@index([billId])
+  @@index([status])
+  @@map("disputes")
+}
+
+enum DisputeType {
+  RETURN
+  COMPLAINT
+  REFUND
+}
+
+enum DisputeStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+model DisputeProduct {
+  id               String @id @default(cuid())
+  disputeId        String
+  productId        String
+  reason           String
+  quantityDisputed Float?
+  description      String? @db.Text
+
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  // Relations
+  dispute Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([disputeId])
+  @@index([productId])
+  @@map("dispute_products")
+}
+
+// ============================================================================
+// MENU & RECIPES
+// ============================================================================
+
+model Dish {
+  id          String  @id @default(cuid())
+  name        String
+  description String? @db.Text
+  isActive    Boolean @default(true)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  recipeIngredients RecipeIngredient[]
+  sales             Sale[]
+  menuDishes        MenuDish[]
+
+  @@index([name])
+  @@map("dishes")
+}
+
+model RecipeIngredient {
+  id               String @id @default(cuid())
+  dishId           String
+  productId        String
+  quantityRequired Float
+  unit             String
+
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  // Relations
+  dish    Dish    @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([dishId])
+  @@index([productId])
+  @@map("recipe_ingredients")
+}
+
+model Menu {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  startDate   DateTime?
+  endDate     DateTime?
+  isActive    Boolean  @default(true)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  sections MenuSection[]
+
+  @@index([name])
+  @@map("menus")
+}
+
+model MenuSection {
+  id           String @id @default(cuid())
+  menuId       String
+  name         String
+  displayOrder Int
+
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  // Relations
+  menu  Menu       @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  dishes MenuDish[]
+
+  @@index([menuId])
+  @@map("menu_sections")
+}
+
+model MenuDish {
+  id            String  @id @default(cuid())
+  menuSectionId String
+  dishId        String
+  displayOrder  Int     @default(0)
+  notes         String? @db.Text
+
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  // Relations
+  section MenuSection @relation(fields: [menuSectionId], references: [id], onDelete: Cascade)
+  dish    Dish        @relation(fields: [dishId], references: [id], onDelete: Cascade)
+
+  @@index([menuSectionId])
+  @@index([dishId])
+  @@map("menu_dishes")
+}
+
+// ============================================================================
+// SALES TRACKING
+// ============================================================================
+
+model Sale {
+  id           String   @id @default(cuid())
+  dishId       String
+  quantitySold Int
+  saleDate     DateTime @default(now())
+  notes        String?  @db.Text
+  userId       String?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  // Relations
+  dish Dish  @relation(fields: [dishId], references: [id], onDelete: Restrict)
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([dishId])
+  @@index([saleDate])
+  @@index([userId])
+  @@map("sales")
+}
