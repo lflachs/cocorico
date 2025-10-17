@@ -19,10 +19,16 @@ type Dish = {
   name: string;
   description?: string | null;
   recipeIngredients?: {
+    id: string;
+    productId: string;
+    quantityRequired: number;
+    unit: string;
     product: {
+      id: string;
+      name: string;
+      unit: string;
       unitPrice?: number | null;
     };
-    quantityRequired: number;
   }[];
 };
 
