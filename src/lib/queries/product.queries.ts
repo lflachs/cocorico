@@ -46,3 +46,41 @@ export const getProductsByCategory = cache(async (category: string): Promise<Pro
     orderBy: { name: 'asc' },
   });
 });
+
+/**
+ * Composite Product Queries
+ */
+
+export const getCompositeProducts = cache(async () => {
+  return await db.product.findMany({
+    where: { isComposite: true },
+    include: {
+      compositeIngredients: {
+        include: {
+          baseProduct: true,
+        },
+      },
+    },
+    orderBy: { name: 'asc' },
+  });
+});
+
+export const getCompositeProductById = cache(async (id: string) => {
+  return await db.product.findUnique({
+    where: { id, isComposite: true },
+    include: {
+      compositeIngredients: {
+        include: {
+          baseProduct: true,
+        },
+      },
+    },
+  });
+});
+
+export const getBaseProducts = cache(async (): Promise<Product[]> => {
+  return await db.product.findMany({
+    where: { isComposite: false },
+    orderBy: { name: 'asc' },
+  });
+});
