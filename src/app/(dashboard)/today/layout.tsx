@@ -21,11 +21,8 @@ export default function TodayLayout({ children, stats, alerts, activities }: Tod
       {/* Parallel route slots */}
       <div className="space-y-6">
         {stats}
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {alerts}
-          {activities}
-        </div>
+        {alerts}
+        {activities}
       </div>
     </div>
   );

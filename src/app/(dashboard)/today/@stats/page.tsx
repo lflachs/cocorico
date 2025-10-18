@@ -1,9 +1,7 @@
-import { ScanDeliveryCard } from '../_components/ScanDeliveryCard';
-
 /**
- * Stats Slot - Quick action cards
+ * Stats Slot - Empty (removed ScanDeliveryCard)
  */
 
 export default function StatsSlot() {
-  return <ScanDeliveryCard />;
+  return null;
 }
