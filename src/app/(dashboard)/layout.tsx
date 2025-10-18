@@ -2,7 +2,7 @@
 
 import { type ReactNode, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Globe, Home, UtensilsCrossed, Package, AlertOctagon, Upload } from 'lucide-react';
+import { Menu, X, Globe, Home, UtensilsCrossed, Package, AlertOctagon, Upload, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LanguageProvider, useLanguage } from '@/providers/LanguageProvider';
@@ -36,6 +36,12 @@ function DashboardContent({ children }: { children: ReactNode }) {
       href: '/inventory',
       icon: Package,
       label: t('nav.inventory'),
+    },
+    {
+      id: 'dlc',
+      href: '/dlc',
+      icon: Calendar,
+      label: t('nav.dlc') || 'DLC',
     },
     {
       id: 'bills',

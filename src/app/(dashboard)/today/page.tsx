@@ -1,5 +1,6 @@
 import { getTranslation } from '@/lib/i18n';
 import { cookies } from 'next/headers';
+import { DlcAlerts } from '@/components/dlc/DlcAlerts';
 
 /**
  * Today Page - Main dashboard for daily operations
@@ -20,9 +21,13 @@ export default async function TodayPage() {
   });
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold tracking-tight text-gray-900">{t('today.title')}</h1>
-      <p className="mt-2 text-gray-600">{formattedDate}</p>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900">{t('today.title')}</h1>
+        <p className="mt-2 text-gray-600">{formattedDate}</p>
+      </div>
+
+      <DlcAlerts />
     </div>
   );
 }
