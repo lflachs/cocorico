@@ -20,7 +20,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguage] = useState<Language>('en');
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Load from cookie first, then localStorage (run only once)
+  // Load from cookie first, then localStorage, then browser language (run only once)
   useEffect(() => {
     // Try to get from cookie first (server-side preference)
     const getCookie = (name: string) => {
@@ -33,9 +33,13 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     const cookieLang = getCookie('language') as Language;
     const storedLang = localStorage.getItem('language') as Language;
 
-    const preferredLang = cookieLang || storedLang;
+    // Detect browser language if no preference stored
+    const browserLang = navigator.language.toLowerCase();
+    const detectedLang: Language = browserLang.startsWith('fr') ? 'fr' : 'en';
 
-    console.log('[LanguageProvider] Initial load - cookie:', cookieLang, 'localStorage:', storedLang, 'using:', preferredLang);
+    const preferredLang = cookieLang || storedLang || detectedLang;
+
+    console.log('[LanguageProvider] Initial load - cookie:', cookieLang, 'localStorage:', storedLang, 'browser:', detectedLang, 'using:', preferredLang);
 
     if (preferredLang && (preferredLang === 'en' || preferredLang === 'fr')) {
       setLanguage(preferredLang);

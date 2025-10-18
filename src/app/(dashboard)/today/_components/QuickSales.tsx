@@ -1,15 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, Plus } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { TrendingUp, Plus, Search } from 'lucide-react';
 import { SaleRecordDialog } from './SaleRecordDialog';
 import { useLanguage } from '@/providers/LanguageProvider';
 
 /**
- * Quick Sales
- * Record sales for top dishes (Client Component for interactivity)
+ * Quick Sales - Redesigned with search
+ * Record sales for dishes with search functionality
  */
 
 type Dish = {
@@ -31,6 +32,7 @@ export function QuickSales() {
   const [loading, setLoading] = useState(true);
   const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
   const [showDialog, setShowDialog] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadData();
@@ -77,56 +79,88 @@ export function QuickSales() {
     loadData(); // Reload to show updated counts
   };
 
-  const getTopDishes = () => dishes.slice(0, 5);
+  const filteredDishes = dishes.filter(dish =>
+    dish.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Show top 5 dishes sorted by sales when no search, or all filtered results when searching
+  const displayDishes = searchQuery
+    ? filteredDishes
+    : filteredDishes
+        .sort((a, b) => {
+          const aSales = todaySales.find(s => s.dishId === a.id)?.totalSold || 0;
+          const bSales = todaySales.find(s => s.dishId === b.id)?.totalSold || 0;
+          return bSales - aSales;
+        })
+        .slice(0, 8);
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-green-500" />
-              {t('today.quickSales.title')}
-            </CardTitle>
-            <CardDescription>{t('today.quickSales.description')}</CardDescription>
-          </div>
+      <Card className="shadow-md">
+        <CardHeader className="bg-gradient-to-br from-success/5 via-transparent to-transparent">
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-success" />
+            {t('today.quickSales.title')}
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           {loading ? (
-            <div className="text-center py-8 text-gray-500">{t('today.quickSales.loading')}</div>
+            <div className="text-center py-8 text-muted-foreground">{t('today.quickSales.loading')}</div>
           ) : dishes.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-muted-foreground">
               <p>{t('today.quickSales.empty')}</p>
               <p className="text-sm mt-2">{t('today.quickSales.emptyHint')}</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {getTopDishes().map((dish) => {
-                const todaySale = todaySales.find((s) => s.dishId === dish.id);
-                const soldToday = todaySale?.totalSold || 0;
+            <div className="space-y-4">
+              {/* Search Bar */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder={t('menu.search') || 'Search dishes...'}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 bg-background"
+                />
+              </div>
 
-                return (
-                  <div
-                    key={dish.id}
-                    className="p-3 rounded-lg border bg-white hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="font-semibold text-gray-900">{dish.name}</div>
-                        <div className="text-sm text-gray-600 mt-1">{t('today.quickSales.soldToday')}: {soldToday}</div>
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={() => openSaleDialog(dish)}
-                        className="bg-green-600 hover:bg-green-700"
+              {/* Dishes List */}
+              {displayDishes.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>{t('menu.noResults') || 'No dishes found'}</p>
+                </div>
+              ) : (
+                <div className="grid gap-2 md:grid-cols-2">
+                  {displayDishes.map((dish) => {
+                    const todaySale = todaySales.find((s) => s.dishId === dish.id);
+                    const soldToday = todaySale?.totalSold || 0;
+
+                    return (
+                      <div
+                        key={dish.id}
+                        className="p-3 rounded-lg border border-border bg-card hover:shadow-md hover:border-primary/20 transition-all"
                       >
-                        <Plus className="w-4 h-4 mr-1" />
-                        {t('today.quickSales.recordSale')}
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-foreground truncate">{dish.name}</div>
+                            <div className="text-sm text-muted-foreground mt-0.5">
+                              {t('today.quickSales.soldToday')}: <span className="font-semibold text-foreground">{soldToday}</span>
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => openSaleDialog(dish)}
+                            className="bg-gradient-to-br from-success/90 to-success hover:from-success hover:to-success/90 text-success-foreground shadow-md hover:shadow-lg shrink-0"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </CardContent>

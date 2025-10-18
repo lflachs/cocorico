@@ -1,6 +1,8 @@
 import { getTranslation } from '@/lib/i18n';
 import { cookies } from 'next/headers';
-import { DlcAlerts } from '@/components/dlc/DlcAlerts';
+import { UnifiedAlerts } from '@/components/alerts/UnifiedAlerts';
+import { TodayDashboard } from './_components/TodayDashboard';
+import { QuickSales } from './_components/QuickSales';
 
 /**
  * Today Page - Main dashboard for daily operations
@@ -20,14 +22,34 @@ export default async function TodayPage() {
     day: 'numeric',
   });
 
+  // Get current hour for greeting
+  const hour = today.getHours();
+  let greetingKey: 'today.greeting.morning' | 'today.greeting.afternoon' | 'today.greeting.evening';
+  if (hour < 12) {
+    greetingKey = 'today.greeting.morning';
+  } else if (hour < 18) {
+    greetingKey = 'today.greeting.afternoon';
+  } else {
+    greetingKey = 'today.greeting.evening';
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900">{t('today.title')}</h1>
-        <p className="mt-2 text-gray-600">{formattedDate}</p>
+      {/* Header */}
+      <div className="bg-gradient-to-br from-primary via-primary/95 to-secondary rounded-xl p-6 md:p-8 text-white shadow-xl">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold mb-1">
+              {t(greetingKey)}, Nico! 👋
+            </h1>
+            <p className="text-primary-foreground/80 text-sm md:text-base">{formattedDate}</p>
+          </div>
+        </div>
       </div>
 
-      <DlcAlerts />
+      <UnifiedAlerts />
+      <TodayDashboard />
+      <QuickSales />
     </div>
   );
 }
