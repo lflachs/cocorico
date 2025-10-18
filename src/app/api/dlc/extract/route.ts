@@ -114,6 +114,32 @@ If there are multiple products with different dates, create separate entries in 
     // Parse the JSON response
     const extracted = JSON.parse(jsonContent);
 
+    // Post-process: fix dates that are clearly wrong (more than 30 days in the past)
+    if (extracted.products && Array.isArray(extracted.products)) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      extracted.products = extracted.products.map((product: any) => {
+        if (product.expirationDate) {
+          const expDate = new Date(product.expirationDate);
+          const daysDiff = Math.floor((today.getTime() - expDate.getTime()) / (1000 * 60 * 60 * 24));
+
+          // If date is more than 30 days in the past, it's likely a year error
+          if (daysDiff > 30) {
+            const originalDate = product.expirationDate;
+            // Add years until the date is in the future
+            let correctedDate = new Date(expDate);
+            while (correctedDate < today) {
+              correctedDate.setFullYear(correctedDate.getFullYear() + 1);
+            }
+            product.expirationDate = correctedDate.toISOString().split('T')[0];
+            console.log(`Auto-corrected date: ${originalDate} → ${product.expirationDate}`);
+          }
+        }
+        return product;
+      });
+    }
+
     return NextResponse.json({
       success: true,
       data: extracted,
