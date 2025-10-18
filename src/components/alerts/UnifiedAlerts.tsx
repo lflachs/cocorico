@@ -338,7 +338,7 @@ export function UnifiedAlerts() {
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4 mb-4">
-            <TabsTrigger value="all" className="flex items-center gap-1">
+            <TabsTrigger value="all" className="flex items-center gap-1 cursor-pointer">
               <span>{t('today.alerts.all') || 'All'}</span>
               {alerts.length > 0 && (
                 <Badge variant="secondary" className="ml-1 h-5 min-w-[20px] px-1.5 text-xs">
@@ -346,7 +346,7 @@ export function UnifiedAlerts() {
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="expiring" className="flex items-center gap-1">
+            <TabsTrigger value="expiring" className="flex items-center gap-1 cursor-pointer">
               <Clock className="h-3 w-3" />
               <span className="hidden sm:inline">{t('today.alerts.expiring') || 'Expiring'}</span>
               {expiringCount > 0 && (
@@ -355,7 +355,7 @@ export function UnifiedAlerts() {
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="lowStock" className="flex items-center gap-1">
+            <TabsTrigger value="lowStock" className="flex items-center gap-1 cursor-pointer">
               <Package className="h-3 w-3" />
               <span className="hidden sm:inline">{t('today.alerts.stock') || 'Stock'}</span>
               {lowStockCount > 0 && (
@@ -364,7 +364,7 @@ export function UnifiedAlerts() {
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="dispute" className="flex items-center gap-1">
+            <TabsTrigger value="dispute" className="flex items-center gap-1 cursor-pointer">
               <AlertCircle className="h-3 w-3" />
               <span className="hidden sm:inline">{t('today.alerts.disputes') || 'Disputes'}</span>
               {disputesCount > 0 && (

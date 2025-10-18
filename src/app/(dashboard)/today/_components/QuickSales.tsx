@@ -151,7 +151,7 @@ export function QuickSales() {
                           <Button
                             size="sm"
                             onClick={() => openSaleDialog(dish)}
-                            className="bg-gradient-to-br from-success/90 to-success hover:from-success hover:to-success/90 text-success-foreground shadow-md hover:shadow-lg shrink-0"
+                            className="bg-gradient-to-br from-success/90 to-success hover:from-success hover:to-success/90 text-success-foreground shadow-md hover:shadow-lg shrink-0 cursor-pointer"
                           >
                             <Plus className="w-4 h-4" />
                           </Button>
