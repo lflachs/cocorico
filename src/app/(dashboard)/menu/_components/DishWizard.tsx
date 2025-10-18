@@ -125,28 +125,33 @@ export function DishWizard({ open, onOpenChange, sectionId, onSuccess }: DishWiz
     setLoading(true);
     try {
       // First, create any new products (ingredients)
+      console.log('Creating ingredients...', ingredients);
       const ingredientData = await Promise.all(
         ingredients.map(async (ing) => {
           if (!ing.productId) {
             // Create new product
+            console.log('Creating new product:', ing.productName);
             const formData = new FormData();
             formData.append('name', ing.productName);
             formData.append('quantity', '0'); // New ingredients start with 0 stock
             formData.append('unit', ing.unit);
             formData.append('trackable', 'true');
 
-            const { createProductAction } = await import('@/lib/actions/product.actions');
-            const result = await createProductAction(formData);
+            const { createProductWithoutRedirectAction } = await import('@/lib/actions/product.actions');
+            const result = await createProductWithoutRedirectAction(formData);
 
             if (result.success && result.data) {
+              console.log('Product created successfully:', result.data.id);
               return {
                 productId: result.data.id,
                 quantityRequired: ing.quantityRequired,
                 unit: ing.unit,
               };
             }
-            throw new Error('Failed to create product');
+            console.error('Failed to create product:', result.error);
+            throw new Error(result.error || 'Failed to create product');
           }
+          console.log('Using existing product:', ing.productId);
           return {
             productId: ing.productId,
             quantityRequired: ing.quantityRequired,
@@ -154,8 +159,10 @@ export function DishWizard({ open, onOpenChange, sectionId, onSuccess }: DishWiz
           };
         })
       );
+      console.log('All ingredients processed:', ingredientData);
 
       // Create the dish
+      console.log('Creating dish with data:', { name: dishName, description: dishDescription, ingredientData });
       const { createDishAction } = await import('@/lib/actions/dish.actions');
       const dishResult = await createDishAction({
         name: dishName,
@@ -165,22 +172,29 @@ export function DishWizard({ open, onOpenChange, sectionId, onSuccess }: DishWiz
       });
 
       if (!dishResult.success || !dishResult.data) {
-        throw new Error('Failed to create dish');
+        console.error('Failed to create dish:', dishResult.error);
+        toast.error(dishResult.error || 'Failed to create dish');
+        return;
       }
+      console.log('Dish created successfully:', dishResult.data.id);
 
       // Add dish to menu section
+      console.log('Adding dish to section:', sectionId, dishResult.data.id);
       const { addDishToSectionAction } = await import('@/lib/actions/menu.actions');
       const linkResult = await addDishToSectionAction(sectionId, dishResult.data.id);
 
       if (linkResult.success) {
         toast.success('Dish created successfully!');
         onSuccess();
+        onOpenChange(false);
       } else {
+        console.error('Failed to add dish to section:', linkResult.error);
         toast.error(linkResult.error || 'Failed to add dish to menu');
       }
     } catch (error) {
       console.error('Error creating dish:', error);
-      toast.error('Error creating dish');
+      const errorMessage = error instanceof Error ? error.message : 'Error creating dish';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

@@ -19,14 +19,18 @@ type ActionResult<T = Product> = {
 
 export async function createProductAction(formData: FormData): Promise<ActionResult> {
   try {
+    const category = formData.get('category');
+    const unitPrice = formData.get('unitPrice');
+    const parLevel = formData.get('parLevel');
+
     const rawData = {
       name: formData.get('name') as string,
       quantity: Number(formData.get('quantity')),
       unit: formData.get('unit') as 'KG' | 'L' | 'PC',
-      unitPrice: formData.get('unitPrice') ? Number(formData.get('unitPrice')) : undefined,
-      category: formData.get('category') as string | undefined,
+      unitPrice: unitPrice ? Number(unitPrice) : undefined,
+      category: category ? (category as string) : undefined,
       trackable: formData.get('trackable') === 'true',
-      parLevel: formData.get('parLevel') ? Number(formData.get('parLevel')) : undefined,
+      parLevel: parLevel ? Number(parLevel) : undefined,
     };
 
     const validated = productSchema.parse(rawData);
@@ -64,5 +68,38 @@ export async function getProductsAction(): Promise<ActionResult<Product[]>> {
       return { success: false, error: error.message };
     }
     return { success: false, error: 'Failed to fetch products' };
+  }
+}
+
+/**
+ * Create product without redirecting
+ * Used when creating products as part of another flow (like adding dishes)
+ */
+export async function createProductWithoutRedirectAction(formData: FormData): Promise<ActionResult> {
+  try {
+    const category = formData.get('category');
+    const unitPrice = formData.get('unitPrice');
+    const parLevel = formData.get('parLevel');
+
+    const rawData = {
+      name: formData.get('name') as string,
+      quantity: Number(formData.get('quantity')),
+      unit: formData.get('unit') as 'KG' | 'L' | 'PC',
+      unitPrice: unitPrice ? Number(unitPrice) : undefined,
+      category: category ? (category as string) : undefined,
+      trackable: formData.get('trackable') === 'true',
+      parLevel: parLevel ? Number(parLevel) : undefined,
+    };
+
+    const validated = productSchema.parse(rawData);
+    const product = await createProduct(validated);
+
+    revalidatePath('/inventory');
+    return { success: true, data: product };
+  } catch (error) {
+    if (error instanceof Error) {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: 'Failed to create product' };
   }
 }

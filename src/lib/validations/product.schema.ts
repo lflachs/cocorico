@@ -10,7 +10,7 @@ export const productSchema = z.object({
     .string()
     .min(1, 'Product name is required')
     .max(255, 'Product name must be less than 255 characters'),
-  quantity: z.number().positive('Quantity must be positive'),
+  quantity: z.number().nonnegative('Quantity cannot be negative'),
   unit: z.enum(['KG', 'L', 'PC'], {
     errorMap: () => ({ message: 'Unit must be KG, L, or PC' }),
   }),
