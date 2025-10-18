@@ -15,12 +15,14 @@ import {
   Check,
   X,
   Euro,
+  Plus,
 } from 'lucide-react';
 import { type Product } from '@prisma/client';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useLanguage } from '@/providers/LanguageProvider';
 import { VoiceAssistant } from '@/components/voice/VoiceAssistant';
+import Link from 'next/link';
 
 /**
  * Comprehensive Inventory View Component
@@ -262,12 +264,21 @@ export function InventoryView({ initialProducts }: InventoryViewProps) {
               {t('inventory.title')}
             </span>
             <div className="flex flex-wrap gap-2">
+              <Link href="/inventory/new">
+                <Button
+                  size="sm"
+                  className="gap-2 bg-blue-600 hover:bg-blue-700 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span className="hidden sm:inline">{t('inventory.addProduct')}</span>
+                </Button>
+              </Link>
               <Button
                 onClick={fetchProducts}
                 variant="outline"
                 size="sm"
                 disabled={loading}
-                className="flex-1 sm:flex-none"
+                className="cursor-pointer"
               >
                 <RefreshCw className={`w-4 h-4 sm:mr-2 ${loading ? 'animate-spin' : ''}`} />
                 <span className="hidden sm:inline">{t('inventory.refresh')}</span>
@@ -276,7 +287,7 @@ export function InventoryView({ initialProducts }: InventoryViewProps) {
                 onClick={exportStock}
                 variant="outline"
                 size="sm"
-                className="flex-1 sm:flex-none"
+                className="cursor-pointer"
               >
                 <Download className="w-4 h-4 sm:mr-2" />
                 <span className="hidden sm:inline">{t('inventory.export')}</span>

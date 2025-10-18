@@ -125,9 +125,9 @@ export function TodayDashboard() {
         const Icon = stat.icon;
         return (
           <Link key={stat.title} href={stat.href} className="group">
-            <Card className="transition-all hover:shadow-xl cursor-pointer border border-border hover:border-primary/20 bg-white shadow-md hover:-translate-y-0.5">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
+            <Card className="h-full transition-all hover:shadow-xl cursor-pointer border border-border hover:border-primary/20 bg-white shadow-md hover:-translate-y-0.5">
+              <CardContent className="p-6 h-full flex flex-col">
+                <div className="flex items-center justify-between flex-1">
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-muted-foreground">
                       {stat.title}

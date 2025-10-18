@@ -4,10 +4,11 @@ import { useState } from 'react';
 import { MenuList } from './MenuList';
 import { MenuDetail } from './MenuDetail';
 import { PreparedIngredientsList } from './PreparedIngredientsList';
+import { DishesListView } from './DishesListView';
 import { useLanguage } from '@/providers/LanguageProvider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageHeader } from '@/components/PageHeader';
-import { ChefHat, Beaker } from 'lucide-react';
+import { ChefHat, Beaker, UtensilsCrossed } from 'lucide-react';
 
 /**
  * Menu View - Redesigned
@@ -45,10 +46,14 @@ export function MenuView() {
         <>
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full max-w-md grid-cols-2 shadow-md">
+            <TabsList className="grid w-full max-w-2xl grid-cols-3 shadow-md">
               <TabsTrigger value="menus" className="flex items-center gap-2 cursor-pointer">
                 <ChefHat className="w-4 h-4" />
                 {t('recipes.tabs.menuItems')}
+              </TabsTrigger>
+              <TabsTrigger value="dishes" className="flex items-center gap-2 cursor-pointer">
+                <UtensilsCrossed className="w-4 h-4" />
+                {t('recipes.tabs.dishes')}
               </TabsTrigger>
               <TabsTrigger value="prepared" className="flex items-center gap-2 cursor-pointer">
                 <Beaker className="w-4 h-4" />
@@ -58,6 +63,10 @@ export function MenuView() {
 
             <TabsContent value="menus" className="mt-6">
               <MenuList onSelectMenu={handleSelectMenu} />
+            </TabsContent>
+
+            <TabsContent value="dishes" className="mt-6">
+              <DishesListView />
             </TabsContent>
 
             <TabsContent value="prepared" className="mt-6">

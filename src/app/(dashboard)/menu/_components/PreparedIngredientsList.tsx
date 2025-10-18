@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Beaker, RefreshCw, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Beaker, RefreshCw, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '@/providers/LanguageProvider';
-import { CompositeProductWizard } from '../../inventory/_components/CompositeProductWizard';
+import { CreateButton } from '@/components/CreateButton';
 
 /**
  * Prepared Ingredients List
@@ -37,10 +38,10 @@ type CompositeProduct = {
 };
 
 export function PreparedIngredientsList() {
+  const router = useRouter();
   const { t } = useLanguage();
   const [compositeProducts, setCompositeProducts] = useState<CompositeProduct[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showWizard, setShowWizard] = useState(false);
   const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set());
 
   const loadCompositeProducts = async () => {
@@ -98,9 +99,12 @@ export function PreparedIngredientsList() {
     setExpandedProducts(newExpanded);
   };
 
+  const handleCreatePrepared = () => {
+    router.push('/menu/create-prepared');
+  };
+
   return (
-    <>
-      <Card>
+    <Card>
         <CardHeader>
           <div className="flex items-start justify-between">
             <div>
@@ -121,10 +125,9 @@ export function PreparedIngredientsList() {
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               </Button>
-              <Button onClick={() => setShowWizard(true)}>
-                <Plus className="w-4 h-4 mr-1" />
+              <CreateButton onClick={handleCreatePrepared}>
                 {t('prepared.create')}
-              </Button>
+              </CreateButton>
             </div>
           </div>
         </CardHeader>
@@ -138,10 +141,9 @@ export function PreparedIngredientsList() {
               <p className="text-sm text-gray-400 mb-4">
                 {t('prepared.emptyHint')}
               </p>
-              <Button onClick={() => setShowWizard(true)}>
-                <Plus className="w-4 h-4 mr-1" />
+              <CreateButton onClick={handleCreatePrepared}>
                 {t('prepared.createFirst')}
-              </Button>
+              </CreateButton>
             </div>
           ) : (
             <div className="space-y-3">
@@ -223,12 +225,5 @@ export function PreparedIngredientsList() {
           )}
         </CardContent>
       </Card>
-
-      <CompositeProductWizard
-        open={showWizard}
-        onOpenChange={setShowWizard}
-        onSuccess={loadCompositeProducts}
-      />
-    </>
   );
 }
