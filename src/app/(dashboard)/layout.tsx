@@ -98,7 +98,6 @@ function DashboardContent({ children }: { children: ReactNode }) {
           {/* Logo */}
           <div className="p-4 border-b border-slate-700">
             <div className="flex items-center gap-2">
-              <span className="text-2xl">🐓</span>
               <h2 className="text-xl font-bold text-white">Cocorico</h2>
             </div>
           </div>
@@ -152,7 +151,6 @@ function DashboardContent({ children }: { children: ReactNode }) {
         <div className="lg:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-center relative flex-shrink-0 z-30">
           <div className="absolute left-4">{/* Space for hamburger */}</div>
           <div className="flex items-center gap-2">
-            <span className="text-xl">🐓</span>
             <h1 className="text-lg font-bold text-gray-900">Cocorico</h1>
           </div>
         </div>

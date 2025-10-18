@@ -1,6 +1,6 @@
 import { db } from '@/lib/db/client';
 import type { Product } from '@prisma/client';
-import type { ProductInput, UpdateProductInput } from '@/lib/validations/product.schema';
+import type { ProductInput, UpdateProductInput, CompositeProductInput } from '@/lib/validations/product.schema';
 
 /**
  * Product Service
@@ -60,5 +60,90 @@ export async function searchProducts(query: string): Promise<Product[]> {
     },
     orderBy: { name: 'asc' },
     take: 20,
+  });
+}
+
+/**
+ * Composite Product Service
+ * Handles composite product creation and management
+ */
+
+export async function createCompositeProduct(data: CompositeProductInput) {
+  return await db.product.create({
+    data: {
+      name: data.name,
+      quantity: 0, // Initial quantity is 0
+      unit: data.unit,
+      unitPrice: data.unitPrice,
+      category: data.category,
+      trackable: data.trackable ?? false,
+      parLevel: data.parLevel,
+      isComposite: true,
+      yieldQuantity: data.yieldQuantity,
+      compositeIngredients: {
+        create: data.ingredients.map((ingredient) => ({
+          baseProductId: ingredient.baseProductId,
+          quantity: ingredient.quantity,
+          unit: ingredient.unit,
+        })),
+      },
+    },
+    include: {
+      compositeIngredients: {
+        include: {
+          baseProduct: true,
+        },
+      },
+    },
+  });
+}
+
+export async function updateCompositeProduct(id: string, data: CompositeProductInput) {
+  // Delete existing ingredients and create new ones
+  await db.compositeIngredient.deleteMany({
+    where: { compositeProductId: id },
+  });
+
+  return await db.product.update({
+    where: { id },
+    data: {
+      name: data.name,
+      unit: data.unit,
+      unitPrice: data.unitPrice,
+      category: data.category,
+      trackable: data.trackable,
+      parLevel: data.parLevel,
+      yieldQuantity: data.yieldQuantity,
+      compositeIngredients: {
+        create: data.ingredients.map((ingredient) => ({
+          baseProductId: ingredient.baseProductId,
+          quantity: ingredient.quantity,
+          unit: ingredient.unit,
+        })),
+      },
+    },
+    include: {
+      compositeIngredients: {
+        include: {
+          baseProduct: true,
+        },
+      },
+    },
+  });
+}
+
+export async function deleteCompositeProduct(id: string): Promise<void> {
+  // Check if composite product is used as an ingredient in other composites
+  const usedInComposites = await db.compositeIngredient.count({
+    where: { baseProductId: id },
+  });
+
+  if (usedInComposites > 0) {
+    throw new Error('Cannot delete composite product that is used as an ingredient in other composite products');
+  }
+
+  // Ingredients will be deleted automatically due to cascade
+  await db.product.delete({
+    where: { id },
   });
 }
