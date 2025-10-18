@@ -140,12 +140,15 @@ export async function createMenu(data: CreateMenuInput): Promise<Menu> {
         create: sectionsToCreate.map((section, sectionIndex) => ({
           name: section.name,
           displayOrder: section.displayOrder !== undefined ? section.displayOrder : sectionIndex + 1,
+          isRequired: section.isRequired !== undefined ? section.isRequired : true,
+          isOptional: section.isOptional !== undefined ? section.isOptional : false,
           dishes: section.dishes
             ? {
                 create: section.dishes.map((dish, dishIndex) => ({
                   dishId: dish.dishId,
                   displayOrder: dish.displayOrder || dishIndex,
                   notes: dish.notes,
+                  priceOverride: dish.priceOverride,
                 })),
               }
             : undefined,
@@ -187,6 +190,8 @@ export async function updateMenu(id: string, data: UpdateMenuInput): Promise<Men
         menuId: id,
         name: section.name,
         displayOrder: section.displayOrder,
+        isRequired: section.isRequired !== undefined ? section.isRequired : true,
+        isOptional: section.isOptional !== undefined ? section.isOptional : false,
       })),
       skipDuplicates: true,
     });
@@ -209,6 +214,7 @@ export async function updateMenu(id: string, data: UpdateMenuInput): Promise<Men
             dishId: dish.dishId,
             displayOrder: dish.displayOrder || 0,
             notes: dish.notes,
+            priceOverride: dish.priceOverride,
           })),
         });
       }
@@ -252,7 +258,8 @@ export async function addDishToSection(
   menuSectionId: string,
   dishId: string,
   displayOrder?: number,
-  notes?: string
+  notes?: string,
+  priceOverride?: number
 ): Promise<MenuDish> {
   // Get the max display order if not provided
   if (displayOrder === undefined) {
@@ -269,6 +276,7 @@ export async function addDishToSection(
       dishId,
       displayOrder,
       notes,
+      priceOverride,
     },
     include: {
       dish: true,

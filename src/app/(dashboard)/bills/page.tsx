@@ -6,6 +6,7 @@ import { getTranslation } from '@/lib/i18n';
 import { cookies } from 'next/headers';
 import { getAllBills } from '@/lib/services/bill.service';
 import { BillsList } from './_components/BillsList';
+import { PageHeader } from '@/components/PageHeader';
 
 /**
  * Bills Page - List and manage delivery bills/invoices
@@ -21,19 +22,22 @@ export default async function BillsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-            {t('bills.title')}
-          </h1>
-          <p className="mt-2 text-gray-600">{t('bills.description')}</p>
+      {/* Header with gradient background */}
+      <div className="relative">
+        <PageHeader
+          title={t('bills.title')}
+          subtitle={t('bills.description')}
+          icon={FileText}
+        />
+        {/* Upload Button - positioned absolutely over the header */}
+        <div className="absolute top-6 right-6">
+          <Link href="/bills/upload">
+            <Button className="gap-2 bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm shadow-lg">
+              <Upload className="w-4 h-4" />
+              {t('bills.uploadNew')}
+            </Button>
+          </Link>
         </div>
-        <Link href="/bills/upload">
-          <Button className="bg-blue-600 hover:bg-blue-700">
-            <Upload className="w-4 h-4 mr-2" />
-            {t('bills.uploadNew')}
-          </Button>
-        </Link>
       </div>
 
       <Card>

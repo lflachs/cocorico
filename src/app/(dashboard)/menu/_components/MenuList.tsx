@@ -4,10 +4,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, ChefHat, Calendar, Pencil, Trash2 } from 'lucide-react';
+import { ChefHat, Calendar, Trash2, DollarSign } from 'lucide-react';
 import { useLanguage } from '@/providers/LanguageProvider';
 import { toast } from 'sonner';
-import { MenuFormDialog } from './MenuFormDialog';
+import { CreateButton } from '@/components/CreateButton';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +31,10 @@ type Menu = {
   isActive: boolean;
   startDate?: Date | null;
   endDate?: Date | null;
+  fixedPrice?: number | null;
+  pricingType: 'PRIX_FIXE' | 'CHOICE';
+  minCourses?: number | null;
+  maxCourses?: number | null;
 };
 
 type MenuListProps = {
@@ -42,8 +46,6 @@ export function MenuList({ onSelectMenu }: MenuListProps) {
   const { t } = useLanguage();
   const [menus, setMenus] = useState<Menu[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showMenuForm, setShowMenuForm] = useState(false);
-  const [selectedMenu, setSelectedMenu] = useState<Menu | null>(null);
   const [menuToDelete, setMenuToDelete] = useState<Menu | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -69,12 +71,6 @@ export function MenuList({ onSelectMenu }: MenuListProps) {
 
   const handleCreateMenu = () => {
     router.push('/menu/create');
-  };
-
-  const handleEditMenu = (menu: Menu, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setSelectedMenu(menu);
-    setShowMenuForm(true);
   };
 
   const handleDeleteMenu = async () => {
@@ -107,6 +103,30 @@ export function MenuList({ onSelectMenu }: MenuListProps) {
     return `${start} - ${end}`;
   };
 
+  const getPricingDisplay = (menu: Menu) => {
+    if (!menu.fixedPrice) return null;
+
+    const typeLabel = menu.pricingType === 'PRIX_FIXE'
+      ? t('menu.pricing.type.prixfixe')
+      : t('menu.pricing.type.choice');
+
+    if (menu.pricingType === 'CHOICE' && menu.minCourses) {
+      const courses = menu.minCourses === menu.maxCourses
+        ? `${menu.minCourses} courses`
+        : `${menu.minCourses}-${menu.maxCourses} courses`;
+      return {
+        price: `€${menu.fixedPrice.toFixed(2)}`,
+        type: typeLabel,
+        courses,
+      };
+    }
+
+    return {
+      price: `€${menu.fixedPrice.toFixed(2)}`,
+      type: typeLabel,
+    };
+  };
+
   return (
     <>
       <Card>
@@ -119,10 +139,9 @@ export function MenuList({ onSelectMenu }: MenuListProps) {
               </CardTitle>
               <CardDescription>{t('menu.subtitle')}</CardDescription>
             </div>
-            <Button onClick={handleCreateMenu}>
-              <Plus className="w-4 h-4 mr-1" />
+            <CreateButton onClick={handleCreateMenu}>
               {t('menu.createMenu')}
-            </Button>
+            </CreateButton>
           </div>
         </CardHeader>
         <CardContent>
@@ -133,29 +152,22 @@ export function MenuList({ onSelectMenu }: MenuListProps) {
               <ChefHat className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-500 mb-2">{t('menu.menuList.empty')}</p>
               <p className="text-sm text-gray-400 mb-4">{t('menu.menuList.emptyHint')}</p>
-              <Button onClick={handleCreateMenu}>
-                <Plus className="w-4 h-4 mr-1" />
+              <CreateButton onClick={handleCreateMenu}>
                 {t('menu.createMenu')}
-              </Button>
+              </CreateButton>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {menus.map((menu) => (
-                <div
-                  key={menu.id}
-                  className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => onSelectMenu(menu.id)}
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-semibold text-lg">{menu.name}</h3>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => handleEditMenu(menu, e)}
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
+              {menus.map((menu) => {
+                const pricingInfo = getPricingDisplay(menu);
+                return (
+                  <div
+                    key={menu.id}
+                    className="border rounded-lg p-5 hover:shadow-md transition-shadow cursor-pointer group"
+                    onClick={() => onSelectMenu(menu.id)}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <h3 className="font-semibold text-lg">{menu.name}</h3>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -163,43 +175,53 @@ export function MenuList({ onSelectMenu }: MenuListProps) {
                           e.stopPropagation();
                           setMenuToDelete(menu);
                         }}
-                        className="text-red-500 hover:text-red-700"
+                        className="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
+
+                    {menu.description && (
+                      <p className="text-sm text-gray-600 mb-3">{menu.description}</p>
+                    )}
+
+                    {/* Pricing Info */}
+                    {pricingInfo && (
+                      <div className="mb-3 p-3 bg-primary/5 rounded-lg border border-primary/20">
+                        <div className="flex items-center gap-2 mb-1">
+                          <DollarSign className="w-4 h-4 text-primary" />
+                          <span className="font-semibold text-primary">{pricingInfo.price}</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {pricingInfo.type}
+                          {pricingInfo.courses && ` • ${pricingInfo.courses}`}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                      <Calendar className="w-4 h-4" />
+                      {formatDateRange(menu.startDate, menu.endDate)}
+                    </div>
+
+                    <div>
+                      <span
+                        className={`text-xs px-2 py-1 rounded ${
+                          menu.isActive
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}
+                      >
+                        {menu.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
                   </div>
-                  {menu.description && (
-                    <p className="text-sm text-gray-600 mb-3">{menu.description}</p>
-                  )}
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <Calendar className="w-4 h-4" />
-                    {formatDateRange(menu.startDate, menu.endDate)}
-                  </div>
-                  <div className="mt-2">
-                    <span
-                      className={`text-xs px-2 py-1 rounded ${
-                        menu.isActive
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-100 text-gray-600'
-                      }`}
-                    >
-                      {menu.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
       </Card>
-
-      <MenuFormDialog
-        open={showMenuForm}
-        onOpenChange={setShowMenuForm}
-        menu={selectedMenu}
-        onSuccess={loadMenus}
-      />
 
       <AlertDialog open={!!menuToDelete} onOpenChange={(open) => !open && setMenuToDelete(null)}>
         <AlertDialogContent>

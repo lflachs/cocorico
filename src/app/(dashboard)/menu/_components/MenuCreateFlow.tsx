@@ -9,6 +9,13 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -16,7 +23,7 @@ import {
 } from '@/components/ui/tooltip';
 import { PageHeader } from '@/components/PageHeader';
 import { useLanguage } from '@/providers/LanguageProvider';
-import { ChefHat, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ChefHat, ArrowLeft, CheckCircle2, AlertCircle, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
 
 /**
@@ -28,11 +35,16 @@ type FormData = {
   name: string;
   description: string;
   isActive: boolean;
+  pricingType: 'PRIX_FIXE' | 'CHOICE';
+  fixedPrice?: number;
+  numberOfCourses?: number;
 };
 
 type FormErrors = {
   name?: string;
   description?: string;
+  fixedPrice?: string;
+  numberOfCourses?: string;
 };
 
 export function MenuCreateFlow() {
@@ -43,6 +55,7 @@ export function MenuCreateFlow() {
     name: '',
     description: '',
     isActive: true,
+    pricingType: 'PRIX_FIXE',
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -57,6 +70,16 @@ export function MenuCreateFlow() {
       }
       if (value.trim().length > 100) {
         return 'Name must be less than 100 characters';
+      }
+    }
+    if (name === 'fixedPrice') {
+      if (!value || value <= 0) {
+        return 'Price must be greater than 0';
+      }
+    }
+    if (name === 'numberOfCourses' && formData.pricingType === 'CHOICE') {
+      if (!value || value <= 0) {
+        return 'Number of courses must be at least 1';
       }
     }
     return undefined;
@@ -89,8 +112,23 @@ export function MenuCreateFlow() {
       isValid = false;
     }
 
+    // Validate pricing fields - always validate fixed price
+    const priceError = validateField('fixedPrice', formData.fixedPrice);
+    if (priceError) {
+      newErrors.fixedPrice = priceError;
+      isValid = false;
+    }
+
+    if (formData.pricingType === 'CHOICE') {
+      const coursesError = validateField('numberOfCourses', formData.numberOfCourses);
+      if (coursesError) {
+        newErrors.numberOfCourses = coursesError;
+        isValid = false;
+      }
+    }
+
     setErrors(newErrors);
-    setTouched({ name: true, description: true });
+    setTouched({ name: true, description: true, fixedPrice: true, numberOfCourses: true });
     return isValid;
   };
 
@@ -110,6 +148,10 @@ export function MenuCreateFlow() {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
         isActive: formData.isActive,
+        pricingType: formData.pricingType,
+        fixedPrice: formData.fixedPrice,
+        minCourses: formData.numberOfCourses,
+        maxCourses: formData.numberOfCourses,
       });
 
       if (result.success) {
@@ -202,6 +244,143 @@ export function MenuCreateFlow() {
                 <p className="text-sm text-muted-foreground">
                   {t('menu.create.descriptionHint')}
                 </p>
+              </div>
+
+              {/* Pricing Section */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <DollarSign className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">{t('menu.pricing.title')}</h3>
+                    <p className="text-sm text-muted-foreground">{t('menu.pricing.subtitle')}</p>
+                  </div>
+                </div>
+
+                {/* Pricing Type - Modern Card Selection */}
+                <div className="space-y-3">
+                  <Label className="text-base font-semibold">
+                    {t('menu.pricing.type')} <span className="text-destructive">*</span>
+                  </Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Prix Fixe Option */}
+                    <button
+                      type="button"
+                      onClick={() => handleFieldChange('pricingType', 'PRIX_FIXE')}
+                      disabled={saving}
+                      className={`relative p-6 border-2 rounded-xl text-left transition-all cursor-pointer ${
+                        formData.pricingType === 'PRIX_FIXE'
+                          ? 'border-primary bg-primary/5 shadow-md'
+                          : 'border-gray-200 hover:border-primary/50 hover:bg-gray-50'
+                      }`}
+                    >
+                      {formData.pricingType === 'PRIX_FIXE' && (
+                        <div className="absolute top-4 right-4">
+                          <CheckCircle2 className="w-6 h-6 text-primary" />
+                        </div>
+                      )}
+                      <div className="space-y-2">
+                        <div className="font-semibold text-lg">{t('menu.pricing.type.prixfixe')}</div>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          {t('menu.pricing.type.prixfixe.description')}
+                        </p>
+                      </div>
+                    </button>
+
+                    {/* Choice Option */}
+                    <button
+                      type="button"
+                      onClick={() => handleFieldChange('pricingType', 'CHOICE')}
+                      disabled={saving}
+                      className={`relative p-6 border-2 rounded-xl text-left transition-all cursor-pointer ${
+                        formData.pricingType === 'CHOICE'
+                          ? 'border-primary bg-primary/5 shadow-md'
+                          : 'border-gray-200 hover:border-primary/50 hover:bg-gray-50'
+                      }`}
+                    >
+                      {formData.pricingType === 'CHOICE' && (
+                        <div className="absolute top-4 right-4">
+                          <CheckCircle2 className="w-6 h-6 text-primary" />
+                        </div>
+                      )}
+                      <div className="space-y-2">
+                        <div className="font-semibold text-lg">{t('menu.pricing.type.choice')}</div>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          {t('menu.pricing.type.choice.description')}
+                        </p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Pricing Details */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Fixed Price */}
+                  <div className="space-y-3">
+                    <Label htmlFor="fixedPrice" className="text-base font-semibold">
+                      {t('menu.pricing.menuPrice')} (€) <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-lg">€</span>
+                      <Input
+                        id="fixedPrice"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="45.00"
+                        value={formData.fixedPrice || ''}
+                        onChange={(e) => handleFieldChange('fixedPrice', parseFloat(e.target.value) || undefined)}
+                        onBlur={() => handleFieldBlur('fixedPrice')}
+                        className={`text-base cursor-text pl-8 ${
+                          errors.fixedPrice && touched.fixedPrice
+                            ? 'border-destructive'
+                            : ''
+                        }`}
+                        disabled={saving}
+                      />
+                    </div>
+                    {errors.fixedPrice && touched.fixedPrice && (
+                      <div className="flex items-start gap-2 text-sm text-destructive">
+                        <AlertCircle className="w-4 h-4 mt-0.5" />
+                        <span>{errors.fixedPrice}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Number of Courses (for CHOICE only) */}
+                  {formData.pricingType === 'CHOICE' && (
+                    <div className="space-y-3">
+                      <Label htmlFor="numberOfCourses" className="text-base font-semibold">
+                        {t('menu.pricing.numberOfCourses')} <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="numberOfCourses"
+                        type="number"
+                        min="1"
+                        placeholder="2"
+                        value={formData.numberOfCourses || ''}
+                        onChange={(e) => handleFieldChange('numberOfCourses', parseInt(e.target.value) || undefined)}
+                        onBlur={() => handleFieldBlur('numberOfCourses')}
+                        className={`text-base cursor-text ${
+                          errors.numberOfCourses && touched.numberOfCourses
+                            ? 'border-destructive'
+                            : ''
+                        }`}
+                        disabled={saving}
+                      />
+                      {errors.numberOfCourses && touched.numberOfCourses && (
+                        <div className="flex items-start gap-2 text-sm text-destructive">
+                          <AlertCircle className="w-4 h-4 mt-0.5" />
+                          <span>{errors.numberOfCourses}</span>
+                        </div>
+                      )}
+                      <p className="text-sm text-muted-foreground">
+                        {t('menu.pricing.numberOfCourses.hint')}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Active Status */}

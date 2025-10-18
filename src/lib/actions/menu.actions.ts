@@ -106,14 +106,16 @@ export async function addDishToSectionAction(
   menuSectionId: string,
   dishId: string,
   displayOrder?: number,
-  notes?: string
+  notes?: string,
+  priceOverride?: number
 ) {
   try {
     const menuDish = await menuService.addDishToSection(
       menuSectionId,
       dishId,
       displayOrder,
-      notes
+      notes,
+      priceOverride
     );
     revalidatePath('/menu');
     return { success: true, data: menuDish };

@@ -317,6 +317,12 @@ model Menu {
   endDate     DateTime?
   isActive    Boolean  @default(true)
 
+  // Pricing
+  fixedPrice  Float?      // If set, menu has a fixed price
+  pricingType PricingType @default(PRIX_FIXE) // Pricing model
+  minCourses  Int?        // For CHOICE menus: minimum courses to select
+  maxCourses  Int?        // For CHOICE menus: maximum courses to select
+
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -333,6 +339,10 @@ model MenuSection {
   menuId       String
   name         String
   displayOrder Int
+
+  // Choice-based menu options
+  isRequired Boolean @default(true)  // If false, customer can skip this section
+  isOptional Boolean @default(false) // If true, section is optional in choice menus
 
   // Timestamps
   createdAt DateTime @default(now())
@@ -352,6 +362,9 @@ model MenuDish {
   displayOrder  Int     @default(0)
   notes         String? @db.Text
 
+  // Pricing
+  priceOverride Float? // Override dish.sellingPrice for this specific menu
+
   // Timestamps
   createdAt DateTime @default(now())
 
@@ -362,6 +375,11 @@ model MenuDish {
   @@index([menuSectionId])
   @@index([dishId])
   @@map("menu_dishes")
+}
+
+enum PricingType {
+  PRIX_FIXE  // Fixed price for the entire menu (all courses included)
+  CHOICE     // Fixed price where customer chooses X courses from Y options
 }
 
 // ============================================================================

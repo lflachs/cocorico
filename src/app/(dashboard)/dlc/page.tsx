@@ -5,6 +5,7 @@ import { Plus, Upload, Calendar, Package, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 
 type DlcItem = {
@@ -106,17 +107,22 @@ export default function DlcPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Best Before Dates</h1>
-          <p className="text-gray-600">Track product expiration dates</p>
+      {/* Header with gradient background */}
+      <div className="relative">
+        <PageHeader
+          title="Best Before Dates"
+          subtitle="Track product expiration dates"
+          icon={Calendar}
+        />
+        {/* Scan Label Button - positioned absolutely over the header */}
+        <div className="absolute top-6 right-6">
+          <Link href="/dlc/upload">
+            <Button className="gap-2 bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm shadow-lg">
+              <Upload className="h-4 w-4" />
+              Scan Label
+            </Button>
+          </Link>
         </div>
-        <Link href="/dlc/upload">
-          <Button>
-            <Upload className="mr-2 h-4 w-4" />
-            Scan Label
-          </Button>
-        </Link>
       </div>
 
       <div className="flex gap-2">
