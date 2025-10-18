@@ -62,6 +62,7 @@ model Product {
   billProducts      BillProduct[]
   recipeIngredients RecipeIngredient[]
   disputeProducts   DisputeProduct[]
+  dlcs              DLC[]
 
   @@index([name])
   @@index([category])
@@ -350,4 +351,45 @@ model Sale {
   @@index([saleDate])
   @@index([userId])
   @@map("sales")
+}
+
+// ============================================================================
+// DLC (Date Limite de Consommation) TRACKING
+// ============================================================================
+
+model DLC {
+  id              String   @id @default(cuid())
+  productId       String
+  expirationDate  DateTime
+  quantity        Float
+  unit            Unit     @default(PC)
+  batchNumber     String?
+  supplier        String?
+  status          DLCStatus @default(ACTIVE)
+
+  // OCR metadata
+  imageFilename   String?
+  ocrRawData      String?  @db.Text
+
+  // Notes
+  notes           String?  @db.Text
+
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([expirationDate])
+  @@index([status])
+  @@map("dlcs")
+}
+
+enum DLCStatus {
+  ACTIVE      // Product is still consumable
+  CONSUMED    // Product has been used
+  EXPIRED     // Product has passed expiration date
+  DISCARDED   // Product was thrown away
 }
