@@ -108,6 +108,34 @@ className="shadow-none"
 5. **APPLY** subtle shadows for 3D effect
 6. **UPDATE** these instructions when discovering new patterns worth documenting
 
+### Cursor & Interactivity Rules
+
+**CRITICAL**: Always add `cursor-pointer` to interactive elements:
+
+```typescript
+// ✅ GOOD: Interactive elements with cursor-pointer
+<button className="cursor-pointer">Click me</button>
+<Link href="/page" className="cursor-pointer">Navigate</Link>
+<div onClick={handleClick} className="cursor-pointer">Clickable</div>
+<TabsTrigger className="cursor-pointer">Tab</TabsTrigger>
+
+// ❌ BAD: Missing cursor-pointer
+<button>Click me</button>
+<div onClick={handleClick}>Clickable</div>
+```
+
+**When to add `cursor-pointer`:**
+- All `<button>` elements
+- All `<Link>` components
+- All elements with `onClick` handlers
+- Tabs, tab triggers
+- Any clickable/interactive element
+- Card components that link somewhere
+
+**Exceptions (cursor is automatic):**
+- Native `<a>` tags already have pointer cursor
+- Some shadcn/ui components may include it
+
 ---
 
 ## 🎯 Core Principles
