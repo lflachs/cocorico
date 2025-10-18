@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, ChefHat, Calendar, Pencil, Trash2 } from 'lucide-react';
@@ -37,6 +38,7 @@ type MenuListProps = {
 };
 
 export function MenuList({ onSelectMenu }: MenuListProps) {
+  const router = useRouter();
   const { t } = useLanguage();
   const [menus, setMenus] = useState<Menu[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,8 +68,7 @@ export function MenuList({ onSelectMenu }: MenuListProps) {
   }, [loadMenus]);
 
   const handleCreateMenu = () => {
-    setSelectedMenu(null);
-    setShowMenuForm(true);
+    router.push('/menu/create');
   };
 
   const handleEditMenu = (menu: Menu, e: React.MouseEvent) => {
