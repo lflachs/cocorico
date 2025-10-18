@@ -1,9 +1,7 @@
-import { LowStockAlerts } from '../_components/LowStockAlerts';
-
 /**
- * Alerts Slot - Low stock warnings
+ * Alerts Slot - Empty (removed LowStockAlerts)
  */
 
 export default function AlertsSlot() {
-  return <LowStockAlerts />;
+  return null;
 }

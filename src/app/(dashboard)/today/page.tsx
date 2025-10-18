@@ -2,7 +2,6 @@ import { getTranslation } from '@/lib/i18n';
 import { cookies } from 'next/headers';
 import { UnifiedAlerts } from '@/components/alerts/UnifiedAlerts';
 import { TodayDashboard } from './_components/TodayDashboard';
-import { QuickSales } from './_components/QuickSales';
 
 /**
  * Today Page - Main dashboard for daily operations
@@ -49,7 +48,6 @@ export default async function TodayPage() {
 
       <UnifiedAlerts />
       <TodayDashboard />
-      <QuickSales />
     </div>
   );
 }
