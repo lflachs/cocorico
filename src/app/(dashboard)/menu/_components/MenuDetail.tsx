@@ -18,6 +18,7 @@ type Dish = {
   id: string;
   name: string;
   description?: string | null;
+  sellingPrice?: number | null;
   recipeIngredients?: {
     id: string;
     productId: string;
@@ -166,6 +167,11 @@ export function MenuDetail({ menuId, onBack }: MenuDetailProps) {
                 <div className="space-y-2">
                   {section.dishes.map((menuDish) => {
                     const cost = calculateDishCost(menuDish.dish);
+                    const sellingPrice = menuDish.dish.sellingPrice;
+                    const margin = cost > 0 && sellingPrice
+                      ? ((sellingPrice - cost) / sellingPrice) * 100
+                      : null;
+
                     return (
                       <div
                         key={menuDish.id}
@@ -178,9 +184,25 @@ export function MenuDetail({ menuId, onBack }: MenuDetailProps) {
                               {menuDish.dish.description}
                             </div>
                           )}
-                          <div className="text-xs text-gray-500 mt-1">
-                            {menuDish.dish.recipeIngredients?.length || 0} {t('menu.dish.ingredients')}
-                            {cost > 0 && ` • €${cost.toFixed(2)}`}
+                          <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+                            <span>
+                              {menuDish.dish.recipeIngredients?.length || 0} {t('menu.dish.ingredients')}
+                            </span>
+                            {cost > 0 && (
+                              <span>
+                                {t('menu.dishWizard.estimatedCost')}: €{cost.toFixed(2)}
+                              </span>
+                            )}
+                            {sellingPrice && (
+                              <span>
+                                {t('menu.dishWizard.sellingPrice')}: €{sellingPrice.toFixed(2)}
+                              </span>
+                            )}
+                            {margin !== null && (
+                              <span className={margin > 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>
+                                {t('menu.dishWizard.margin')}: {margin.toFixed(1)}%
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div className="flex gap-2">

@@ -28,6 +28,7 @@ export type RecipeIngredientWithId = z.infer<typeof recipeIngredientWithIdSchema
 export const createDishSchema = z.object({
   name: z.string().min(1, 'Dish name is required').max(100, 'Name too long'),
   description: z.string().optional(),
+  sellingPrice: z.number().positive('Selling price must be positive').optional(),
   isActive: z.boolean().default(true),
   recipeIngredients: z.array(recipeIngredientSchema).optional(),
 });
@@ -41,6 +42,7 @@ export type CreateDishInput = z.infer<typeof createDishSchema>;
 export const updateDishSchema = z.object({
   name: z.string().min(1, 'Dish name is required').max(100, 'Name too long').optional(),
   description: z.string().optional(),
+  sellingPrice: z.number().positive('Selling price must be positive').optional(),
   isActive: z.boolean().optional(),
   recipeIngredients: z.array(recipeIngredientWithIdSchema).optional(),
 });
