@@ -107,9 +107,10 @@ export function DlcAlerts() {
           {upcomingDlcs.map((dlc) => {
             const days = getDaysUntilExpiration(dlc.expirationDate);
             return (
-              <div
+              <Link
                 key={dlc.id}
-                className={`flex items-center justify-between p-3 rounded-lg border ${getUrgencyColor(
+                href="/dlc"
+                className={`flex items-center justify-between p-3 rounded-lg border transition-all hover:shadow-md cursor-pointer ${getUrgencyColor(
                   days
                 )}`}
               >
@@ -127,7 +128,7 @@ export function DlcAlerts() {
                 <div className="flex items-center gap-2">
                   {getUrgencyBadge(days)}
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>

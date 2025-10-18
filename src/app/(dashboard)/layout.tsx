@@ -110,11 +110,11 @@ function DashboardContent({ children }: { children: ReactNode }) {
                 const isActive = pathname.startsWith(item.href);
 
                 return (
-                  <Link key={item.id} href={item.href} onClick={closeSidebar}>
+                  <Link key={item.id} href={item.href} onClick={closeSidebar} className="cursor-pointer">
                     <Button
                       variant={isActive ? 'default' : 'ghost'}
                       className={`
-                        w-full justify-start gap-3 h-12 text-white
+                        w-full justify-start gap-3 h-12 text-white cursor-pointer
                         ${isActive ? 'bg-blue-600 hover:bg-blue-700' : 'hover:bg-slate-700'}
                       `}
                     >

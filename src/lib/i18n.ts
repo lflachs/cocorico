@@ -17,6 +17,18 @@ export const translations = {
     'nav.settings': 'Settings',
     // Today page
     'today.title': 'Today',
+    'today.greeting.morning': 'Good morning',
+    'today.greeting.afternoon': 'Good afternoon',
+    'today.greeting.evening': 'Good evening',
+    'today.quickActions': 'Quick Actions',
+    'today.alerts.title': 'Alerts',
+    'today.alerts.all': 'All',
+    'today.alerts.expiring': 'Expiring',
+    'today.alerts.stock': 'Stock',
+    'today.alerts.disputes': 'Disputes',
+    'today.alerts.noAlertsInCategory': 'No alerts in this category',
+    'today.alerts.allClear': 'All clear! No alerts at the moment.',
+    'today.alerts.allClearHint': 'Everything is running smoothly',
     'today.scanDelivery': 'Scan Delivery',
     'today.scanDelivery.subtitle': 'Upload receipt or invoice',
     'today.lowStock.title': 'Low Stock Alerts',
@@ -42,6 +54,7 @@ export const translations = {
     'today.saleDialog.success': 'Sale recorded successfully!',
     // Common
     'common.back': 'Back',
+    'common.view': 'View',
     // Bills pages
     'bills.title': 'Bills & Deliveries',
     'bills.description': 'Upload and manage delivery receipts and invoices',
@@ -334,6 +347,8 @@ export const translations = {
     'dlc.msg.from': 'from',
     'dlc.msg.files': 'file(s)',
     'dlc.msg.processed': 'Processed',
+    // Disputes
+    'disputes.noSupplier': 'Unknown supplier',
   },
   fr: {
     'app.title': 'Cocorico Gestion de Stock',
@@ -346,6 +361,18 @@ export const translations = {
     'nav.settings': 'Paramètres',
     // Today page
     'today.title': "Aujourd'hui",
+    'today.greeting.morning': 'Bonjour',
+    'today.greeting.afternoon': 'Bon après-midi',
+    'today.greeting.evening': 'Bonsoir',
+    'today.quickActions': 'Actions Rapides',
+    'today.alerts.title': 'Alertes',
+    'today.alerts.all': 'Tous',
+    'today.alerts.expiring': 'Péremption',
+    'today.alerts.stock': 'Stock',
+    'today.alerts.disputes': 'Litiges',
+    'today.alerts.noAlertsInCategory': 'Aucune alerte dans cette catégorie',
+    'today.alerts.allClear': 'Tout va bien ! Aucune alerte pour le moment.',
+    'today.alerts.allClearHint': 'Tout fonctionne parfaitement',
     'today.scanDelivery': 'Scanner Livraison',
     'today.scanDelivery.subtitle': 'Télécharger reçu ou facture',
     'today.lowStock.title': 'Alertes Stock Bas',
@@ -370,6 +397,7 @@ export const translations = {
     'today.saleDialog.recording': 'Enregistrement...',
     // Common
     'common.back': 'Retour',
+    'common.view': 'Voir',
     // Bills pages
     'bills.title': 'Factures & Livraisons',
     'bills.description': 'Télécharger et gérer les reçus et factures de livraison',
@@ -703,6 +731,8 @@ export const translations = {
     'dlc.msg.from': 'de',
     'dlc.msg.files': 'fichier(s)',
     'dlc.msg.processed': 'Traité',
+    // Disputes
+    'disputes.noSupplier': 'Fournisseur inconnu',
   },
 } as const;
 

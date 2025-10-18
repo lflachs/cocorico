@@ -2,13 +2,111 @@
 
 **READ THIS FIRST** - These instructions must be followed for ALL code changes.
 
-## 🎨 Design System
+## 🎨 Design System & Color Palette
 
-The app uses **shadcn/ui** with a **dark sidebar** design:
-- **Sidebar:** slate-800 background with blue-600 active state
-- **Main content:** slate-50 background
-- **Mobile:** Responsive hamburger menu
+### Brand Color Palette (Cocorico Restaurant Theme)
+
+**ALWAYS use these brand colors** - defined in `src/app/globals.css`:
+
+```css
+--brand-red: #e63946          /* Red Pantone - Alerts, urgent states */
+--brand-honeydew: #f1faee      /* Honeydew - Light backgrounds */
+--brand-blue-light: #a8dadc    /* Non-Photo Blue - Soft accents */
+--brand-blue-medium: #457b9d   /* Cerulean - Interactive elements */
+--brand-blue-dark: #1d3557     /* Berkeley Blue - Headers, dark elements */
+```
+
+### Semantic Color Tokens
+
+**CRITICAL**: Use semantic tokens, NOT direct brand colors in components:
+
+```typescript
+// ✅ GOOD: Use semantic tokens
+className="bg-primary text-primary-foreground"
+className="bg-destructive text-destructive-foreground"
+className="bg-warning text-warning-foreground"
+className="bg-success text-success-foreground"
+className="border-border text-foreground bg-background"
+
+// ❌ BAD: Never use arbitrary colors
+className="bg-blue-500 text-white"
+className="bg-red-600 text-slate-900"
+className="bg-amber-500"
+```
+
+### Semantic Token Reference
+
+| Token | Usage | Foreground | Example |
+|-------|-------|------------|---------|
+| `primary` | Main brand color, headers, important buttons | `primary-foreground` | Navigation, CTAs |
+| `secondary` | Secondary actions, less prominent | `secondary-foreground` | Cancel buttons |
+| `destructive` | Errors, critical alerts, delete actions | `destructive-foreground` | Delete, Expired items |
+| `warning` | Warnings, medium urgency alerts | `warning-foreground` | Low stock, expiring soon |
+| `success` | Success states, confirmations | `success-foreground` | Success messages, good stock |
+| `muted` | Subtle backgrounds, disabled states | `muted-foreground` | Disabled text, hints |
+| `accent` | Highlights, hover states | `accent-foreground` | Hover effects |
+| `info` | Informational messages | `info-foreground` | Tips, information |
+| `border` | All borders | - | Card borders, dividers |
+| `background` | Page background | `foreground` | Main page bg |
+| `card` | Card backgrounds | `card-foreground` | Card components |
+
+### Gradient Usage
+
+Use subtle gradients for premium feel:
+
+```typescript
+// ✅ GOOD: Subtle, trendy gradients
+className="bg-gradient-to-br from-primary via-primary/95 to-secondary"
+className="bg-gradient-to-br from-warning/90 to-warning"
+className="bg-gradient-to-br from-success/5 via-transparent to-transparent"
+
+// ❌ BAD: Harsh, arbitrary gradients
+className="bg-gradient-to-r from-blue-500 to-red-500"
+```
+
+### 3D Shadow System
+
+Use layered shadows for depth (not excessive):
+
+```typescript
+// ✅ GOOD: Subtle 3D effect
+className="shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all"
+className="shadow-lg hover:shadow-xl"
+
+// ❌ BAD: Flat or excessive
+className="shadow-2xl"
+className="shadow-none"
+```
+
+### UI Component Design
+
+- **Sidebar:** `bg-primary` with `sidebar-accent` active states
+- **Main content:** `bg-background` (honeydew-tinted white)
+- **Cards:** `bg-card` with `shadow-md`, hover effects with lift
+- **Buttons:** Gradients with semantic colors + white text
+- **Alerts:** Color-coded by urgency (destructive/warning/muted)
+- **Mobile:** Responsive with consistent color system
 - **i18n:** English/French language switcher
+
+### When to Use Each Color
+
+| State | Color Token | When to Use |
+|-------|-------------|-------------|
+| **Critical/Urgent** | `destructive` | Expired items, errors, delete |
+| **Warning/Attention** | `warning` | Expiring soon, low stock, pending |
+| **Success/Good** | `success` | Good stock, success messages, confirmations |
+| **Info/Neutral** | `info` or `muted` | General information, hints |
+| **Primary Action** | `primary` | Main CTAs, navigation, headers |
+| **Secondary Action** | `secondary` | Cancel, less important actions |
+
+### Color System Rules
+
+1. **ALWAYS** use semantic tokens (primary, destructive, etc.)
+2. **NEVER** use arbitrary Tailwind colors (blue-500, red-600, etc.)
+3. **ALWAYS** pair background with correct foreground token
+4. **USE** gradients sparingly for premium touch
+5. **APPLY** subtle shadows for 3D effect
+6. **UPDATE** these instructions when discovering new patterns worth documenting
 
 ---
 
