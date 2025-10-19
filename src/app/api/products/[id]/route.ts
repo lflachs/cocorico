@@ -11,7 +11,7 @@ export async function PUT(
 ) {
   try {
     const body = await request.json();
-    const { name, quantity, unitPrice } = body;
+    const { name, quantity, unitPrice, parLevel } = body;
 
     const product = await db.product.update({
       where: { id: params.id },
@@ -19,6 +19,7 @@ export async function PUT(
         name,
         quantity,
         unitPrice,
+        parLevel: parLevel !== undefined ? parLevel : undefined,
         totalValue: unitPrice ? quantity * unitPrice : null,
       },
     });
