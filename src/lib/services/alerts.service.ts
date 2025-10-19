@@ -146,11 +146,13 @@ async function getMenuCriticalIngredients(): Promise<Map<string, IngredientUsage
  */
 export async function getAllAlerts(t: (key: any) => string): Promise<Alert[]> {
   try {
-    const [products, dlcs, menuIngredients] = await Promise.all([
+    const { getOpenDisputes } = await import('./dispute.service');
+
+    const [products, dlcs, menuIngredients, disputes] = await Promise.all([
       getAllProducts(),
       getUpcomingDlcs(7),
       getMenuCriticalIngredients(),
-      // TODO: Add getOpenDisputes() when dispute service is created
+      getOpenDisputes(),
     ]);
 
     const alerts: Alert[] = [];
@@ -258,9 +260,41 @@ export async function getAllAlerts(t: (key: any) => string): Promise<Alert[]> {
       }
     });
 
-    // TODO: Process disputes when service is available
-    // const disputes = await getOpenDisputes();
-    // disputes.forEach((dispute) => { ... });
+    // Process open disputes
+    disputes.forEach((dispute) => {
+      const daysSince = getDaysSince(dispute.createdAt);
+      const urgency = getDisputeUrgency(daysSince);
+
+      let title = '';
+      if (daysSince >= 7) {
+        title = `Urgent: ${dispute.title} (${daysSince} days old)`;
+      } else if (daysSince >= 3) {
+        title = `${dispute.title} needs attention`;
+      } else {
+        title = dispute.title;
+      }
+
+      let description = '';
+      if (dispute.bill.supplier) {
+        description = `Supplier: ${dispute.bill.supplier}`;
+      }
+      if (dispute.products.length > 0) {
+        description += ` • ${dispute.products.length} product${dispute.products.length > 1 ? 's' : ''}`;
+      }
+      if (dispute.amountDisputed) {
+        description += ` • €${dispute.amountDisputed.toFixed(2)}`;
+      }
+
+      alerts.push({
+        id: `dispute-${dispute.id}`,
+        type: 'dispute',
+        title,
+        description: description || 'Pending resolution',
+        urgency,
+        href: '/disputes',
+        badge: dispute.status === 'IN_PROGRESS' ? 'IN PROGRESS' : 'OPEN',
+      });
+    });
 
     // Sort by urgency
     return sortAlertsByUrgency(alerts);

@@ -22,7 +22,12 @@ export async function POST(
 ) {
   try {
     const body = await request.json();
-    const { products } = body as { products: ProductMapping[] };
+    const { products, supplier, billDate, totalAmount } = body as {
+      products: ProductMapping[];
+      supplier?: string;
+      billDate?: string;
+      totalAmount?: number;
+    };
 
     if (!products || products.length === 0) {
       return NextResponse.json({ error: 'No products provided' }, { status: 400 });
@@ -55,6 +60,16 @@ export async function POST(
         unitPrice: product.unitPrice,
       });
     }
+
+    // Update bill with supplier, date, and total amount
+    await db.bill.update({
+      where: { id: params.id },
+      data: {
+        supplier: supplier,
+        billDate: billDate ? new Date(billDate) : null,
+        totalAmount: totalAmount,
+      },
+    });
 
     // Confirm bill and update stock
     await confirmBill(params.id, processedProducts);

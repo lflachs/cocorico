@@ -13,12 +13,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { FileText, Calendar, Package, Trash2 } from 'lucide-react';
+import { FileText, Calendar, Package, Trash2, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/providers/LanguageProvider';
+import { DisputeModal } from '../../disputes/_components/DisputeModal';
 
 /**
  * Bills List Component
@@ -44,11 +45,36 @@ export function BillsList({ bills }: BillsListProps) {
   const router = useRouter();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [billToDelete, setBillToDelete] = useState<string | null>(null);
+  const [disputeModalOpen, setDisputeModalOpen] = useState(false);
+  const [selectedBillForDispute, setSelectedBillForDispute] = useState<string | null>(null);
+  const [billProducts, setBillProducts] = useState<any[]>([]);
 
   const handleDeleteClick = (e: React.MouseEvent, billId: string) => {
     e.preventDefault(); // Prevent navigation to bill detail
     e.stopPropagation();
     setBillToDelete(billId);
+  };
+
+  const handleDisputeClick = async (e: React.MouseEvent, billId: string) => {
+    e.preventDefault(); // Prevent navigation to bill detail
+    e.stopPropagation();
+
+    // Fetch bill products for pre-filling
+    try {
+      const response = await fetch(`/api/bills/${billId}`);
+      if (response.ok) {
+        const billData = await response.json();
+        const bill = bills.find(b => b.id === billId);
+        if (bill && bill.products) {
+          setBillProducts(bill.products);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching bill products:', error);
+    }
+
+    setSelectedBillForDispute(billId);
+    setDisputeModalOpen(true);
   };
 
   const handleDeleteConfirm = async () => {
@@ -119,14 +145,24 @@ export function BillsList({ bills }: BillsListProps) {
               </div>
             </Link>
 
-            {/* Delete Button - positioned absolutely */}
-            <div className="absolute top-4 right-4">
+            {/* Action Buttons - positioned absolutely */}
+            <div className="absolute top-4 right-4 flex gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => handleDisputeClick(e, bill.id)}
+                className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-orange-100 hover:text-orange-600"
+                title="Start dispute"
+              >
+                <AlertTriangle className="w-4 h-4" />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={(e) => handleDeleteClick(e, bill.id)}
                 disabled={deletingId === bill.id}
                 className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 hover:text-red-600"
+                title="Delete bill"
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
@@ -154,6 +190,27 @@ export function BillsList({ bills }: BillsListProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Dispute Modal */}
+      <DisputeModal
+        open={disputeModalOpen}
+        onOpenChange={(open) => {
+          setDisputeModalOpen(open);
+          if (!open) {
+            setSelectedBillForDispute(null);
+            setBillProducts([]);
+          }
+        }}
+        onSuccess={() => {
+          toast.success('Dispute created successfully');
+          setDisputeModalOpen(false);
+          setSelectedBillForDispute(null);
+          setBillProducts([]);
+          router.refresh();
+        }}
+        preFillBillId={selectedBillForDispute || undefined}
+        preFillBillProducts={billProducts.length > 0 ? billProducts : undefined}
+      />
     </>
   );
 }

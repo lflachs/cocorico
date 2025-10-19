@@ -162,13 +162,40 @@ enum MovementType {
 }
 
 // ============================================================================
+// SUPPLIERS
+// ============================================================================
+
+model Supplier {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  contactName String?
+  email       String?
+  phone       String?
+  address     String?  @db.Text
+  notes       String?  @db.Text
+  isActive    Boolean  @default(true)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  bills Bill[]
+  dlcs  DLC[]
+
+  @@index([name])
+  @@index([isActive])
+  @@map("suppliers")
+}
+
+// ============================================================================
 // BILLS & DOCUMENTS
 // ============================================================================
 
 model Bill {
   id          String    @id @default(cuid())
   filename    String
-  supplier    String?
+  supplierId  String?
   billDate    DateTime?
   totalAmount Float?
   rawContent  String?   @db.Text
@@ -178,12 +205,13 @@ model Bill {
   updatedAt DateTime @updatedAt
 
   // Relations
+  supplier       Supplier?       @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   products       BillProduct[]
   disputes       Dispute[]
   stockMovements StockMovement[]
 
   @@index([billDate])
-  @@index([supplier])
+  @@index([supplierId])
   @@map("bills")
 }
 
@@ -426,7 +454,7 @@ model DLC {
   quantity        Float
   unit            Unit     @default(PC)
   batchNumber     String?
-  supplier        String?
+  supplierId      String?
   status          DLCStatus @default(ACTIVE)
 
   // OCR metadata
@@ -441,11 +469,13 @@ model DLC {
   updatedAt       DateTime @updatedAt
 
   // Relations
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product  Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
 
   @@index([productId])
   @@index([expirationDate])
   @@index([status])
+  @@index([supplierId])
   @@map("dlcs")
 }
 
