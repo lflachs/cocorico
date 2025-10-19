@@ -20,6 +20,12 @@ type OcrResult = {
   items: ExtractedLineItem[];
 };
 
+type MenuTextResult = {
+  content: string;
+  paragraphs: string[];
+  tables: { cells: string[][] }[];
+};
+
 export class OcrService {
   private client: DocumentAnalysisClient | null = null;
 
@@ -205,6 +211,59 @@ export class OcrService {
       date,
       totalAmount: typeof totalAmount === 'number' ? totalAmount : 0,
       items,
+    };
+  }
+
+  async processMenu(fileBuffer: Buffer): Promise<MenuTextResult> {
+    if (!this.client) {
+      throw new Error(
+        'Azure Document Intelligence not configured. Please set AZURE_DOC_INTELLIGENCE_ENDPOINT and AZURE_DOC_INTELLIGENCE_KEY'
+      );
+    }
+
+    // Use prebuilt-document model for general text extraction
+    const poller = await this.client.beginAnalyzeDocument('prebuilt-document', fileBuffer);
+    const result = await poller.pollUntilDone();
+
+    // Extract full content in reading order
+    const content = result.content || '';
+
+    // Extract paragraphs
+    const paragraphs: string[] = [];
+    if (result.paragraphs) {
+      for (const paragraph of result.paragraphs) {
+        if (paragraph.content && paragraph.content.trim()) {
+          paragraphs.push(paragraph.content.trim());
+        }
+      }
+    }
+
+    // Extract tables
+    const tables: { cells: string[][] }[] = [];
+    if (result.tables) {
+      for (const table of result.tables) {
+        const rows: string[][] = [];
+        const maxRow = Math.max(...table.cells.map(cell => cell.rowIndex));
+        const maxCol = Math.max(...table.cells.map(cell => cell.columnIndex));
+
+        // Initialize 2D array
+        for (let i = 0; i <= maxRow; i++) {
+          rows[i] = new Array(maxCol + 1).fill('');
+        }
+
+        // Fill cells
+        for (const cell of table.cells) {
+          rows[cell.rowIndex][cell.columnIndex] = cell.content || '';
+        }
+
+        tables.push({ cells: rows });
+      }
+    }
+
+    return {
+      content,
+      paragraphs,
+      tables,
     };
   }
 }
