@@ -185,22 +185,30 @@ export async function getActiveMenusAction() {
  * Import a scanned menu
  * Creates new dishes as needed and creates the menu with sections
  */
-export async function importScannedMenuAction(scannedData: {
-  menuName: string;
-  menuDescription: string | null;
-  pricingType: 'PRIX_FIXE' | 'CHOICE';
-  fixedPrice: number | null;
-  minCourses: number | null;
-  maxCourses: number | null;
-  sections: Array<{
-    name: string;
-    dishes: Array<{
+export async function importScannedMenuAction(
+  scannedData: {
+    menuName: string;
+    menuDescription: string | null;
+    pricingType: 'PRIX_FIXE' | 'CHOICE';
+    fixedPrice: number | null;
+    minCourses: number | null;
+    maxCourses: number | null;
+    sections: Array<{
       name: string;
-      description: string | null;
-      price: number | null;
+      dishes: Array<{
+        name: string;
+        description: string | null;
+        price: number | null;
+        recipeIngredients?: Array<{
+          productId: string;
+          quantityRequired: number;
+          unit: string;
+        }>;
+      }>;
     }>;
-  }>;
-}) {
+  },
+  dishMappings?: Map<string, { useExisting: boolean; existingDishId?: string }>
+) {
   try {
     const { createDish } = await import('@/lib/services/dish.service');
     const { getDishes } = await import('@/lib/services/dish.service');
@@ -213,13 +221,28 @@ export async function importScannedMenuAction(scannedData: {
       scannedData.sections.map(async (section, sectionIndex) => {
         const dishesWithIds = await Promise.all(
           section.dishes.map(async (scannedDish, dishIndex) => {
-            // Try to find existing dish by exact name match
+            // Check if we have an explicit mapping for this dish
+            const mappingKey = `0-${sectionIndex}-${dishIndex}`; // menuIdx is always 0 for single menu import
+            const mapping = dishMappings?.get(mappingKey);
+
+            // If mapping exists and says to use existing
+            if (mapping?.useExisting && mapping.existingDishId) {
+              return {
+                dishId: mapping.existingDishId,
+                displayOrder: dishIndex,
+                notes: null,
+                priceOverride: scannedDish.price,
+              };
+            }
+
+            // If mapping exists and says to create new, or no mapping exists
+            // Try to find existing dish by exact name match (only if no explicit mapping to create new)
             const existingDish = existingDishes.find(
               (d) => d.name.toLowerCase() === scannedDish.name.toLowerCase()
             );
 
-            if (existingDish) {
-              // Use existing dish
+            if (existingDish && (!mapping || mapping.useExisting)) {
+              // Use existing dish (auto-matched or explicitly mapped)
               return {
                 dishId: existingDish.id,
                 displayOrder: dishIndex,
@@ -233,6 +256,7 @@ export async function importScannedMenuAction(scannedData: {
                 description: scannedDish.description || undefined,
                 sellingPrice: scannedDish.price || undefined,
                 isActive: true,
+                recipeIngredients: scannedDish.recipeIngredients,
               });
 
               return {

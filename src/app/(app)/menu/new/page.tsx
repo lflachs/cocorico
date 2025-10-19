@@ -21,6 +21,7 @@ export default function AddMenuPage() {
   const [showScanUpload, setShowScanUpload] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [suggestIngredients, setSuggestIngredients] = useState(true);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -37,6 +38,7 @@ export default function AddMenuPage() {
     try {
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('suggestIngredients', suggestIngredients.toString());
 
       const response = await fetch('/api/menu/scan', {
         method: 'POST',
@@ -178,6 +180,28 @@ export default function AddMenuPage() {
                 </div>
               )}
             </div>
+
+            <div className="flex items-center space-x-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <input
+                type="checkbox"
+                id="suggestIngredients"
+                checked={suggestIngredients}
+                onChange={(e) => setSuggestIngredients(e.target.checked)}
+                disabled={scanning}
+                className="h-4 w-4 cursor-pointer"
+              />
+              <label
+                htmlFor="suggestIngredients"
+                className="text-sm font-medium text-blue-900 cursor-pointer"
+              >
+                Suggest ingredients automatically (AI-powered)
+              </label>
+            </div>
+            {suggestIngredients && (
+              <p className="text-xs text-muted-foreground">
+                We'll try to match dishes with products in your inventory and suggest quantities. You can review and adjust before importing.
+              </p>
+            )}
 
             <Button
               onClick={handleScan}
