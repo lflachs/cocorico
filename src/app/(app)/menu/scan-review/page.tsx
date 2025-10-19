@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Check, Plus, X, Edit } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ArrowLeft, Check, Plus, X, Edit, Link2, AlertCircle } from 'lucide-react';
 import { useLanguage } from '@/providers/LanguageProvider';
 import { toast } from 'sonner';
 import { IngredientEditor } from '../_components/IngredientEditor';
@@ -23,8 +24,12 @@ type ScannedDish = {
   price: number | null;
   recipeIngredients?: Array<{
     productId: string;
+    productName?: string;
     quantityRequired: number;
     unit: string;
+    suggested?: boolean;
+    confidence?: number;
+    exists?: boolean;
   }>;
 };
 
@@ -50,6 +55,18 @@ type AlaCarteDish = {
   category: string | null;
 };
 
+type ExistingDish = {
+  id: string;
+  name: string;
+  description?: string | null;
+  sellingPrice?: number | null;
+};
+
+type DishMapping = {
+  useExisting: boolean;
+  existingDishId?: string;
+};
+
 export default function MenuScanReviewPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -62,8 +79,27 @@ export default function MenuScanReviewPage() {
   const [editingDishPath, setEditingDishPath] = useState<{ menuIdx: number; sectionIdx: number; dishIdx: number } | null>(null);
   const [saving, setSaving] = useState(false);
   const [showIngredientEditor, setShowIngredientEditor] = useState(false);
+  const [existingDishes, setExistingDishes] = useState<ExistingDish[]>([]);
+  const [dishMappings, setDishMappings] = useState<Map<string, DishMapping>>(new Map());
 
   useEffect(() => {
+    // Load existing dishes
+    const loadExistingDishes = async () => {
+      try {
+        const { getDishes } = await import('@/lib/services/dish.service');
+        const dishes = await getDishes({
+          isActive: true,
+          includeRecipe: false,
+          includeSales: false,
+        });
+        setExistingDishes(dishes);
+      } catch (error) {
+        console.error('Error loading existing dishes:', error);
+      }
+    };
+
+    loadExistingDishes();
+
     // Get scanned data from sessionStorage (passed from MenuScanDialog)
     const scannedDataStr = sessionStorage.getItem('scannedMenuData');
     if (scannedDataStr) {
@@ -83,6 +119,33 @@ export default function MenuScanReviewPage() {
       router.push('/menu');
     }
   }, [router]);
+
+  // Auto-detect dish matches when existing dishes or menus change
+  useEffect(() => {
+    if (existingDishes.length === 0 || menus.length === 0) return;
+
+    const newMappings = new Map<string, DishMapping>();
+
+    menus.forEach((menu, menuIdx) => {
+      menu.sections.forEach((section, sectionIdx) => {
+        section.dishes.forEach((dish, dishIdx) => {
+          const key = `${menuIdx}-${sectionIdx}-${dishIdx}`;
+          const matchedDish = existingDishes.find(
+            (d) => d.name.toLowerCase().trim() === dish.name.toLowerCase().trim()
+          );
+
+          if (matchedDish) {
+            newMappings.set(key, {
+              useExisting: true,
+              existingDishId: matchedDish.id,
+            });
+          }
+        });
+      });
+    });
+
+    setDishMappings(newMappings);
+  }, [existingDishes, menus]);
 
   const toggleMenuSelection = (index: number) => {
     const newSelection = new Set(selectedMenus);
@@ -136,6 +199,27 @@ export default function MenuScanReviewPage() {
     setEditingDishPath(null);
   };
 
+  const getMatchedDish = (menuIdx: number, sectionIdx: number, dishIdx: number): ExistingDish | null => {
+    const key = `${menuIdx}-${sectionIdx}-${dishIdx}`;
+    const mapping = dishMappings.get(key);
+    if (!mapping?.existingDishId) return null;
+    return existingDishes.find(d => d.id === mapping.existingDishId) || null;
+  };
+
+  const toggleDishMapping = (menuIdx: number, sectionIdx: number, dishIdx: number) => {
+    const key = `${menuIdx}-${sectionIdx}-${dishIdx}`;
+    const currentMapping = dishMappings.get(key);
+
+    if (!currentMapping) return; // No match exists
+
+    const newMappings = new Map(dishMappings);
+    newMappings.set(key, {
+      ...currentMapping,
+      useExisting: !currentMapping.useExisting,
+    });
+    setDishMappings(newMappings);
+  };
+
   const handleImport = async () => {
     if (selectedMenus.size === 0 && selectedAlacarte.size === 0) {
       toast.error('Please select at least one menu or dish to import');
@@ -144,12 +228,28 @@ export default function MenuScanReviewPage() {
 
     setSaving(true);
     try {
-      // Import selected menus
-      const menusToImport = Array.from(selectedMenus).map(idx => menus[idx]);
       const { importScannedMenuAction } = await import('@/lib/actions/menu.actions');
+      const { createDish } = await import('@/lib/services/dish.service');
 
-      for (const menu of menusToImport) {
-        const result = await importScannedMenuAction(menu);
+      // Import selected menus
+      for (const menuIdx of Array.from(selectedMenus)) {
+        const menu = menus[menuIdx];
+
+        // Create mapping for this specific menu (adjust keys to start from 0)
+        const menuSpecificMappings = new Map<string, { useExisting: boolean; existingDishId?: string }>();
+
+        menu.sections.forEach((section, sectionIdx) => {
+          section.dishes.forEach((dish, dishIdx) => {
+            const originalKey = `${menuIdx}-${sectionIdx}-${dishIdx}`;
+            const newKey = `0-${sectionIdx}-${dishIdx}`; // menuIdx is always 0 in the action
+            const mapping = dishMappings.get(originalKey);
+            if (mapping) {
+              menuSpecificMappings.set(newKey, mapping);
+            }
+          });
+        });
+
+        const result = await importScannedMenuAction(menu, menuSpecificMappings);
         if (!result.success) {
           throw new Error(result.error || 'Failed to import menu');
         }
@@ -158,7 +258,6 @@ export default function MenuScanReviewPage() {
       // Import selected à la carte dishes
       if (selectedAlacarte.size > 0) {
         const alacarteDishes = Array.from(selectedAlacarte).map(idx => alacarte[idx]);
-        const { createDish } = await import('@/lib/services/dish.service');
 
         for (const dish of alacarteDishes) {
           await createDish({
@@ -293,29 +392,94 @@ export default function MenuScanReviewPage() {
                       {menu.sections.map((section, sectionIdx) => (
                         <div key={sectionIdx} className="border-l-2 border-primary/30 pl-3 space-y-2">
                           <div className="font-medium text-sm">{section.name}</div>
-                          {section.dishes.map((dish, dishIdx) => (
-                            <div key={dishIdx} className="p-2 rounded bg-muted/50 text-sm space-y-1">
-                              <div className="font-medium">{dish.name}</div>
-                              {dish.description && (
-                                <div className="text-xs text-muted-foreground">{dish.description}</div>
-                              )}
-                              {dish.price && <div className="text-xs font-semibold">€{dish.price}</div>}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 text-xs mt-1"
-                                onClick={() => {
-                                  setEditingDishPath({ menuIdx, sectionIdx, dishIdx });
-                                  setShowIngredientEditor(true);
-                                }}
-                              >
-                                <Edit className="w-3 h-3 mr-1" />
-                                {dish.recipeIngredients && dish.recipeIngredients.length > 0
-                                  ? `Edit Ingredients (${dish.recipeIngredients.length})`
-                                  : 'Add Ingredients'}
-                              </Button>
-                            </div>
-                          ))}
+                          {section.dishes.map((dish, dishIdx) => {
+                            const matchedDish = getMatchedDish(menuIdx, sectionIdx, dishIdx);
+                            const mapping = dishMappings.get(`${menuIdx}-${sectionIdx}-${dishIdx}`);
+                            const useExisting = mapping?.useExisting ?? false;
+
+                            return (
+                              <div key={dishIdx} className="p-2 rounded bg-muted/50 text-sm space-y-2">
+                                <div>
+                                  <div className="font-medium">{dish.name}</div>
+                                  {dish.description && (
+                                    <div className="text-xs text-muted-foreground">{dish.description}</div>
+                                  )}
+                                  {dish.price && <div className="text-xs font-semibold">€{dish.price}</div>}
+                                </div>
+
+                                {/* Match Status */}
+                                {matchedDish && (
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    {useExisting ? (
+                                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                                        <Link2 className="w-3 h-3 mr-1" />
+                                        Using existing dish
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
+                                        <AlertCircle className="w-3 h-3 mr-1" />
+                                        Will create new
+                                      </Badge>
+                                    )}
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-5 text-xs px-2"
+                                      onClick={() => toggleDishMapping(menuIdx, sectionIdx, dishIdx)}
+                                    >
+                                      Switch to {useExisting ? 'new' : 'existing'}
+                                    </Button>
+                                  </div>
+                                )}
+
+                                {/* Show suggested ingredients if any */}
+                                {!useExisting && dish.recipeIngredients && dish.recipeIngredients.length > 0 && (
+                                  <div className="mt-2 space-y-1">
+                                    <div className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                                      <span>AI Suggested ({dish.recipeIngredients.length}):</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-1">
+                                      {dish.recipeIngredients.map((ing, ingIdx) => (
+                                        <div
+                                          key={ingIdx}
+                                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${
+                                            ing.exists
+                                              ? 'bg-green-100 text-green-800 border border-green-200'
+                                              : 'bg-blue-100 text-blue-800 border border-blue-200'
+                                          }`}
+                                        >
+                                          <span>{ing.productName || ing.productId}</span>
+                                          <span className="text-[10px] opacity-70">
+                                            {ing.quantityRequired} {ing.unit}
+                                          </span>
+                                          {ing.exists && (
+                                            <span className="text-[10px] opacity-70" title="In inventory">✓</span>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {!useExisting && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 text-xs mt-1"
+                                    onClick={() => {
+                                      setEditingDishPath({ menuIdx, sectionIdx, dishIdx });
+                                      setShowIngredientEditor(true);
+                                    }}
+                                  >
+                                    <Edit className="w-3 h-3 mr-1" />
+                                    {dish.recipeIngredients && dish.recipeIngredients.length > 0
+                                      ? `Review Ingredients (${dish.recipeIngredients.length})`
+                                      : 'Add Ingredients'}
+                                  </Button>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       ))}
                     </div>
@@ -381,7 +545,7 @@ export default function MenuScanReviewPage() {
           initialIngredients={
             menus[editingDishPath.menuIdx]?.sections[editingDishPath.sectionIdx]?.dishes[editingDishPath.dishIdx]?.recipeIngredients?.map(ing => ({
               productId: ing.productId,
-              productName: '', // Will be loaded from products
+              productName: ing.productName || '',
               quantityRequired: ing.quantityRequired,
               unit: ing.unit,
             })) || []

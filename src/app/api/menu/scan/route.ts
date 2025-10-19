@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
+    const suggestIngredients = formData.get('suggestIngredients') === 'true';
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
@@ -173,6 +174,103 @@ EXAMPLE MENU TEXT:
         { error: 'No menus or dishes found in the document.' },
         { status: 400 }
       );
+    }
+
+    // Step 3: Suggest ingredients if enabled
+    if (suggestIngredients && parsedData.menus.length > 0) {
+      try {
+        // Get all existing products from inventory
+        const { getProductsAction } = await import('@/lib/actions/product.actions');
+        const productsResult = await getProductsAction();
+        const existingProducts = productsResult.success && productsResult.data ? productsResult.data : [];
+
+        // Create a simplified list of product names for AI matching
+        const productNames = existingProducts.map((p: any) => p.name).join(', ');
+
+        // Process each menu and suggest ingredients for dishes
+        for (const menu of parsedData.menus) {
+          for (const section of menu.sections) {
+            for (const dish of section.dishes) {
+              try {
+                // Ask GPT-4 to suggest ingredients for this dish
+                const suggestionResponse = await openai.chat.completions.create({
+                  model: 'gpt-4o',
+                  messages: [
+                    {
+                      role: 'system',
+                      content: `You are a chef assistant. Given a dish name and optional description, suggest the main ingredients needed to prepare it.
+
+IMPORTANT RULES:
+- Suggest only MAIN ingredients (3-8 ingredients)
+- Provide realistic quantities for 1 serving
+- Use standard units: KG, L, or PC
+- If an ingredient matches one from the inventory list, use the EXACT name
+- Return ONLY valid JSON, no markdown
+
+Available products in inventory: ${productNames || 'None'}
+
+Return JSON in this format:
+{
+  "ingredients": [
+    {
+      "name": "Product name",
+      "quantity": 0.15,
+      "unit": "KG",
+      "confidence": 0.9,
+      "matchedProduct": true/false
+    }
+  ]
+}`,
+                    },
+                    {
+                      role: 'user',
+                      content: `Suggest ingredients for: ${dish.name}${dish.description ? `\nDescription: ${dish.description}` : ''}`,
+                    },
+                  ],
+                  max_tokens: 500,
+                  temperature: 0.3,
+                });
+
+                const suggestionContent = suggestionResponse.choices[0].message.content;
+                if (suggestionContent) {
+                  let jsonContent = suggestionContent.trim();
+                  if (jsonContent.startsWith('```')) {
+                    jsonContent = jsonContent.replace(/^```(?:json)?\n?/, '');
+                    jsonContent = jsonContent.replace(/\n?```$/, '');
+                  }
+
+                  const suggestions = JSON.parse(jsonContent);
+
+                  // Match suggested ingredients with existing products
+                  const recipeIngredients = suggestions.ingredients.map((ing: any) => {
+                    const matchedProduct = existingProducts.find(
+                      (p: any) => p.name.toLowerCase() === ing.name.toLowerCase()
+                    );
+
+                    return {
+                      productId: matchedProduct?.id || '',
+                      productName: matchedProduct?.name || ing.name,
+                      quantityRequired: ing.quantity,
+                      unit: matchedProduct?.unit || ing.unit,
+                      suggested: true, // Mark as AI-suggested
+                      confidence: ing.confidence || 0.5,
+                      exists: !!matchedProduct,
+                    };
+                  });
+
+                  dish.recipeIngredients = recipeIngredients;
+                }
+              } catch (dishError) {
+                console.error(`Error suggesting ingredients for dish ${dish.name}:`, dishError);
+                // Continue with next dish if one fails
+              }
+            }
+          }
+        }
+      } catch (ingredientError) {
+        console.error('Error suggesting ingredients:', ingredientError);
+        // Continue without suggestions if this fails
+      }
     }
 
     return NextResponse.json({
