@@ -37,22 +37,21 @@ export function AlertsTabsClient({ alerts, translations }: AlertsTabsClientProps
 
   return (
     <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-      <TabsList className="relative z-10 mb-4 grid w-full grid-cols-4 p-1">
+      <TabsList className="relative z-10 mb-4 grid w-full grid-cols-4 p-1.5">
         <motion.div
-          className="absolute inset-y-1.5 mx-1 rounded-md bg-background shadow-sm"
+          className="absolute inset-1.5 rounded-md bg-background shadow-sm"
           initial={false}
           animate={{
-            x: `calc(${tabIndex * 100}% + 4px)`,
-            width: 'calc(25% - 8px)',
+            left: `${tabIndex * 25}%`,
+            right: `${(3 - tabIndex) * 25}%`,
           }}
           transition={{
             type: 'spring',
             stiffness: 300,
             damping: 30,
           }}
-          style={{ left: 0 }}
         />
-        <TabsTrigger value="all" className="relative z-10 flex cursor-pointer items-center gap-0.5 px-3 py-2 sm:gap-1">
+        <TabsTrigger value="all" className="relative z-10 flex cursor-pointer items-center justify-center gap-0.5 !px-4 !py-3 data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:gap-1">
           <AlertTriangle className="h-3 w-3 flex-shrink-0" />
           <span
             className={`truncate text-xs sm:text-sm ${activeTab === 'all' ? 'inline' : 'hidden sm:inline'}`}
@@ -69,7 +68,7 @@ export function AlertsTabsClient({ alerts, translations }: AlertsTabsClientProps
           )}
         </TabsTrigger>
 
-        <TabsTrigger value="expiring" className="relative z-10 flex cursor-pointer items-center gap-0.5 px-3 py-2 sm:gap-1">
+        <TabsTrigger value="expiring" className="relative z-10 flex cursor-pointer items-center justify-center gap-0.5 !px-4 !py-3 data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:gap-1">
           <Clock className="h-3 w-3 flex-shrink-0" />
           <span
             className={`truncate text-xs sm:text-sm ${activeTab === 'expiring' ? 'inline' : 'hidden sm:inline'}`}
@@ -86,7 +85,7 @@ export function AlertsTabsClient({ alerts, translations }: AlertsTabsClientProps
           )}
         </TabsTrigger>
 
-        <TabsTrigger value="lowStock" className="relative z-10 flex cursor-pointer items-center gap-0.5 px-3 py-2 sm:gap-1">
+        <TabsTrigger value="lowStock" className="relative z-10 flex cursor-pointer items-center justify-center gap-0.5 !px-4 !py-3 data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:gap-1">
           <Package className="h-3 w-3 flex-shrink-0" />
           <span
             className={`truncate text-xs sm:text-sm ${activeTab === 'lowStock' ? 'inline' : 'hidden sm:inline'}`}
@@ -103,7 +102,7 @@ export function AlertsTabsClient({ alerts, translations }: AlertsTabsClientProps
           )}
         </TabsTrigger>
 
-        <TabsTrigger value="dispute" className="relative z-10 flex cursor-pointer items-center gap-0.5 px-3 py-2 sm:gap-1">
+        <TabsTrigger value="dispute" className="relative z-10 flex cursor-pointer items-center justify-center gap-0.5 !px-4 !py-3 data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:gap-1">
           <AlertCircle className="h-3 w-3 flex-shrink-0" />
           <span
             className={`truncate text-xs sm:text-sm ${activeTab === 'dispute' ? 'inline' : 'hidden sm:inline'}`}

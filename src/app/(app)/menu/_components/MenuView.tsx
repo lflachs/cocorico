@@ -6,7 +6,7 @@ import { MenuDetail } from './MenuDetail';
 import { PreparedIngredientsList } from './PreparedIngredientsList';
 import { DishesListView } from './DishesListView';
 import { useLanguage } from '@/providers/LanguageProvider';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AnimatedTabs, AnimatedTabsContent } from '@/components/tabs';
 import { PageHeader } from '@/components/PageHeader';
 import { MissingPriceAlert } from '@/components/MissingPriceAlert';
 import { ChefHat, Beaker, UtensilsCrossed } from 'lucide-react';
@@ -48,34 +48,28 @@ export function MenuView() {
       {view === 'list' ? (
         <>
           {/* Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full max-w-2xl grid-cols-3 shadow-md">
-              <TabsTrigger value="menus" className="flex items-center gap-2 cursor-pointer">
-                <ChefHat className="w-4 h-4" />
-                {t('recipes.tabs.menuItems')}
-              </TabsTrigger>
-              <TabsTrigger value="dishes" className="flex items-center gap-2 cursor-pointer">
-                <UtensilsCrossed className="w-4 h-4" />
-                {t('recipes.tabs.dishes')}
-              </TabsTrigger>
-              <TabsTrigger value="prepared" className="flex items-center gap-2 cursor-pointer">
-                <Beaker className="w-4 h-4" />
-                {t('recipes.tabs.prepared')}
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="menus" className="mt-6">
+          <AnimatedTabs
+            tabs={[
+              { value: 'menus', label: t('recipes.tabs.menuItems'), icon: ChefHat },
+              { value: 'dishes', label: t('recipes.tabs.dishes'), icon: UtensilsCrossed },
+              { value: 'prepared', label: t('recipes.tabs.prepared'), icon: Beaker },
+            ]}
+            defaultValue={activeTab}
+            onValueChange={setActiveTab}
+            tabsListClassName="max-w-2xl shadow-md"
+          >
+            <AnimatedTabsContent value="menus">
               <MenuList onSelectMenu={handleSelectMenu} />
-            </TabsContent>
+            </AnimatedTabsContent>
 
-            <TabsContent value="dishes" className="mt-6">
+            <AnimatedTabsContent value="dishes">
               <DishesListView />
-            </TabsContent>
+            </AnimatedTabsContent>
 
-            <TabsContent value="prepared" className="mt-6">
+            <AnimatedTabsContent value="prepared">
               <PreparedIngredientsList />
-            </TabsContent>
-          </Tabs>
+            </AnimatedTabsContent>
+          </AnimatedTabs>
         </>
       ) : (
         <MenuDetail menuId={selectedMenuId!} onBack={handleBackToList} />

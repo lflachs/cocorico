@@ -70,7 +70,7 @@ export function MenuList({ onSelectMenu }: MenuListProps) {
   }, [loadMenus]);
 
   const handleCreateMenu = () => {
-    router.push('/menu/create');
+    router.push('/menu/new');
   };
 
   const handleDeleteMenu = async () => {
@@ -139,9 +139,11 @@ export function MenuList({ onSelectMenu }: MenuListProps) {
               </CardTitle>
               <CardDescription>{t('menu.subtitle')}</CardDescription>
             </div>
-            <CreateButton onClick={handleCreateMenu}>
-              {t('menu.createMenu')}
-            </CreateButton>
+            <div className="flex gap-2">
+              <CreateButton onClick={handleCreateMenu}>
+                {t('menu.createMenu')}
+              </CreateButton>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
