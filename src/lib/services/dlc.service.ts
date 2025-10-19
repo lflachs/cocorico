@@ -12,6 +12,7 @@ export async function createDlc(data: DlcInput) {
     data,
     include: {
       product: true,
+      supplier: true,
     },
   });
 }
@@ -22,6 +23,7 @@ export async function updateDlc(id: string, data: UpdateDlcInput) {
     data,
     include: {
       product: true,
+      supplier: true,
     },
   });
 }
@@ -37,6 +39,7 @@ export async function getDlcById(id: string) {
     where: { id },
     include: {
       product: true,
+      supplier: true,
     },
   });
 }
@@ -52,6 +55,7 @@ export async function getAllDlcs(filters?: {
     },
     include: {
       product: true,
+      supplier: true,
     },
     orderBy: {
       expirationDate: "asc",
@@ -74,6 +78,7 @@ export async function getUpcomingDlcs(daysAhead: number = 7) {
     },
     include: {
       product: true,
+      supplier: true,
     },
     orderBy: {
       expirationDate: "asc",
@@ -91,6 +96,7 @@ export async function getExpiredDlcs() {
     },
     include: {
       product: true,
+      supplier: true,
     },
     orderBy: {
       expirationDate: "asc",

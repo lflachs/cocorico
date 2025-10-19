@@ -11,10 +11,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { AlertCircle, Plus, X, Sparkles } from 'lucide-react';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { AlertCircle, Check, ChevronsUpDown } from 'lucide-react';
 import { useLanguage } from '@/providers/LanguageProvider';
 import { SUPPORTED_UNITS, UNIT_LABELS } from '@/lib/constants/units';
-import { QuickCreateProductDialog } from './QuickCreateProductDialog';
+import { cn } from '@/lib/utils';
 
 /**
  * Product Mapping Row
@@ -47,7 +49,8 @@ export function ProductMappingRow({ product, onMapping, onProductUpdate }: Produ
   const { t } = useLanguage();
   const [inventoryProducts, setInventoryProducts] = useState<InventoryProduct[]>([]);
   const [loading, setLoading] = useState(true);
-  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
 
   // Local state for editable fields
   const [editedName, setEditedName] = useState(product.name);
@@ -104,25 +107,26 @@ export function ProductMappingRow({ product, onMapping, onProductUpdate }: Produ
     setEditedUnit(upperValue);
   };
 
-  const isMapped = !!product.mappedProductId;
   const hasValidUnit = SUPPORTED_UNITS.includes(editedUnit as any);
-
   const calculatedTotal = editedQuantity * editedUnitPrice;
 
-  const handleQuickCreate = () => {
-    setQuickCreateOpen(true);
-  };
+  // Find selected product
+  const selectedProduct = product.mappedProductId
+    ? inventoryProducts.find((p) => p.id === product.mappedProductId)
+    : null;
 
-  const handleProductCreated = (productId: string) => {
-    // Auto-map the newly created product
-    onMapping(productId);
-    setQuickCreateOpen(false);
-    // Refresh the inventory products list
-    loadInventoryProducts();
+  // Filter products based on search
+  const filteredProducts = inventoryProducts.filter((p) =>
+    p.name.toLowerCase().includes(searchValue.toLowerCase())
+  );
+
+  const handleSelectProduct = (productId: string | null) => {
+    onMapping(productId || undefined);
+    setOpen(false);
+    setSearchValue('');
   };
 
   return (
-    <>
     <div
       className={`p-4 rounded-lg border-2 transition-colors ${
         !hasValidUnit
@@ -131,39 +135,110 @@ export function ProductMappingRow({ product, onMapping, onProductUpdate }: Produ
       }`}
     >
       <div className="space-y-4">
-        {/* Header with status badges */}
-        <div className="flex items-center gap-2">
-          {isMapped && (
-            <Badge variant="default" className="bg-blue-600">
-              {t('bills.confirm.mappedToExisting')}
-            </Badge>
-          )}
-          {!isMapped && (
-            <Badge variant="outline" className="border-blue-500 text-blue-700">
-              {t('bills.confirm.willCreateNew')}
-            </Badge>
-          )}
-          {!hasValidUnit && (
-            <Badge variant="destructive" className="bg-red-600">
-              <AlertCircle className="w-3 h-3 mr-1" />
-              {t('bills.confirm.invalidUnit')}
-            </Badge>
+        {/* Invalid unit warning */}
+        {!hasValidUnit && (
+          <Badge variant="destructive" className="bg-red-600">
+            <AlertCircle className="w-3 h-3 mr-1" />
+            {t('bills.confirm.invalidUnit')}
+          </Badge>
+        )}
+
+        {/* Product Combobox */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700 block">
+            {t('bills.confirm.productName')}
+          </label>
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={open}
+                className="w-full justify-between bg-white"
+              >
+                <span className="truncate">
+                  {selectedProduct ? (
+                    <span className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      {selectedProduct.name}
+                      <span className="text-xs text-gray-500">({selectedProduct.unit})</span>
+                    </span>
+                  ) : (
+                    <span className="text-gray-500">{editedName || 'Select or create product...'}</span>
+                  )}
+                </span>
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[400px] p-0">
+              <Command>
+                <CommandInput
+                  placeholder="Search products..."
+                  value={searchValue}
+                  onValueChange={setSearchValue}
+                />
+                <CommandEmpty>
+                  <div className="p-4 text-center">
+                    <p className="text-sm text-gray-600 mb-2">No product found</p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditedName(searchValue || editedName);
+                        handleSelectProduct(null);
+                      }}
+                      className="w-full"
+                    >
+                      Create "{searchValue || editedName}" as new product
+                    </Button>
+                  </div>
+                </CommandEmpty>
+                <CommandGroup>
+                  {!selectedProduct && (
+                    <CommandItem
+                      value="__create_new__"
+                      onSelect={() => {
+                        setEditedName(searchValue || editedName);
+                        handleSelectProduct(null);
+                      }}
+                      className="text-blue-600"
+                    >
+                      <span className="font-medium">+ Create "{searchValue || editedName}" as new product</span>
+                    </CommandItem>
+                  )}
+                  {filteredProducts.map((p) => (
+                    <CommandItem
+                      key={p.id}
+                      value={p.name}
+                      onSelect={() => {
+                        setEditedName(p.name);
+                        setEditedUnit(p.unit);
+                        handleSelectProduct(p.id);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          'mr-2 h-4 w-4',
+                          product.mappedProductId === p.id ? 'opacity-100' : 'opacity-0'
+                        )}
+                      />
+                      <span className="flex-1">{p.name}</span>
+                      <span className="text-xs text-gray-500">({p.unit})</span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </Command>
+            </PopoverContent>
+          </Popover>
+          {selectedProduct ? (
+            <p className="text-xs text-green-600">Mapped to existing product</p>
+          ) : (
+            <p className="text-xs text-blue-600">Will create new product: "{editedName}"</p>
           )}
         </div>
 
         {/* Editable Fields */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="col-span-2">
-            <label className="text-sm font-medium text-gray-700 block mb-1">
-              {t('bills.confirm.productName')}
-            </label>
-            <Input
-              value={editedName}
-              onChange={(e) => setEditedName(e.target.value)}
-              className="bg-white"
-              placeholder={t('bills.confirm.productName')}
-            />
-          </div>
 
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-1">
@@ -226,83 +301,7 @@ export function ProductMappingRow({ product, onMapping, onProductUpdate }: Produ
             />
           </div>
         </div>
-
-        {/* Mapping Selector OR Quick Create */}
-        <div className="space-y-3">
-          <label className="text-sm font-medium text-gray-700 block">
-            {t('bills.confirm.mapToProduct')}
-          </label>
-
-          {/* Quick Create Button (shown when not mapped) */}
-          {!isMapped && hasValidUnit && (
-            <Button
-              type="button"
-              onClick={handleQuickCreate}
-              variant="outline"
-              className="w-full border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400"
-            >
-              <Sparkles className="w-4 h-4 mr-2 text-blue-600" />
-              <span className="text-blue-700 font-medium">
-                Quick Create with Details
-              </span>
-            </Button>
-          )}
-
-          {/* Mapping Selector */}
-          <div className="relative">
-            <Select
-              value={product.mappedProductId || '__none__'}
-              onValueChange={handleMappingChange}
-              disabled={loading}
-            >
-              <SelectTrigger className="bg-white">
-                <SelectValue placeholder={t('bills.confirm.leaveEmpty')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Plus className="w-4 h-4" />
-                    {t('bills.confirm.createAsNew')}
-                  </div>
-                </SelectItem>
-                {inventoryProducts.map((invProduct) => (
-                  <SelectItem key={invProduct.id} value={invProduct.id}>
-                    {invProduct.name} ({invProduct.unit})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {product.mappedProductId && (
-              <button
-                onClick={() => onMapping(undefined)}
-                className="absolute right-8 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                type="button"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-          <p className="text-xs text-gray-500">
-            {isMapped
-              ? 'Mapped to existing product'
-              : 'Use Quick Create to set par level & details, or select existing product'}
-          </p>
-        </div>
       </div>
-
-      {/* Quick Create Dialog */}
-      <QuickCreateProductDialog
-        open={quickCreateOpen}
-        onOpenChange={setQuickCreateOpen}
-        extractedData={{
-          name: editedName,
-          quantity: editedQuantity,
-          unit: editedUnit,
-          unitPrice: editedUnitPrice,
-        }}
-        onProductCreated={handleProductCreated}
-      />
     </div>
-    </>
   );
 }

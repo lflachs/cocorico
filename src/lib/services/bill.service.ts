@@ -22,13 +22,15 @@ type CreateBillProductData = {
 };
 
 export async function createBill(data: CreateBillData): Promise<Bill> {
+  // Don't create supplier here - it will be created/linked during confirmation
+  // This allows the user to review and correct the supplier name first
   return await db.bill.create({
     data: {
       filename: data.filename,
-      supplier: data.supplier,
       billDate: data.billDate,
       totalAmount: data.totalAmount,
       rawContent: data.rawContent,
+      // supplierId will be set during confirmation
     },
   });
 }
@@ -37,6 +39,7 @@ export async function getBillById(id: string) {
   return await db.bill.findUnique({
     where: { id },
     include: {
+      supplier: true,
       products: {
         include: {
           product: true,
@@ -51,6 +54,7 @@ export async function getAllBills() {
   return await db.bill.findMany({
     orderBy: { createdAt: 'desc' },
     include: {
+      supplier: true,
       products: {
         include: {
           product: true,

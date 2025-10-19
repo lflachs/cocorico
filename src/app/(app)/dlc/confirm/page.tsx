@@ -27,7 +27,6 @@ type ExtractedProduct = {
   productName: string;
   expirationDate: string;
   batchNumber?: string;
-  supplier?: string;
   quantity?: number;
   unit?: string;
   sourceFile?: string;
@@ -247,7 +246,6 @@ function DlcConfirmContent() {
             quantity: entry.quantity || 1,
             unit: entry.unit,
             batchNumber: entry.batchNumber || undefined,
-            supplier: entry.supplier || undefined,
             status: 'ACTIVE',
             ocrRawData: extracted?.rawText,
           }),
@@ -418,7 +416,7 @@ function DlcConfirmContent() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Unit</Label>
                   <Select
@@ -440,15 +438,6 @@ function DlcConfirmContent() {
                   <Input
                     value={entry.batchNumber || ''}
                     onChange={(e) => updateEntry(entry.id, { batchNumber: e.target.value })}
-                    placeholder="Optional"
-                    className="mt-2"
-                  />
-                </div>
-                <div>
-                  <Label>Supplier</Label>
-                  <Input
-                    value={entry.supplier || ''}
-                    onChange={(e) => updateEntry(entry.id, { supplier: e.target.value })}
                     placeholder="Optional"
                     className="mt-2"
                   />

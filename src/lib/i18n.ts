@@ -131,6 +131,11 @@ export const translations = {
     'bills.delete.deleting': 'Deleting...',
     'bills.delete.success': 'Bill deleted successfully',
     'bills.delete.error': 'Error deleting bill. Please try again.',
+    'bills.status.pending': 'Pending',
+    'bills.status.processed': 'Processed',
+    'bills.status.disputed': 'Disputed',
+    'bills.alreadyProcessed': 'This bill has already been processed',
+    'bills.alreadyProcessed.hint': 'This bill was confirmed and inventory was already updated',
     // Inventory pages
     'inventory.title': 'Inventory Management',
     'inventory.subtitle': 'Track and manage your stock levels',
@@ -666,6 +671,11 @@ export const translations = {
     'bills.delete.deleting': 'Suppression...',
     'bills.delete.success': 'Facture supprimée avec succès',
     'bills.delete.error': 'Erreur lors de la suppression de la facture. Veuillez réessayer.',
+    'bills.status.pending': 'En attente',
+    'bills.status.processed': 'Traitée',
+    'bills.status.disputed': 'En litige',
+    'bills.alreadyProcessed': 'Cette facture a déjà été traitée',
+    'bills.alreadyProcessed.hint': 'Cette facture a été confirmée et l\'inventaire a déjà été mis à jour',
     // Inventory pages
     'inventory.title': "Gestion de l'Inventaire",
     'inventory.subtitle': 'Suivez et gérez vos niveaux de stock',

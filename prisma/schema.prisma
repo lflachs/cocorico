@@ -193,12 +193,13 @@ model Supplier {
 // ============================================================================
 
 model Bill {
-  id          String    @id @default(cuid())
+  id          String     @id @default(cuid())
   filename    String
   supplierId  String?
   billDate    DateTime?
   totalAmount Float?
-  rawContent  String?   @db.Text
+  rawContent  String?    @db.Text
+  status      BillStatus @default(PENDING)
 
   // Timestamps
   createdAt DateTime @default(now())
@@ -212,7 +213,14 @@ model Bill {
 
   @@index([billDate])
   @@index([supplierId])
+  @@index([status])
   @@map("bills")
+}
+
+enum BillStatus {
+  PENDING    // Uploaded but not confirmed
+  PROCESSED  // Confirmed and inventory updated
+  DISPUTED   // Has active disputes
 }
 
 model BillProduct {

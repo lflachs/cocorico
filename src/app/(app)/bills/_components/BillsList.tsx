@@ -29,11 +29,12 @@ import { DisputeModal } from '../../disputes/_components/DisputeModal';
 type Bill = {
   id: string;
   filename: string;
-  supplier: string | null;
+  supplier: { name: string } | null;
   billDate: Date | null;
   totalAmount: number | null;
   createdAt: Date;
   products: any[];
+  status: 'PENDING' | 'PROCESSED' | 'DISPUTED';
 };
 
 type BillsListProps = {
@@ -48,6 +49,29 @@ export function BillsList({ bills }: BillsListProps) {
   const [disputeModalOpen, setDisputeModalOpen] = useState(false);
   const [selectedBillForDispute, setSelectedBillForDispute] = useState<string | null>(null);
   const [billProducts, setBillProducts] = useState<any[]>([]);
+
+  const getStatusBadge = (status: Bill['status']) => {
+    switch (status) {
+      case 'PENDING':
+        return (
+          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">
+            {t('bills.status.pending')}
+          </Badge>
+        );
+      case 'PROCESSED':
+        return (
+          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+            {t('bills.status.processed')}
+          </Badge>
+        );
+      case 'DISPUTED':
+        return (
+          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300">
+            {t('bills.status.disputed')}
+          </Badge>
+        );
+    }
+  };
 
   const handleDeleteClick = (e: React.MouseEvent, billId: string) => {
     e.preventDefault(); // Prevent navigation to bill detail
@@ -113,6 +137,7 @@ export function BillsList({ bills }: BillsListProps) {
                     <div className="flex items-center gap-3 mb-2">
                       <FileText className="w-5 h-5 text-blue-600" />
                       <h3 className="font-semibold text-gray-900">{bill.filename}</h3>
+                      {getStatusBadge(bill.status)}
                       <Badge variant="outline" className="text-xs">
                         {bill.products.length} {bill.products.length === 1 ? 'item' : 'items'}
                       </Badge>
@@ -120,7 +145,7 @@ export function BillsList({ bills }: BillsListProps) {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm text-gray-600 ml-8">
                       <div className="flex items-center gap-2">
                         <Package className="w-4 h-4" />
-                        <span>{bill.supplier || 'Unknown supplier'}</span>
+                        <span>{bill.supplier?.name || 'Unknown supplier'}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4" />

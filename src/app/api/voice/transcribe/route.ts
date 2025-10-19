@@ -25,16 +25,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("[Voice] Transcribing audio:", audioFile.name, audioFile.size, "bytes", "language:", language);
+    console.log("[Voice] Transcribing audio:", audioFile.name, audioFile.type, audioFile.size, "bytes", "language:", language);
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
     // Map language codes to Whisper language codes
     const whisperLang = language === "fr" ? "fr" : "en";
 
+    // Convert the File to a proper format for OpenAI
+    // OpenAI requires the file to have the correct extension
+    const buffer = await audioFile.arrayBuffer();
+    const blob = new Blob([buffer], { type: audioFile.type });
+
+    // Determine the correct extension based on MIME type
+    let extension = "webm";
+    if (audioFile.type.includes("mp4")) extension = "mp4";
+    else if (audioFile.type.includes("mpeg")) extension = "mp3";
+    else if (audioFile.type.includes("wav")) extension = "wav";
+    else if (audioFile.type.includes("ogg")) extension = "ogg";
+    else if (audioFile.type.includes("m4a")) extension = "m4a";
+
+    // Create a new File object with the correct extension
+    const properFile = new File([blob], `audio.${extension}`, { type: audioFile.type });
+
+    console.log("[Voice] Converted file:", properFile.name, properFile.type, properFile.size, "bytes");
+
     // Transcribe with Whisper
     const transcription = await openai.audio.transcriptions.create({
-      file: audioFile,
+      file: properFile,
       model: "whisper-1",
       language: whisperLang,
       response_format: "json",

@@ -13,11 +13,12 @@ export async function GET(request: NextRequest) {
     const transformedBills = bills.map((bill) => ({
       id: bill.id,
       filename: bill.filename,
-      supplier: bill.supplier,
+      supplier: bill.supplier ? { name: bill.supplier.name } : null,
       billDate: bill.billDate,
       totalAmount: bill.totalAmount,
       itemCount: bill.products.length,
       createdAt: bill.createdAt,
+      status: bill.status,
     }));
 
     return NextResponse.json(transformedBills);
