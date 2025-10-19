@@ -18,9 +18,14 @@ import {
   Euro,
   Plus,
   MapPin,
+  AlertTriangle,
+  Filter,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { type Product } from '@prisma/client';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { toast } from 'sonner';
 import { useLanguage } from '@/providers/LanguageProvider';
 import { VoiceAssistant } from '@/components/voice/VoiceAssistant';
@@ -41,92 +46,184 @@ const ProducerSearch = dynamic(
 
 type InventoryViewProps = {
   initialProducts: Product[];
+  menuIngredients: Record<string, {
+    productId: string;
+    totalNeeded: number;
+    currentStock: number;
+    usedInDishes: string[];
+  }>;
 };
 
-export function InventoryView({ initialProducts }: InventoryViewProps) {
+export function InventoryView({ initialProducts, menuIngredients }: InventoryViewProps) {
   const { t } = useLanguage();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [activeTab, setActiveTab] = useState('inventory');
-  const [products, setProducts] = useState<Product[]>(initialProducts);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>(initialProducts);
   const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'critical'>(
+    (searchParams.get('filter') as 'all' | 'low' | 'critical') || 'all'
+  );
+  const [sortColumn, setSortColumn] = useState<'name' | 'quantity' | 'unit' | 'parLevel' | 'unitPrice' | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<{
     name: string;
     quantity: number;
     unitPrice: number | null;
-  }>({ name: '', quantity: 0, unitPrice: null });
+    parLevel: number | null;
+  }>({ name: '', quantity: 0, unitPrice: null, parLevel: null });
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Filter products based on search
-  useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredProducts(products);
+  // Function to update URL with filter state
+  const updateFilterURL = (filter: 'all' | 'low' | 'critical') => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (filter === 'all') {
+      params.delete('filter');
     } else {
-      const filtered = products.filter((product) =>
+      params.set('filter', filter);
+    }
+    const newURL = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    router.push(newURL, { scroll: false });
+  };
+
+  // Handle column sorting
+  const handleSort = (column: 'name' | 'quantity' | 'unit' | 'parLevel' | 'unitPrice') => {
+    if (sortColumn === column) {
+      // Toggle direction if same column
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // New column, default to ascending
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  // Filter and sort products
+  useEffect(() => {
+    let filtered = initialProducts;
+
+    // Apply search filter
+    if (searchQuery.trim() !== '') {
+      filtered = filtered.filter((product) =>
         product.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
-      setFilteredProducts(filtered);
     }
-    // Clear selection when search changes
+
+    // Apply stock status filter
+    if (stockFilter !== 'all') {
+      filtered = filtered.filter((product) => {
+        const status = getStockStatus(product);
+        if (stockFilter === 'critical') {
+          return status === 'critical';
+        } else if (stockFilter === 'low') {
+          return status === 'low' || status === 'critical';
+        }
+        return true;
+      });
+    }
+
+    // Apply sorting
+    if (sortColumn) {
+      filtered = [...filtered].sort((a, b) => {
+        let aValue: any;
+        let bValue: any;
+
+        switch (sortColumn) {
+          case 'name':
+            aValue = a.name.toLowerCase();
+            bValue = b.name.toLowerCase();
+            break;
+          case 'quantity':
+            aValue = a.quantity;
+            bValue = b.quantity;
+            break;
+          case 'unit':
+            aValue = a.unit;
+            bValue = b.unit;
+            break;
+          case 'parLevel':
+            aValue = a.parLevel ?? -1; // Null values go to end
+            bValue = b.parLevel ?? -1;
+            break;
+          case 'unitPrice':
+            aValue = a.unitPrice ?? -1;
+            bValue = b.unitPrice ?? -1;
+            break;
+          default:
+            return 0;
+        }
+
+        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    setFilteredProducts(filtered);
+    // Clear selection when filters change
     setSelectedProducts(new Set());
-  }, [searchQuery, products]);
+  }, [searchQuery, stockFilter, sortColumn, sortDirection, initialProducts]);
 
-  const fetchProducts = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch('/api/products');
-      if (response.ok) {
-        const data = await response.json();
-        setProducts(data);
-      }
-    } catch (error) {
-      console.error('Error fetching products:', error);
-      toast.error('Failed to fetch products');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getStockStatus = (product: Product): 'good' | 'low' | 'critical' | null => {
-    if (!product.trackable || !product.parLevel) return null;
-
-    const percentOfPar = (product.quantity / product.parLevel) * 100;
-
-    if (percentOfPar <= 25) return 'critical';
-    if (percentOfPar <= 50) return 'low';
-    return 'good';
-  };
-
-  const getStatusBadge = (status: 'good' | 'low' | 'critical' | null) => {
-    if (!status) return null;
-
-    const styles = {
-      good: 'bg-green-100 text-green-800 border-green-200',
-      low: 'bg-orange-100 text-orange-800 border-orange-200',
-      critical: 'bg-red-100 text-red-800 border-red-200',
-    };
-
-    const labels = {
-      good: t('inventory.status.good'),
-      low: t('inventory.status.low'),
-      critical: t('inventory.status.critical'),
-    };
-
+  // Render sortable column header
+  const SortableHeader = ({
+    column,
+    label,
+    className = '',
+  }: {
+    column: 'name' | 'quantity' | 'unit' | 'parLevel' | 'unitPrice';
+    label: string;
+    className?: string;
+  }) => {
+    const isActive = sortColumn === column;
     return (
-      <Badge variant="outline" className={`text-xs ${styles[status]}`}>
-        {labels[status]}
-      </Badge>
+      <th
+        className={`px-2 py-3 text-left font-medium cursor-pointer hover:bg-gray-50 ${className}`}
+        onClick={() => handleSort(column)}
+      >
+        <div className="flex items-center gap-1">
+          {label}
+          {isActive ? (
+            sortDirection === 'asc' ? (
+              <ArrowUp className="h-3 w-3" />
+            ) : (
+              <ArrowDown className="h-3 w-3" />
+            )
+          ) : (
+            <ArrowUpDown className="h-3 w-3 opacity-30" />
+          )}
+        </div>
+      </th>
     );
   };
 
-  const calculateStockValue = () => {
-    return products.reduce((total, product) => {
-      const value = (product.unitPrice || 0) * product.quantity;
-      return total + value;
-    }, 0);
+  const getStockStatus = (product: Product): 'good' | 'low' | 'critical' | null => {
+    // Priority 1: Check if this ingredient is used in active menus
+    const menuIngredient = menuIngredients[product.id];
+    if (menuIngredient && menuIngredient.totalNeeded > 0) {
+      const servingsAvailable = Math.floor(product.quantity / menuIngredient.totalNeeded);
+
+      // Alert if less than 10 servings available
+      if (servingsAvailable === 0) return 'critical';
+      if (servingsAvailable <= 3) return 'critical';
+      if (servingsAvailable < 10) return 'low';
+      return null; // Enough servings available
+    }
+
+    // Priority 2: If par level is set, use it
+    if (product.parLevel && product.parLevel > 0) {
+      const percentOfPar = (product.quantity / product.parLevel) * 100;
+      if (percentOfPar <= 25) return 'critical';
+      if (percentOfPar <= 50) return 'low';
+      return 'good';
+    }
+
+    // No status for products not in menus and without par level
+    // This prevents false positives for items like "3.7 kg" being flagged as low
+    return null;
   };
 
   const calculateTotalValue = (product: Product) => {
@@ -139,12 +236,13 @@ export function InventoryView({ initialProducts }: InventoryViewProps) {
       name: product.name,
       quantity: product.quantity,
       unitPrice: product.unitPrice,
+      parLevel: product.parLevel,
     });
   };
 
   const cancelEditing = () => {
     setEditingProduct(null);
-    setEditValues({ name: '', quantity: 0, unitPrice: null });
+    setEditValues({ name: '', quantity: 0, unitPrice: null, parLevel: null });
   };
 
   const saveEdit = async (productId: string) => {
@@ -156,11 +254,11 @@ export function InventoryView({ initialProducts }: InventoryViewProps) {
           name: editValues.name,
           quantity: editValues.quantity,
           unitPrice: editValues.unitPrice,
+          parLevel: editValues.parLevel,
         }),
       });
 
       if (response.ok) {
-        await fetchProducts();
         toast.success(t('inventory.update.success'));
         cancelEditing();
         router.refresh();
@@ -184,7 +282,6 @@ export function InventoryView({ initialProducts }: InventoryViewProps) {
       });
 
       if (response.ok) {
-        await fetchProducts();
         toast.success(t('inventory.delete.success'));
         router.refresh();
       } else {
@@ -199,7 +296,7 @@ export function InventoryView({ initialProducts }: InventoryViewProps) {
   const exportStock = () => {
     const csv = [
       ['Product', 'Quantity', 'Unit', 'Unit Price', 'Total Value', 'Par Level', 'Status'].join(','),
-      ...products.map((p) => {
+      ...initialProducts.map((p) => {
         const status = getStockStatus(p);
         return [
           `"${p.name}"`,
@@ -261,7 +358,6 @@ export function InventoryView({ initialProducts }: InventoryViewProps) {
       const failureCount = results.length - successCount;
 
       if (successCount > 0) {
-        await fetchProducts();
         toast.success(`Successfully deleted ${successCount} product(s)`);
         router.refresh();
       }
@@ -279,14 +375,53 @@ export function InventoryView({ initialProducts }: InventoryViewProps) {
     }
   };
 
-  const productsWithValue = products.filter((p) => p.unitPrice && p.unitPrice > 0);
+  const calculateStockValueFromProducts = () => {
+    return initialProducts.reduce((total, product) => {
+      const value = (product.unitPrice || 0) * product.quantity;
+      return total + value;
+    }, 0);
+  };
+
+  const productsWithValue = initialProducts.filter((p) => p.unitPrice && p.unitPrice > 0);
   const avgValue =
-    productsWithValue.length > 0 ? calculateStockValue() / productsWithValue.length : 0;
+    productsWithValue.length > 0 ? calculateStockValueFromProducts() / productsWithValue.length : 0;
+
+  // Calculate stock filter counts
+  const lowStockCount = initialProducts.filter(
+    (p) => getStockStatus(p) === 'low' || getStockStatus(p) === 'critical'
+  ).length;
+  const criticalStockCount = initialProducts.filter((p) => getStockStatus(p) === 'critical').length;
+
+  // Debug: Log stock status for all products on mount
+  useEffect(() => {
+    console.log('Total products:', initialProducts.length);
+    console.log('Menu ingredients count:', Object.keys(menuIngredients).length);
+    console.log('Low stock count:', lowStockCount);
+    console.log('Critical stock count:', criticalStockCount);
+
+    console.log('\n=== Sample Products (first 5) ===');
+    initialProducts.slice(0, 5).forEach((p) => {
+      const status = getStockStatus(p);
+      const menuIngredient = menuIngredients[p.id];
+      const servingsAvailable = menuIngredient
+        ? Math.floor(p.quantity / menuIngredient.totalNeeded)
+        : null;
+
+      console.log(`
+Product: ${p.name}
+  - Quantity: ${p.quantity}
+  - Par Level: ${p.parLevel || 'none'}
+  - In Menu: ${menuIngredient ? 'YES' : 'NO'}
+  ${menuIngredient ? `- Servings Available: ${servingsAvailable}` : ''}
+  - Status: ${status || 'none'}
+      `);
+    });
+  }, [initialProducts, menuIngredients]);
 
   return (
     <>
       {/* Voice Assistant */}
-      <VoiceAssistant onInventoryUpdate={fetchProducts} />
+      <VoiceAssistant onInventoryUpdate={() => router.refresh()} />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full max-w-md grid-cols-2 mb-6">
@@ -314,7 +449,7 @@ export function InventoryView({ initialProducts }: InventoryViewProps) {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div className="rounded-lg border border-green-100 bg-green-50 p-4 text-center">
                 <div className="text-3xl font-bold text-green-600">
-                  {calculateStockValue().toFixed(2)} €
+                  {calculateStockValueFromProducts().toFixed(2)} €
                 </div>
                 <p className="mt-1 text-sm font-medium text-green-700">
                   {t('inventory.value.total')}
@@ -392,6 +527,51 @@ export function InventoryView({ initialProducts }: InventoryViewProps) {
               </div>
             </div>
 
+            {/* Stock Filters */}
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <Button
+                onClick={() => {
+                  setStockFilter('all');
+                  updateFilterURL('all');
+                }}
+                size="sm"
+                variant={stockFilter === 'all' ? 'default' : 'outline'}
+                className="cursor-pointer"
+              >
+                <Filter className="h-4 w-4 mr-2" />
+                All Items ({initialProducts.length})
+              </Button>
+              <Button
+                onClick={() => {
+                  setStockFilter('low');
+                  updateFilterURL('low');
+                }}
+                size="sm"
+                variant={stockFilter === 'low' ? 'default' : 'outline'}
+                className="cursor-pointer"
+              >
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                Low Stock ({lowStockCount})
+              </Button>
+              <Button
+                onClick={() => {
+                  setStockFilter('critical');
+                  updateFilterURL('critical');
+                }}
+                size="sm"
+                variant={stockFilter === 'critical' ? 'default' : 'outline'}
+                className="cursor-pointer"
+              >
+                <AlertTriangle className="h-4 w-4 mr-2 text-red-500" />
+                Critical Only ({criticalStockCount})
+              </Button>
+              {stockFilter !== 'all' && (
+                <span className="text-sm text-gray-600">
+                  Showing {filteredProducts.length} of {initialProducts.length} items
+                </span>
+              )}
+            </div>
+
             {/* Products Table */}
             {filteredProducts.length > 0 ? (
               <div className="overflow-x-auto">
@@ -409,24 +589,19 @@ export function InventoryView({ initialProducts }: InventoryViewProps) {
                           className="h-4 w-4 cursor-pointer rounded border-gray-300"
                         />
                       </th>
-                      <th className="px-2 py-3 text-left font-medium">
-                        {t('inventory.table.product')}
-                      </th>
-                      <th className="px-2 py-3 text-left font-medium">
-                        {t('inventory.table.quantity')}
-                      </th>
-                      <th className="px-2 py-3 text-left font-medium">
-                        {t('inventory.table.unit')}
-                      </th>
-                      <th className="hidden px-2 py-3 text-left font-medium xl:table-cell">
-                        {t('inventory.table.parLevel')}
-                      </th>
-                      <th className="hidden px-2 py-3 text-left font-medium lg:table-cell">
-                        {t('inventory.table.status')}
-                      </th>
-                      <th className="hidden px-2 py-3 text-left font-medium lg:table-cell">
-                        {t('inventory.table.unitPrice')}
-                      </th>
+                      <SortableHeader column="name" label={t('inventory.table.product')} />
+                      <SortableHeader column="quantity" label={t('inventory.table.quantity')} />
+                      <SortableHeader column="unit" label={t('inventory.table.unit')} />
+                      <SortableHeader
+                        column="parLevel"
+                        label={t('inventory.table.parLevel')}
+                        className="hidden xl:table-cell"
+                      />
+                      <SortableHeader
+                        column="unitPrice"
+                        label={t('inventory.table.unitPrice')}
+                        className="hidden lg:table-cell"
+                      />
                       <th className="hidden px-2 py-3 text-left font-medium md:table-cell">
                         {t('inventory.table.totalValue')}
                       </th>
@@ -436,8 +611,17 @@ export function InventoryView({ initialProducts }: InventoryViewProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredProducts.map((product) => (
-                      <tr key={product.id} className="border-b hover:bg-gray-50">
+                    {filteredProducts.map((product) => {
+                      const stockStatus = getStockStatus(product);
+                      const rowClass =
+                        stockStatus === 'critical'
+                          ? 'border-b hover:bg-red-50 bg-red-50/30 border-l-4 border-l-red-500'
+                          : stockStatus === 'low'
+                          ? 'border-b hover:bg-orange-50 bg-orange-50/30 border-l-4 border-l-orange-500'
+                          : 'border-b hover:bg-gray-50';
+
+                      return (
+                      <tr key={product.id} className={rowClass}>
                         {/* Checkbox */}
                         <td className="px-2 py-3">
                           <input
@@ -493,16 +677,28 @@ export function InventoryView({ initialProducts }: InventoryViewProps) {
 
                         {/* Par Level */}
                         <td className="hidden px-2 py-3 xl:table-cell">
-                          {product.trackable && product.parLevel ? (
-                            <span className="font-mono">{product.parLevel.toFixed(1)}</span>
+                          {editingProduct === product.id ? (
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={editValues.parLevel ?? ''}
+                              onChange={(e) =>
+                                setEditValues({
+                                  ...editValues,
+                                  parLevel:
+                                    e.target.value === '' ? null : parseFloat(e.target.value),
+                                })
+                              }
+                              className="w-20 text-xs"
+                              placeholder="0.0"
+                            />
                           ) : (
-                            <span className="text-xs text-gray-400">-</span>
+                            <span className="font-mono">
+                              {product.parLevel ? product.parLevel.toFixed(1) : (
+                                <span className="text-xs text-gray-400">-</span>
+                              )}
+                            </span>
                           )}
-                        </td>
-
-                        {/* Status */}
-                        <td className="hidden px-2 py-3 lg:table-cell">
-                          {getStatusBadge(getStockStatus(product))}
                         </td>
 
                         {/* Unit Price */}
@@ -580,7 +776,8 @@ export function InventoryView({ initialProducts }: InventoryViewProps) {
                           )}
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
