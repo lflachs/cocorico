@@ -27,6 +27,7 @@ type ScannedDish = {
     productName?: string;
     quantityRequired: number;
     unit: string;
+    unitPrice?: number;
     suggested?: boolean;
     confidence?: number;
     exists?: boolean;
@@ -86,13 +87,15 @@ export default function MenuScanReviewPage() {
     // Load existing dishes
     const loadExistingDishes = async () => {
       try {
-        const { getDishes } = await import('@/lib/services/dish.service');
-        const dishes = await getDishes({
+        const { getDishesAction } = await import('@/lib/actions/dish.actions');
+        const result = await getDishesAction({
           isActive: true,
           includeRecipe: false,
           includeSales: false,
         });
-        setExistingDishes(dishes);
+        if (result.success && result.data) {
+          setExistingDishes(result.data);
+        }
       } catch (error) {
         console.error('Error loading existing dishes:', error);
       }
@@ -182,7 +185,7 @@ export default function MenuScanReviewPage() {
     setMenus(updated);
   };
 
-  const handleSaveIngredients = (ingredients: Array<{ productId?: string; productName: string; quantityRequired: number; unit: string }>) => {
+  const handleSaveIngredients = (ingredients: Array<{ productId?: string; productName: string; quantityRequired: number; unit: string; unitPrice?: number }>) => {
     if (!editingDishPath) return;
 
     const { menuIdx, sectionIdx, dishIdx } = editingDishPath;
@@ -191,8 +194,10 @@ export default function MenuScanReviewPage() {
       ...updated[menuIdx].sections[sectionIdx].dishes[dishIdx],
       recipeIngredients: ingredients.map(ing => ({
         productId: ing.productId || '',
+        productName: ing.productName,
         quantityRequired: ing.quantityRequired,
         unit: ing.unit,
+        unitPrice: ing.unitPrice,
       })),
     };
     setMenus(updated);
@@ -229,7 +234,7 @@ export default function MenuScanReviewPage() {
     setSaving(true);
     try {
       const { importScannedMenuAction } = await import('@/lib/actions/menu.actions');
-      const { createDish } = await import('@/lib/services/dish.service');
+      const { createDishAction } = await import('@/lib/actions/dish.actions');
 
       // Import selected menus
       for (const menuIdx of Array.from(selectedMenus)) {
@@ -260,12 +265,16 @@ export default function MenuScanReviewPage() {
         const alacarteDishes = Array.from(selectedAlacarte).map(idx => alacarte[idx]);
 
         for (const dish of alacarteDishes) {
-          await createDish({
+          const result = await createDishAction({
             name: dish.name,
             description: dish.description || undefined,
             sellingPrice: dish.price,
             isActive: true,
           });
+
+          if (!result.success) {
+            throw new Error(result.error || `Failed to create dish: ${dish.name}`);
+          }
         }
       }
 
@@ -548,6 +557,7 @@ export default function MenuScanReviewPage() {
               productName: ing.productName || '',
               quantityRequired: ing.quantityRequired,
               unit: ing.unit,
+              unitPrice: ing.unitPrice,
             })) || []
           }
           onSave={handleSaveIngredients}
