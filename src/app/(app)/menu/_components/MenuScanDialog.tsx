@@ -62,8 +62,6 @@ export function MenuScanDialog({ open, onOpenChange, onMenuScanned }: MenuScanDi
   const [scanning, setScanning] = useState(false);
   const [scannedData, setScannedData] = useState<ScannedMenuData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [selectedMenus, setSelectedMenus] = useState<Set<number>>(new Set());
-  const [selectedAlacarte, setSelectedAlacarte] = useState<Set<number>>(new Set());
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -116,11 +114,6 @@ export function MenuScanDialog({ open, onOpenChange, onMenuScanned }: MenuScanDi
           alacarte: uniqueAlacarte,
         });
 
-        // Select all menus by default
-        setSelectedMenus(new Set(result.data.menus.map((_, idx) => idx)));
-        // Don't select alacarte by default (optional)
-        setSelectedAlacarte(new Set());
-
         const menuCount = result.data.menus.length;
         const alacarteCount = uniqueAlacarte.length;
         const removedDuplicates = (result.data.alacarte?.length || 0) - alacarteCount;
@@ -142,60 +135,14 @@ export function MenuScanDialog({ open, onOpenChange, onMenuScanned }: MenuScanDi
     }
   };
 
-  const handleImport = async () => {
-    if (!scannedData || (selectedMenus.size === 0 && selectedAlacarte.size === 0)) return;
+  const handleContinueToReview = () => {
+    if (!scannedData) return;
 
-    try {
-      // Import selected menus one by one
-      const menusToImport = Array.from(selectedMenus).map(idx => scannedData.menus[idx]);
-      for (const menu of menusToImport) {
-        await onMenuScanned(menu);
-      }
+    // Save scanned data to sessionStorage
+    sessionStorage.setItem('scannedMenuData', JSON.stringify(scannedData));
 
-      // Import selected à la carte dishes as standalone dishes
-      if (selectedAlacarte.size > 0) {
-        const alacarteDishes = Array.from(selectedAlacarte).map(idx => scannedData.alacarte[idx]);
-        const { createDish } = await import('@/lib/services/dish.service');
-
-        for (const dish of alacarteDishes) {
-          await createDish({
-            name: dish.name,
-            description: dish.description || undefined,
-            sellingPrice: dish.price,
-            isActive: true,
-          });
-        }
-
-        if (alacarteDishes.length > 0) {
-          toast.success(`Imported ${alacarteDishes.length} à la carte dish(es)`);
-        }
-      }
-
-      handleClose();
-    } catch (error) {
-      console.error('Error importing:', error);
-      toast.error('Failed to import some items');
-    }
-  };
-
-  const toggleMenuSelection = (index: number) => {
-    const newSelection = new Set(selectedMenus);
-    if (newSelection.has(index)) {
-      newSelection.delete(index);
-    } else {
-      newSelection.add(index);
-    }
-    setSelectedMenus(newSelection);
-  };
-
-  const toggleAlacarteSelection = (index: number) => {
-    const newSelection = new Set(selectedAlacarte);
-    if (newSelection.has(index)) {
-      newSelection.delete(index);
-    } else {
-      newSelection.add(index);
-    }
-    setSelectedAlacarte(newSelection);
+    // Navigate to review page
+    window.location.href = '/menu/scan-review';
   };
 
   const handleClose = () => {
@@ -203,8 +150,6 @@ export function MenuScanDialog({ open, onOpenChange, onMenuScanned }: MenuScanDi
     setScannedData(null);
     setError(null);
     setScanning(false);
-    setSelectedMenus(new Set());
-    setSelectedAlacarte(new Set());
     onOpenChange(false);
   };
 
@@ -291,30 +236,15 @@ export function MenuScanDialog({ open, onOpenChange, onMenuScanned }: MenuScanDi
                   {scannedData.menus.length > 0 && (
                     <>
                       <div className="mb-4">
-                        <h3 className="font-semibold text-lg">Menus</h3>
+                        <h3 className="font-semibold text-lg">Menus Found</h3>
                         <p className="text-sm text-muted-foreground mt-1">
-                          Select menus to import
+                          {scannedData.menus.length} menu(s) detected
                         </p>
                       </div>
                       {scannedData.menus.map((menu, menuIdx) => (
-                    <Card
-                      key={menuIdx}
-                      className={`cursor-pointer transition-all ${
-                        selectedMenus.has(menuIdx)
-                          ? 'border-primary bg-primary/5'
-                          : 'border-border hover:border-primary/50'
-                      }`}
-                      onClick={() => toggleMenuSelection(menuIdx)}
-                    >
+                    <Card key={menuIdx} className="border-border">
                       <CardHeader>
                         <div className="flex items-start gap-3">
-                          <input
-                            type="checkbox"
-                            checked={selectedMenus.has(menuIdx)}
-                            onChange={() => toggleMenuSelection(menuIdx)}
-                            className="mt-1 h-5 w-5 cursor-pointer"
-                            onClick={(e) => e.stopPropagation()}
-                          />
                           <div className="flex-1">
                             <CardTitle className="text-lg">{menu.menuName}</CardTitle>
                             {menu.menuDescription && (
@@ -373,30 +303,18 @@ export function MenuScanDialog({ open, onOpenChange, onMenuScanned }: MenuScanDi
                   {scannedData.alacarte && scannedData.alacarte.length > 0 && (
                     <div className={scannedData.menus.length > 0 ? "mt-6 pt-6 border-t" : ""}>
                       <div className="mb-4">
-                        <h3 className="font-semibold text-lg">À La Carte Dishes (Optional)</h3>
+                        <h3 className="font-semibold text-lg">À La Carte Dishes Found</h3>
                         <p className="text-sm text-muted-foreground mt-1">
-                          Select individual dishes to add to your dish library
+                          {scannedData.alacarte.length} individual dish(es) detected
                         </p>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {scannedData.alacarte.map((dish, dishIdx) => (
                           <div
                             key={dishIdx}
-                            className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                              selectedAlacarte.has(dishIdx)
-                                ? 'border-primary bg-primary/5'
-                                : 'border-border hover:border-primary/50'
-                            }`}
-                            onClick={() => toggleAlacarteSelection(dishIdx)}
+                            className="p-3 rounded-lg border border-border"
                           >
                             <div className="flex items-start gap-3">
-                              <input
-                                type="checkbox"
-                                checked={selectedAlacarte.has(dishIdx)}
-                                onChange={() => toggleAlacarteSelection(dishIdx)}
-                                className="mt-0.5 h-4 w-4 cursor-pointer"
-                                onClick={(e) => e.stopPropagation()}
-                              />
                               <div className="flex-1 min-w-0">
                                 <div className="font-medium text-sm">{dish.name}</div>
                                 {dish.description && (
@@ -425,19 +343,18 @@ export function MenuScanDialog({ open, onOpenChange, onMenuScanned }: MenuScanDi
               {/* Action Buttons */}
               <div className="flex justify-between items-center">
                 <div className="text-sm text-muted-foreground">
-                  {selectedMenus.size} menu(s) and {selectedAlacarte.size} dish(es) selected
+                  Found {scannedData.menus.length} menu(s) and {scannedData.alacarte.length} à la carte dish(es)
                 </div>
                 <div className="flex gap-3">
                   <Button variant="outline" onClick={handleClose}>
                     {t('common.cancel') || 'Cancel'}
                   </Button>
                   <Button
-                    onClick={handleImport}
-                    disabled={selectedMenus.size === 0 && selectedAlacarte.size === 0}
+                    onClick={handleContinueToReview}
                     className="gap-2"
                   >
                     <CheckCircle className="w-4 h-4" />
-                    {t('menu.importMenu') || 'Import'} ({selectedMenus.size + selectedAlacarte.size})
+                    {t('menu.continueToReview') || 'Continue to Review'}
                   </Button>
                 </div>
               </div>
