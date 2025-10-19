@@ -84,13 +84,16 @@ export function AnimatedTabs({
 
   return (
     <Tabs value={activeTab} onValueChange={handleValueChange} className={cn('w-full', className)}>
-      <TabsList className={cn('relative z-10 mb-4 grid w-full p-1.5', tabsListClassName)} style={{ gridTemplateColumns: `repeat(${tabCount}, 1fr)` }}>
+      <TabsList
+        className={cn('relative z-10 mb-4 grid w-full p-1.5', tabsListClassName)}
+        style={{ gridTemplateColumns: `repeat(${tabCount}, 1fr)` }}
+      >
         {/* Sliding indicator */}
         <motion.div
-          className="absolute inset-1.5 rounded-md bg-background shadow-sm"
+          className="bg-background absolute inset-2 rounded-md shadow-sm"
           initial={false}
           animate={{
-            left: `${tabIndex * tabWidthPercent}%`,
+            left: `calc(${tabIndex * tabWidthPercent}% + 5px)`,
             right: `${(tabCount - 1 - tabIndex) * tabWidthPercent}%`,
           }}
           transition={{
@@ -114,10 +117,12 @@ export function AnimatedTabs({
               )}
             >
               {Icon && <Icon className="h-3 w-3 flex-shrink-0 sm:h-4 sm:w-4" />}
-              <span className={cn(
-                'truncate text-xs sm:text-sm',
-                isActive ? 'inline' : 'hidden sm:inline'
-              )}>
+              <span
+                className={cn(
+                  'truncate text-xs sm:text-sm',
+                  isActive ? 'inline' : 'hidden sm:inline'
+                )}
+              >
                 {tab.label}
               </span>
               {tab.badge}
