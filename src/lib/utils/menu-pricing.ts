@@ -88,18 +88,28 @@ export function calculateMenuCostRange(menu: Menu): {
 } {
   const sections = menu.sections;
 
-  // For PRIX_FIXE, calculate total cost
+  // For PRIX_FIXE, customer gets one dish from each section
+  // Calculate min/max/avg based on choosing 1 dish per section
   if (menu.pricingType === 'PRIX_FIXE') {
-    const costs = sections.flatMap((section) =>
-      section.dishes.map((menuDish) => calculateDishCost(menuDish.dish))
-    );
+    let minCost = 0;
+    let maxCost = 0;
+    let avgCost = 0;
 
-    const totalCost = costs.reduce((sum, cost) => sum + cost, 0);
+    sections.forEach((section) => {
+      const sectionCosts = section.dishes.map((menuDish) => calculateDishCost(menuDish.dish));
+
+      if (sectionCosts.length > 0) {
+        minCost += Math.min(...sectionCosts);
+        maxCost += Math.max(...sectionCosts);
+        const sectionAvg = sectionCosts.reduce((sum, cost) => sum + cost, 0) / sectionCosts.length;
+        avgCost += sectionAvg;
+      }
+    });
 
     return {
-      minCost: totalCost,
-      maxCost: totalCost,
-      averageCost: costs.length > 0 ? totalCost / costs.length : 0,
+      minCost,
+      maxCost,
+      averageCost: avgCost,
     };
   }
 
@@ -257,9 +267,11 @@ export function getMenuPricingSummary(menu: Menu): {
     ? 'Fixed Price Menu'
     : 'Choice Menu';
 
-  const costRange = menu.pricingType === 'PRIX_FIXE'
-    ? `€${minCost.toFixed(2)} (avg: €${averageCost.toFixed(2)})`
-    : `€${minCost.toFixed(2)} - €${maxCost.toFixed(2)}`;
+  // Show range for both PRIX_FIXE and CHOICE menus
+  // For PRIX_FIXE: range shows cheapest vs most expensive combination customers can choose
+  const costRange = minCost === maxCost
+    ? `€${averageCost.toFixed(2)}`
+    : `€${minCost.toFixed(2)} - €${maxCost.toFixed(2)} (avg: €${averageCost.toFixed(2)})`;
 
   return {
     pricingType: pricingTypeLabel,

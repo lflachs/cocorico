@@ -40,6 +40,7 @@ type RecipeIngredient = {
   productName: string;
   quantityRequired: number;
   unit: string;
+  unitPrice?: number; // For new products
 };
 
 type Dish = {
@@ -79,6 +80,7 @@ export function DishEditModal({ open, onOpenChange, dish, onSuccess }: DishEditM
   const [selectedProductId, setSelectedProductId] = useState('');
   const [quantity, setQuantity] = useState('');
   const [unit, setUnit] = useState('KG');
+  const [unitPrice, setUnitPrice] = useState('');
 
   useEffect(() => {
     if (open) {
@@ -115,6 +117,12 @@ export function DishEditModal({ open, onOpenChange, dish, onSuccess }: DishEditM
 
     const selectedProduct = products.find((p) => p.id === selectedProductId);
 
+    // For new products, require unit price
+    if (!selectedProduct && !unitPrice) {
+      toast.error('Please enter unit price for new ingredient');
+      return;
+    }
+
     setIngredients([
       ...ingredients,
       {
@@ -122,6 +130,7 @@ export function DishEditModal({ open, onOpenChange, dish, onSuccess }: DishEditM
         productName: selectedProduct?.name || searchQuery,
         quantityRequired: parseFloat(quantity),
         unit: selectedProduct?.unit || unit,
+        unitPrice: selectedProduct ? undefined : parseFloat(unitPrice),
       },
     ]);
 
@@ -130,6 +139,7 @@ export function DishEditModal({ open, onOpenChange, dish, onSuccess }: DishEditM
     setSelectedProductId('');
     setQuantity('');
     setUnit('KG');
+    setUnitPrice('');
   };
 
   const handleRemoveIngredient = (index: number) => {
@@ -160,6 +170,9 @@ export function DishEditModal({ open, onOpenChange, dish, onSuccess }: DishEditM
             formData.append('quantity', '0');
             formData.append('unit', ing.unit);
             formData.append('trackable', 'true');
+            if (ing.unitPrice) {
+              formData.append('unitPrice', ing.unitPrice.toString());
+            }
 
             const { createProductAction } = await import('@/lib/actions/product.actions');
             const result = await createProductAction(formData);
@@ -257,6 +270,11 @@ export function DishEditModal({ open, onOpenChange, dish, onSuccess }: DishEditM
                       <div className="text-sm text-gray-600">
                         {ing.unit}
                         {!ing.productId && <span className="text-blue-600 ml-2">(New)</span>}
+                        {ing.unitPrice && (
+                          <span className="text-gray-500 ml-2">
+                            @ €{ing.unitPrice.toFixed(2)}/{ing.unit}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="w-24">
@@ -297,6 +315,7 @@ export function DishEditModal({ open, onOpenChange, dish, onSuccess }: DishEditM
                     if (match) {
                       setSelectedProductId(match.id);
                       setUnit(match.unit);
+                      setUnitPrice(''); // Reset unit price when selecting existing product
                     } else {
                       setSelectedProductId('');
                     }
@@ -345,13 +364,40 @@ export function DishEditModal({ open, onOpenChange, dish, onSuccess }: DishEditM
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="KG">KG</SelectItem>
-                      <SelectItem value="L">L</SelectItem>
-                      <SelectItem value="PC">PC</SelectItem>
+                      {SUPPORTED_UNITS.map((u) => (
+                        <SelectItem key={u} value={u}>
+                          {u} - {UNIT_LABELS[u]}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
+
+              {/* Unit Price - Only for new products */}
+              {!selectedProductId && searchQuery && (
+                <div>
+                  <Label htmlFor="unitPrice">
+                    Unit Price (€) <span className="text-destructive">*</span>
+                  </Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">€</span>
+                    <Input
+                      id="unitPrice"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      value={unitPrice}
+                      onChange={(e) => setUnitPrice(e.target.value)}
+                      className="pl-8"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Price per {unit} for this new ingredient
+                  </p>
+                </div>
+              )}
 
               <Button
                 type="button"

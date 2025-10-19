@@ -48,18 +48,22 @@ type AddDishDialogProps = {
 export function AddDishDialog({ open, onOpenChange, sectionId, onDishAdded }: AddDishDialogProps) {
   const router = useRouter();
   const { t } = useLanguage();
-  const [step, setStep] = useState<'choice' | 'select'>('choice');
+  const [step, setStep] = useState<'choice' | 'select' | 'pricing'>('choice');
   const [dishes, setDishes] = useState<Dish[]>([]);
   const [filteredDishes, setFilteredDishes] = useState<Dish[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
+  const [priceOverride, setPriceOverride] = useState<string>('');
 
   // Reset to choice step when dialog opens
   useEffect(() => {
     if (open) {
       setStep('choice');
       setSearchQuery('');
+      setSelectedDish(null);
+      setPriceOverride('');
     }
   }, [open]);
 
@@ -107,11 +111,30 @@ export function AddDishDialog({ open, onOpenChange, sectionId, onDishAdded }: Ad
     loadDishes();
   };
 
-  const handleAddDish = async (dishId: string) => {
+  const handleSelectDish = (dish: Dish) => {
+    setSelectedDish(dish);
+    setPriceOverride(dish.sellingPrice ? dish.sellingPrice.toString() : '');
+    setStep('pricing');
+  };
+
+  const handleAddDish = async () => {
+    if (!selectedDish) return;
+
     setAdding(true);
     try {
       const { addDishToSectionAction } = await import('@/lib/actions/menu.actions');
-      const result = await addDishToSectionAction(sectionId, dishId);
+
+      const priceOverrideValue = priceOverride && parseFloat(priceOverride) > 0
+        ? parseFloat(priceOverride)
+        : undefined;
+
+      const result = await addDishToSectionAction(
+        sectionId,
+        selectedDish.id,
+        undefined, // displayOrder (auto-assigned)
+        undefined, // notes
+        priceOverrideValue
+      );
 
       if (result.success) {
         toast.success('Dish added to menu');
@@ -142,6 +165,7 @@ export function AddDishDialog({ open, onOpenChange, sectionId, onDishAdded }: Ad
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
         {step === 'choice' ? (
+          // Step 1: Choose to create new or select existing
           <>
             <DialogHeader className="text-center">
               <DialogTitle className="text-2xl">{t('menu.section.addDish')}</DialogTitle>
@@ -188,7 +212,8 @@ export function AddDishDialog({ open, onOpenChange, sectionId, onDishAdded }: Ad
               </Card>
             </div>
           </>
-        ) : (
+        ) : step === 'select' ? (
+          // Step 2: Select existing dish from list
           <>
             <DialogHeader>
               <DialogTitle className="text-2xl">{t('menu.selectExisting')}</DialogTitle>
@@ -254,7 +279,7 @@ export function AddDishDialog({ open, onOpenChange, sectionId, onDishAdded }: Ad
                     <Card
                       key={dish.id}
                       className="cursor-pointer hover:border-primary hover:shadow-md transition-all"
-                      onClick={() => handleAddDish(dish.id)}
+                      onClick={() => handleSelectDish(dish)}
                     >
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between">
@@ -306,6 +331,97 @@ export function AddDishDialog({ open, onOpenChange, sectionId, onDishAdded }: Ad
                 Back to options
               </Button>
             </div>
+          </>
+        ) : (
+          // Step 3: Set pricing for the selected dish
+          <>
+            <DialogHeader>
+              <DialogTitle className="text-2xl">Set Price for "{selectedDish?.name}"</DialogTitle>
+              <DialogDescription>
+                Set a custom price for this dish when it appears in this menu
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedDish && (
+              <div className="mt-6 space-y-6">
+                {/* Dish Info */}
+                <Card className="bg-muted/50">
+                  <CardContent className="p-4">
+                    <h4 className="font-semibold mb-2">{selectedDish.name}</h4>
+                    {selectedDish.description && (
+                      <p className="text-sm text-muted-foreground mb-3">{selectedDish.description}</p>
+                    )}
+                    <div className="flex items-center gap-4 text-sm">
+                      {selectedDish.sellingPrice && (
+                        <div>
+                          <span className="text-muted-foreground">Standard Price: </span>
+                          <span className="font-semibold">€{selectedDish.sellingPrice.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {selectedDish.recipeIngredients && selectedDish.recipeIngredients.length > 0 && (
+                        <div>
+                          <span className="text-muted-foreground">Cost: </span>
+                          <span className="font-semibold">€{calculateDishCost(selectedDish).toFixed(2)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Price Override Input */}
+                <div className="space-y-3">
+                  <label htmlFor="priceOverride" className="text-base font-semibold block">
+                    Menu Price (€) <span className="text-muted-foreground text-sm font-normal">(Optional)</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-lg">€</span>
+                    <Input
+                      id="priceOverride"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder={selectedDish.sellingPrice ? selectedDish.sellingPrice.toString() : "0.00"}
+                      value={priceOverride}
+                      onChange={(e) => setPriceOverride(e.target.value)}
+                      className="text-base pl-8"
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Leave empty to use the standard dish price
+                    {selectedDish.sellingPrice && ` (€${selectedDish.sellingPrice.toFixed(2)})`}
+                  </p>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    onClick={() => setStep('select')}
+                    disabled={adding}
+                    className="flex-1"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    onClick={handleAddDish}
+                    disabled={adding}
+                    className="flex-1 bg-primary hover:bg-primary/90"
+                  >
+                    {adding ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Adding...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add to Menu
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
           </>
         )}
       </DialogContent>

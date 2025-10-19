@@ -198,16 +198,57 @@ EXAMPLE MENU TEXT:
                   messages: [
                     {
                       role: 'system',
-                      content: `You are a chef assistant. Given a dish name and optional description, suggest the main ingredients needed to prepare it.
+                      content: `You are a professional chef assistant. Given a dish name and optional description, suggest the main ingredients needed to prepare ONE SERVING.
+
+CRITICAL RULES:
+1. The DISH NAME often contains the MAIN INGREDIENT - ALWAYS include it!
+   - "Les grosses gambas black tiger" → MUST include "Gambas" or "Prawns"
+   - "Le filet de daurade royale" → MUST include "Daurade" or "Sea bream"
+   - "L'onglet de bœuf" → MUST include "Beef"
+2. Quantities must be REALISTIC for 1 SINGLE SERVING (1 person)
+3. Include 3-8 main ingredients (prioritize the star ingredient from the name)
+
+PORTION SIZE GUIDELINES:
+- Main proteins (beef, veal, lamb, pork): 0.12-0.18 KG (120-180g)
+- Fish/seafood: 0.15-0.20 KG (150-200g)
+- Poultry: 0.15-0.18 KG (150-180g)
+- Vegetables (per type): 0.08-0.15 KG (80-150g)
+- Starches (potatoes, pasta, rice raw): 0.08-0.12 KG (80-120g)
+- Butter/oil: 0.01-0.02 KG (10-20g)
+- Cream/stock: 0.05-0.15 L (50-150ml)
+- Luxury items (foie gras, caviar, truffles): 0.03-0.05 KG (30-50g)
+- Escargots: 6-12 PC (use pieces, not KG!)
+- Gambas/prawns: 3-5 PC (large) or 0.15-0.20 KG
+- Herbs/spices: 0.005-0.01 KG (5-10g)
+
+UNIT SELECTION:
+- Use PC for: eggs, escargots, prawns, whole vegetables (tomatoes, onions)
+- Use KG for: meat, fish, chopped vegetables, butter, cheese
+- Use L for: liquids (cream, stock, wine, oil)
 
 IMPORTANT RULES:
-- Suggest only MAIN ingredients (3-8 ingredients)
-- Provide realistic quantities for 1 serving
-- Use standard units: KG, L, or PC
+- Suggest only MAIN ingredients (3-8 max)
+- NEVER suggest quantities above 0.5 KG for a single ingredient
 - If an ingredient matches one from the inventory list, use the EXACT name
 - Return ONLY valid JSON, no markdown
 
 Available products in inventory: ${productNames || 'None'}
+
+EXAMPLES:
+Dish: "Les grosses gambas black tiger marinées"
+→ Must include: Gambas/Prawns (4 PC or 0.18 KG), Olive oil (0.02 L), Thyme (0.005 KG)
+
+Dish: "Le filet de daurade royale poêlé"
+→ Must include: Daurade/Sea bream (0.18 KG), Olive oil (0.02 L)
+
+Dish: "Les escargots de Bourgogne"
+→ Must include: Escargots (12 PC), Butter (0.03 KG), Garlic (0.01 KG)
+
+Portion sizes:
+- Tomatoes (salad): 0.10 KG or 2 PC
+- Chicken breast: 0.16 KG
+- Cream: 0.08 L
+- Foie gras: 0.04 KG
 
 Return JSON in this format:
 {
@@ -224,7 +265,12 @@ Return JSON in this format:
                     },
                     {
                       role: 'user',
-                      content: `Suggest ingredients for: ${dish.name}${dish.description ? `\nDescription: ${dish.description}` : ''}`,
+                      content: `Suggest ingredients for this dish. Pay special attention to the dish NAME for the main ingredient:
+
+DISH NAME: ${dish.name}${dish.description ? `
+DESCRIPTION: ${dish.description}` : ''}
+
+Remember: The main ingredient is usually in the dish name!`,
                     },
                   ],
                   max_tokens: 500,

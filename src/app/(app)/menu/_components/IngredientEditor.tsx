@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Trash2, Check, Info, Beaker, Package } from 'lucide-react';
+import { Trash2, Check, Info, Beaker, Package, Edit } from 'lucide-react';
 import { toast } from 'sonner';
 import { CompositeProductWizard } from '../../inventory/_components/CompositeProductWizard';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +43,7 @@ type Ingredient = {
   productName: string;
   quantityRequired: number;
   unit: string;
+  unitPrice?: number; // For new products
 };
 
 type IngredientEditorProps = {
@@ -68,6 +69,7 @@ export function IngredientEditor({
   const [selectedProductId, setSelectedProductId] = useState('');
   const [quantity, setQuantity] = useState('');
   const [unit, setUnit] = useState('KG');
+  const [unitPrice, setUnitPrice] = useState('');
 
   // New ingredient creation
   const [showProductTypeChoice, setShowProductTypeChoice] = useState(false);
@@ -75,11 +77,16 @@ export function IngredientEditor({
   const [pendingIngredientName, setPendingIngredientName] = useState('');
   const [pendingIngredientQuantity, setPendingIngredientQuantity] = useState('');
   const [pendingIngredientUnit, setPendingIngredientUnit] = useState('KG');
+  const [pendingIngredientUnitPrice, setPendingIngredientUnitPrice] = useState('');
+
+  // Editing existing ingredients
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (open) {
       loadProducts();
       setIngredients(initialIngredients);
+      setEditingIndex(null); // Reset editing state when dialog opens
     }
   }, [open, initialIngredients]);
 
@@ -117,11 +124,18 @@ export function IngredientEditor({
       setSelectedProductId('');
       setQuantity('');
       setUnit('KG');
+      setUnitPrice('');
     } else {
-      // Product doesn't exist - show choice dialog
+      // Product doesn't exist - require unit price
+      if (!unitPrice) {
+        toast.error('Please enter unit price for new ingredient');
+        return;
+      }
+      // Show choice dialog
       setPendingIngredientName(searchQuery);
       setPendingIngredientQuantity(quantity);
       setPendingIngredientUnit(unit);
+      setPendingIngredientUnitPrice(unitPrice);
       setShowProductTypeChoice(true);
     }
   };
@@ -135,6 +149,7 @@ export function IngredientEditor({
         productName: pendingIngredientName,
         quantityRequired: parseFloat(pendingIngredientQuantity),
         unit: pendingIngredientUnit,
+        unitPrice: parseFloat(pendingIngredientUnitPrice),
       },
     ]);
 
@@ -144,6 +159,11 @@ export function IngredientEditor({
     setSelectedProductId('');
     setQuantity('');
     setUnit('KG');
+    setUnitPrice('');
+    setPendingIngredientName('');
+    setPendingIngredientQuantity('');
+    setPendingIngredientUnit('KG');
+    setPendingIngredientUnitPrice('');
   };
 
   const handleCreateAsComposite = () => {
@@ -181,13 +201,25 @@ export function IngredientEditor({
     setSelectedProductId('');
     setQuantity('');
     setUnit('KG');
+    setUnitPrice('');
     setPendingIngredientName('');
     setPendingIngredientQuantity('');
     setPendingIngredientUnit('KG');
+    setPendingIngredientUnitPrice('');
   };
 
   const handleRemoveIngredient = (index: number) => {
     setIngredients(ingredients.filter((_, i) => i !== index));
+  };
+
+  const handleUpdateIngredient = (index: number, field: 'quantityRequired' | 'unit', value: any) => {
+    const updated = [...ingredients];
+    if (field === 'quantityRequired') {
+      updated[index] = { ...updated[index], quantityRequired: parseFloat(value) || 0 };
+    } else {
+      updated[index] = { ...updated[index], unit: value };
+    }
+    setIngredients(updated);
   };
 
   const handleSave = () => {
@@ -226,6 +258,7 @@ export function IngredientEditor({
                       if (match) {
                         setSelectedProductId(match.id);
                         setUnit(match.unit);
+                        setUnitPrice(''); // Reset unit price when selecting existing product
                       } else {
                         setSelectedProductId('');
                       }
@@ -287,6 +320,31 @@ export function IngredientEditor({
                   </div>
                 </div>
 
+                {/* Unit Price - Only for new products */}
+                {!selectedProductId && searchQuery && (
+                  <div>
+                    <Label htmlFor="unitPrice">
+                      Unit Price (€) <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">€</span>
+                      <Input
+                        id="unitPrice"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={unitPrice}
+                        onChange={(e) => setUnitPrice(e.target.value)}
+                        className="pl-8"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Price per {unit} for this new ingredient
+                    </p>
+                  </div>
+                )}
+
                 <Button
                   type="button"
                   size="sm"
@@ -306,13 +364,15 @@ export function IngredientEditor({
                 <div className="space-y-2">
                   {ingredients.map((ing, index) => {
                     const product = products.find((p) => p.id === ing.productId);
+                    const isEditing = editingIndex === index;
+
                     return (
                       <div
                         key={index}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
                       >
                         <div className="flex-1">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 mb-2">
                             <div className="font-medium">{ing.productName}</div>
                             {product?.isComposite && (
                               <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
@@ -323,18 +383,80 @@ export function IngredientEditor({
                             {!ing.productId && (
                               <span className="text-blue-600 text-xs">(New)</span>
                             )}
+                            {ing.unitPrice && (
+                              <span className="text-gray-500 text-xs">
+                                @ €{ing.unitPrice.toFixed(2)}/{ing.unit}
+                              </span>
+                            )}
                           </div>
-                          <div className="text-sm text-gray-600">
-                            {ing.quantityRequired} {ing.unit}
-                          </div>
+
+                          {isEditing ? (
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={ing.quantityRequired}
+                                  onChange={(e) => handleUpdateIngredient(index, 'quantityRequired', e.target.value)}
+                                  className="h-8 text-sm"
+                                  placeholder="Quantity"
+                                />
+                              </div>
+                              <div>
+                                <Select
+                                  value={ing.unit}
+                                  onValueChange={(value) => handleUpdateIngredient(index, 'unit', value)}
+                                  disabled={!!product} // Can't change unit if it's an existing product
+                                >
+                                  <SelectTrigger className="h-8 text-sm">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {SUPPORTED_UNITS.map((u) => (
+                                      <SelectItem key={u} value={u}>
+                                        {u}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-sm text-gray-600">
+                              {ing.quantityRequired} {ing.unit}
+                            </div>
+                          )}
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveIngredient(index)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+
+                        <div className="flex items-center gap-1">
+                          {isEditing ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setEditingIndex(null)}
+                              className="h-8 px-2 text-xs"
+                            >
+                              Done
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setEditingIndex(index)}
+                              className="h-8 px-2 text-xs"
+                            >
+                              <Edit className="w-3 h-3" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveIngredient(index)}
+                            className="h-8 px-2"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-600" />
+                          </Button>
+                        </div>
                       </div>
                     );
                   })}
