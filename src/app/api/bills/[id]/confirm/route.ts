@@ -21,6 +21,23 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Check if bill already processed
+    const existingBill = await db.bill.findUnique({
+      where: { id: params.id },
+      select: { status: true },
+    });
+
+    if (!existingBill) {
+      return NextResponse.json({ error: 'Bill not found' }, { status: 404 });
+    }
+
+    if (existingBill.status === 'PROCESSED') {
+      return NextResponse.json(
+        { error: 'Bill has already been processed and cannot be confirmed again' },
+        { status: 400 }
+      );
+    }
+
     const body = await request.json();
     const { products, supplier, billDate, totalAmount } = body as {
       products: ProductMapping[];
@@ -61,13 +78,35 @@ export async function POST(
       });
     }
 
-    // Update bill with supplier, date, and total amount
+    // Find or create supplier
+    let supplierId: string | null = null;
+
+    if (supplier && supplier.trim()) {
+      const supplierName = supplier.trim();
+
+      // Try to find existing supplier
+      let existingSupplier = await db.supplier.findUnique({
+        where: { name: supplierName },
+      });
+
+      // Create supplier if it doesn't exist
+      if (!existingSupplier) {
+        existingSupplier = await db.supplier.create({
+          data: { name: supplierName },
+        });
+      }
+
+      supplierId = existingSupplier.id;
+    }
+
+    // Update bill with supplier, date, total amount, and mark as PROCESSED
     await db.bill.update({
       where: { id: params.id },
       data: {
-        supplier: supplier,
+        supplierId: supplierId,
         billDate: billDate ? new Date(billDate) : null,
         totalAmount: totalAmount,
+        status: 'PROCESSED',
       },
     });
 

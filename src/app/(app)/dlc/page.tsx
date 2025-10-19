@@ -15,7 +15,10 @@ type DlcItem = {
   unit: string;
   status: string;
   batchNumber?: string;
-  supplier?: string;
+  supplier?: {
+    id: string;
+    name: string;
+  } | null;
   product: {
     id: string;
     name: string;
@@ -196,7 +199,7 @@ export default function DlcPage() {
                           {dlc.supplier && (
                             <>
                               <span>•</span>
-                              <span>{dlc.supplier}</span>
+                              <span>{dlc.supplier.name}</span>
                             </>
                           )}
                         </div>

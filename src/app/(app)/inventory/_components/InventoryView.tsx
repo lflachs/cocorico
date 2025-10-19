@@ -181,19 +181,19 @@ export function InventoryView({ initialProducts, menuIngredients }: InventoryVie
     const isActive = sortColumn === column;
     return (
       <th
-        className={`px-2 py-3 text-left font-medium cursor-pointer hover:bg-gray-50 ${className}`}
+        className={`px-3 py-2.5 text-left font-medium cursor-pointer hover:bg-gray-100 transition-colors bg-gray-50 ${className}`}
         onClick={() => handleSort(column)}
       >
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 whitespace-nowrap">
           {label}
           {isActive ? (
             sortDirection === 'asc' ? (
-              <ArrowUp className="h-3 w-3" />
+              <ArrowUp className="h-3.5 w-3.5" />
             ) : (
-              <ArrowDown className="h-3 w-3" />
+              <ArrowDown className="h-3.5 w-3.5" />
             )
           ) : (
-            <ArrowUpDown className="h-3 w-3 opacity-30" />
+            <ArrowUpDown className="h-3.5 w-3.5 opacity-30" />
           )}
         </div>
       </th>
@@ -425,13 +425,13 @@ Product: ${p.name}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full max-w-md grid-cols-2 mb-6">
-          <TabsTrigger value="inventory" className="gap-2">
-            <Package className="w-4 h-4" />
-            Stock
+          <TabsTrigger value="inventory" className="gap-1 sm:gap-2">
+            <Package className="w-4 h-4 shrink-0" />
+            <span className="truncate">Stock</span>
           </TabsTrigger>
-          <TabsTrigger value="producers" className="gap-2">
-            <MapPin className="w-4 h-4" />
-            Trouver des producteurs
+          <TabsTrigger value="producers" className="gap-1 sm:gap-2">
+            <MapPin className="w-4 h-4 shrink-0" />
+            <span className="truncate text-xs sm:text-sm">Trouver des producteurs</span>
           </TabsTrigger>
         </TabsList>
 
@@ -448,7 +448,7 @@ Product: ${p.name}
           <CardContent>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div className="rounded-lg border border-green-100 bg-green-50 p-4 text-center">
-                <div className="text-3xl font-bold text-green-600">
+                <div className="text-2xl font-bold text-green-600 sm:text-3xl break-words">
                   {calculateStockValueFromProducts().toFixed(2)} €
                 </div>
                 <p className="mt-1 text-sm font-medium text-green-700">
@@ -456,13 +456,13 @@ Product: ${p.name}
                 </p>
               </div>
               <div className="rounded-lg border border-blue-100 bg-blue-50 p-4 text-center">
-                <div className="text-2xl font-bold text-blue-600">{productsWithValue.length}</div>
+                <div className="text-xl font-bold text-blue-600 sm:text-2xl">{productsWithValue.length}</div>
                 <p className="mt-1 text-sm font-medium text-blue-700">
                   {t('inventory.value.valued')}
                 </p>
               </div>
               <div className="rounded-lg border border-purple-100 bg-purple-50 p-4 text-center">
-                <div className="text-2xl font-bold text-purple-600">{avgValue.toFixed(2)} €</div>
+                <div className="text-xl font-bold text-purple-600 sm:text-2xl break-words">{avgValue.toFixed(2)} €</div>
                 <p className="mt-1 text-sm font-medium text-purple-700">
                   {t('inventory.value.average')}
                 </p>
@@ -474,12 +474,12 @@ Product: ${p.name}
         {/* Main Inventory Table */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <span className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
-                {t('inventory.title')}
+            <CardTitle className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <span className="flex items-center gap-2 min-w-0">
+                <Package className="h-5 w-5 shrink-0" />
+                <span className="truncate">{t('inventory.title')}</span>
               </span>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 shrink-0">
                 {selectedProducts.size > 0 && (
                   <Button
                     onClick={bulkDeleteProducts}
@@ -536,10 +536,10 @@ Product: ${p.name}
                 }}
                 size="sm"
                 variant={stockFilter === 'all' ? 'default' : 'outline'}
-                className="cursor-pointer"
+                className="cursor-pointer shrink-0"
               >
-                <Filter className="h-4 w-4 mr-2" />
-                All Items ({initialProducts.length})
+                <Filter className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="text-xs sm:text-sm">All Items ({initialProducts.length})</span>
               </Button>
               <Button
                 onClick={() => {
@@ -548,10 +548,10 @@ Product: ${p.name}
                 }}
                 size="sm"
                 variant={stockFilter === 'low' ? 'default' : 'outline'}
-                className="cursor-pointer"
+                className="cursor-pointer shrink-0"
               >
-                <AlertTriangle className="h-4 w-4 mr-2" />
-                Low Stock ({lowStockCount})
+                <AlertTriangle className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="text-xs sm:text-sm">Low Stock ({lowStockCount})</span>
               </Button>
               <Button
                 onClick={() => {
@@ -560,13 +560,13 @@ Product: ${p.name}
                 }}
                 size="sm"
                 variant={stockFilter === 'critical' ? 'default' : 'outline'}
-                className="cursor-pointer"
+                className="cursor-pointer shrink-0"
               >
-                <AlertTriangle className="h-4 w-4 mr-2 text-red-500" />
-                Critical Only ({criticalStockCount})
+                <AlertTriangle className="h-4 w-4 mr-1 sm:mr-2 text-red-500" />
+                <span className="text-xs sm:text-sm whitespace-nowrap">Critical Only ({criticalStockCount})</span>
               </Button>
               {stockFilter !== 'all' && (
-                <span className="text-sm text-gray-600">
+                <span className="text-xs sm:text-sm text-gray-600">
                   Showing {filteredProducts.length} of {initialProducts.length} items
                 </span>
               )}
@@ -574,11 +574,13 @@ Product: ${p.name}
 
             {/* Products Table */}
             {filteredProducts.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="px-2 py-3 text-left font-medium w-10">
+              <div className="-mx-6 overflow-x-auto">
+                <div className="inline-block min-w-full px-6">
+                  <div className="max-h-[600px] overflow-y-auto border-y">
+                    <table className="min-w-full text-sm">
+                  <thead className="bg-gray-50 sticky top-0 z-10">
+                    <tr className="border-b bg-gray-50">
+                      <th className="pl-6 pr-2 py-2.5 text-left font-medium min-w-[50px] bg-gray-50">
                         <input
                           type="checkbox"
                           checked={
@@ -589,9 +591,48 @@ Product: ${p.name}
                           className="h-4 w-4 cursor-pointer rounded border-gray-300"
                         />
                       </th>
-                      <SortableHeader column="name" label={t('inventory.table.product')} />
-                      <SortableHeader column="quantity" label={t('inventory.table.quantity')} />
-                      <SortableHeader column="unit" label={t('inventory.table.unit')} />
+                      <th className="px-3 py-2.5 text-left font-medium cursor-pointer hover:bg-gray-100 transition-colors bg-gray-50 min-w-[200px]" onClick={() => handleSort('name')}>
+                        <div className="flex items-center gap-1 whitespace-nowrap">
+                          {t('inventory.table.product')}
+                          {sortColumn === 'name' ? (
+                            sortDirection === 'asc' ? (
+                              <ArrowUp className="h-3.5 w-3.5" />
+                            ) : (
+                              <ArrowDown className="h-3.5 w-3.5" />
+                            )
+                          ) : (
+                            <ArrowUpDown className="h-3.5 w-3.5 opacity-30" />
+                          )}
+                        </div>
+                      </th>
+                      <th className="px-3 py-2.5 text-left font-medium cursor-pointer hover:bg-gray-100 transition-colors bg-gray-50 min-w-[100px]" onClick={() => handleSort('quantity')}>
+                        <div className="flex items-center gap-1 whitespace-nowrap">
+                          {t('inventory.table.quantity')}
+                          {sortColumn === 'quantity' ? (
+                            sortDirection === 'asc' ? (
+                              <ArrowUp className="h-3.5 w-3.5" />
+                            ) : (
+                              <ArrowDown className="h-3.5 w-3.5" />
+                            )
+                          ) : (
+                            <ArrowUpDown className="h-3.5 w-3.5 opacity-30" />
+                          )}
+                        </div>
+                      </th>
+                      <th className="px-3 py-2.5 text-left font-medium cursor-pointer hover:bg-gray-100 transition-colors bg-gray-50 min-w-[80px]" onClick={() => handleSort('unit')}>
+                        <div className="flex items-center gap-1 whitespace-nowrap">
+                          {t('inventory.table.unit')}
+                          {sortColumn === 'unit' ? (
+                            sortDirection === 'asc' ? (
+                              <ArrowUp className="h-3.5 w-3.5" />
+                            ) : (
+                              <ArrowDown className="h-3.5 w-3.5" />
+                            )
+                          ) : (
+                            <ArrowUpDown className="h-3.5 w-3.5 opacity-30" />
+                          )}
+                        </div>
+                      </th>
                       <SortableHeader
                         column="parLevel"
                         label={t('inventory.table.parLevel')}
@@ -602,10 +643,10 @@ Product: ${p.name}
                         label={t('inventory.table.unitPrice')}
                         className="hidden lg:table-cell"
                       />
-                      <th className="hidden px-2 py-3 text-left font-medium md:table-cell">
+                      <th className="hidden px-3 py-2.5 text-left font-medium md:table-cell bg-gray-50 min-w-[120px]">
                         {t('inventory.table.totalValue')}
                       </th>
-                      <th className="px-2 py-3 text-left font-medium">
+                      <th className="pl-3 pr-6 py-2.5 text-left font-medium bg-gray-50 min-w-[100px]">
                         {t('inventory.table.actions')}
                       </th>
                     </tr>
@@ -623,7 +664,7 @@ Product: ${p.name}
                       return (
                       <tr key={product.id} className={rowClass}>
                         {/* Checkbox */}
-                        <td className="px-2 py-3">
+                        <td className="pl-6 pr-2 py-2.5">
                           <input
                             type="checkbox"
                             checked={selectedProducts.has(product.id)}
@@ -632,24 +673,24 @@ Product: ${p.name}
                           />
                         </td>
                         {/* Product Name */}
-                        <td className="w-1/3 max-w-0 px-2 py-3 font-medium">
+                        <td className="max-w-[200px] px-3 py-2.5 font-medium">
                           {editingProduct === product.id ? (
                             <Input
                               value={editValues.name}
                               onChange={(e) =>
                                 setEditValues({ ...editValues, name: e.target.value })
                               }
-                              className="w-full text-xs"
+                              className="w-full h-8 text-sm"
                             />
                           ) : (
-                            <div className="truncate pr-2" title={product.name}>
+                            <div className="truncate" title={product.name}>
                               {product.name}
                             </div>
                           )}
                         </td>
 
                         {/* Quantity */}
-                        <td className="px-2 py-3">
+                        <td className="px-3 py-2.5 whitespace-nowrap">
                           {editingProduct === product.id ? (
                             <Input
                               type="number"
@@ -661,7 +702,7 @@ Product: ${p.name}
                                   quantity: parseFloat(e.target.value) || 0,
                                 })
                               }
-                              className="w-20 text-xs"
+                              className="w-20 h-8 text-sm"
                             />
                           ) : (
                             <span className="font-mono">{product.quantity.toFixed(1)}</span>
@@ -669,14 +710,14 @@ Product: ${p.name}
                         </td>
 
                         {/* Unit */}
-                        <td className="px-2 py-3">
+                        <td className="px-3 py-2.5">
                           <Badge variant="outline" className="text-xs">
                             {product.unit}
                           </Badge>
                         </td>
 
                         {/* Par Level */}
-                        <td className="hidden px-2 py-3 xl:table-cell">
+                        <td className="hidden px-3 py-2.5 xl:table-cell whitespace-nowrap">
                           {editingProduct === product.id ? (
                             <Input
                               type="number"
@@ -689,7 +730,7 @@ Product: ${p.name}
                                     e.target.value === '' ? null : parseFloat(e.target.value),
                                 })
                               }
-                              className="w-20 text-xs"
+                              className="w-20 h-8 text-sm"
                               placeholder="0.0"
                             />
                           ) : (
@@ -702,7 +743,7 @@ Product: ${p.name}
                         </td>
 
                         {/* Unit Price */}
-                        <td className="hidden px-2 py-3 lg:table-cell">
+                        <td className="hidden px-3 py-2.5 lg:table-cell whitespace-nowrap">
                           {editingProduct === product.id ? (
                             <Input
                               type="number"
@@ -715,7 +756,7 @@ Product: ${p.name}
                                     e.target.value === '' ? null : parseFloat(e.target.value),
                                 })
                               }
-                              className="w-20 text-xs"
+                              className="w-20 h-8 text-sm"
                               placeholder="€"
                             />
                           ) : (
@@ -726,7 +767,7 @@ Product: ${p.name}
                         </td>
 
                         {/* Total Value */}
-                        <td className="hidden px-2 py-3 md:table-cell">
+                        <td className="hidden px-3 py-2.5 md:table-cell whitespace-nowrap">
                           <span className="font-mono font-medium text-green-600">
                             {product.unitPrice
                               ? `${calculateTotalValue(product).toFixed(2)} €`
@@ -735,23 +776,23 @@ Product: ${p.name}
                         </td>
 
                         {/* Actions */}
-                        <td className="px-2 py-3">
+                        <td className="pl-3 pr-6 py-2.5">
                           {editingProduct === product.id ? (
                             <div className="flex gap-1">
                               <Button
                                 onClick={() => saveEdit(product.id)}
                                 size="sm"
-                                className="h-6 w-6 bg-green-600 p-0 hover:bg-green-700"
+                                className="h-7 w-7 bg-green-600 p-0 hover:bg-green-700"
                               >
-                                <Check className="h-3 w-3" />
+                                <Check className="h-3.5 w-3.5" />
                               </Button>
                               <Button
                                 onClick={cancelEditing}
                                 size="sm"
                                 variant="outline"
-                                className="h-6 w-6 p-0"
+                                className="h-7 w-7 p-0"
                               >
-                                <X className="h-3 w-3" />
+                                <X className="h-3.5 w-3.5" />
                               </Button>
                             </div>
                           ) : (
@@ -760,17 +801,17 @@ Product: ${p.name}
                                 onClick={() => startEditing(product)}
                                 size="sm"
                                 variant="outline"
-                                className="h-6 w-6 p-0"
+                                className="h-7 w-7 p-0"
                               >
-                                <Edit className="h-3 w-3" />
+                                <Edit className="h-3.5 w-3.5" />
                               </Button>
                               <Button
                                 onClick={() => deleteProduct(product.id, product.name)}
                                 size="sm"
                                 variant="outline"
-                                className="h-6 w-6 p-0 text-red-600 hover:bg-red-50"
+                                className="h-7 w-7 p-0 text-red-600 hover:bg-red-50"
                               >
-                                <Trash2 className="h-3 w-3" />
+                                <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             </div>
                           )}
@@ -780,6 +821,8 @@ Product: ${p.name}
                     })}
                   </tbody>
                 </table>
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="py-8 text-center">

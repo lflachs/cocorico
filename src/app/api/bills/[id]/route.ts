@@ -38,10 +38,11 @@ export async function GET(
 
     return NextResponse.json({
       id: bill.id,
-      supplierName: bill.supplier || 'Unknown Supplier',
+      supplierName: bill.supplier?.name || 'Unknown Supplier',
       date: bill.billDate || bill.createdAt,
       totalAmount: bill.totalAmount || 0,
       extractedProducts,
+      status: bill.status,
     });
   } catch (error) {
     console.error('Error fetching bill:', error);

@@ -35,6 +35,7 @@ type Bill = {
   date: string;
   totalAmount: number;
   extractedProducts: ExtractedProduct[];
+  status: 'PENDING' | 'PROCESSED' | 'DISPUTED';
 };
 
 export default function BillConfirmPage() {
@@ -62,6 +63,11 @@ export default function BillConfirmPage() {
       const response = await fetch(`/api/bills/${billId}`);
 
       if (!response.ok) {
+        if (response.status === 404) {
+          // Bill not found - just set bill to null and show the "not found" message
+          setBill(null);
+          return;
+        }
         throw new Error('Failed to fetch bill');
       }
 
@@ -211,6 +217,21 @@ export default function BillConfirmPage() {
         <p className="mt-2 text-gray-600">{t('bills.confirm.description')}</p>
       </div>
 
+      {/* Already Processed Warning */}
+      {bill.status === 'PROCESSED' && (
+        <Card className="border-green-300 bg-green-50">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="w-6 h-6 text-green-600 mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-green-900">{t('bills.alreadyProcessed')}</h3>
+                <p className="text-sm text-green-700 mt-1">{t('bills.alreadyProcessed.hint')}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Bill Summary */}
       <Card>
         <CardHeader>
@@ -293,7 +314,7 @@ export default function BillConfirmPage() {
           <CardContent className="pt-6">
             <Button
               onClick={handleConfirm}
-              disabled={confirming}
+              disabled={confirming || bill.status === 'PROCESSED'}
               className="w-full bg-green-600 hover:bg-green-700"
               size="lg"
             >
@@ -325,6 +346,17 @@ export default function BillConfirmPage() {
           setDisputeModalOpen(false);
         }}
         preFillBillId={billId}
+        preFillBillProducts={bill.extractedProducts.map((p) => ({
+          id: p.id,
+          productId: p.mappedProductId || null,
+          product: p.mappedProductId ? undefined : {
+            id: p.id,
+            name: p.name,
+            unit: p.unit,
+          },
+          quantityExtracted: p.quantity,
+          unitPriceExtracted: p.unitPrice,
+        }))}
       />
     </div>
   );
