@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -10,9 +11,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { AlertCircle, Plus, X } from 'lucide-react';
+import { AlertCircle, Plus, X, Sparkles } from 'lucide-react';
 import { useLanguage } from '@/providers/LanguageProvider';
 import { SUPPORTED_UNITS, UNIT_LABELS } from '@/lib/constants/units';
+import { QuickCreateProductDialog } from './QuickCreateProductDialog';
 
 /**
  * Product Mapping Row
@@ -45,6 +47,7 @@ export function ProductMappingRow({ product, onMapping, onProductUpdate }: Produ
   const { t } = useLanguage();
   const [inventoryProducts, setInventoryProducts] = useState<InventoryProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
 
   // Local state for editable fields
   const [editedName, setEditedName] = useState(product.name);
@@ -106,7 +109,20 @@ export function ProductMappingRow({ product, onMapping, onProductUpdate }: Produ
 
   const calculatedTotal = editedQuantity * editedUnitPrice;
 
+  const handleQuickCreate = () => {
+    setQuickCreateOpen(true);
+  };
+
+  const handleProductCreated = (productId: string) => {
+    // Auto-map the newly created product
+    onMapping(productId);
+    setQuickCreateOpen(false);
+    // Refresh the inventory products list
+    loadInventoryProducts();
+  };
+
   return (
+    <>
     <div
       className={`p-4 rounded-lg border-2 transition-colors ${
         !hasValidUnit
@@ -211,11 +227,28 @@ export function ProductMappingRow({ product, onMapping, onProductUpdate }: Produ
           </div>
         </div>
 
-        {/* Mapping Selector (Optional) */}
-        <div>
-          <label className="text-sm font-medium text-gray-700 block mb-1">
+        {/* Mapping Selector OR Quick Create */}
+        <div className="space-y-3">
+          <label className="text-sm font-medium text-gray-700 block">
             {t('bills.confirm.mapToProduct')}
           </label>
+
+          {/* Quick Create Button (shown when not mapped) */}
+          {!isMapped && hasValidUnit && (
+            <Button
+              type="button"
+              onClick={handleQuickCreate}
+              variant="outline"
+              className="w-full border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400"
+            >
+              <Sparkles className="w-4 h-4 mr-2 text-blue-600" />
+              <span className="text-blue-700 font-medium">
+                Quick Create with Details
+              </span>
+            </Button>
+          )}
+
+          {/* Mapping Selector */}
           <div className="relative">
             <Select
               value={product.mappedProductId || '__none__'}
@@ -249,11 +282,27 @@ export function ProductMappingRow({ product, onMapping, onProductUpdate }: Produ
               </button>
             )}
           </div>
-          <p className="text-xs text-gray-500 mt-1">
-            {t('bills.confirm.mapHint')}
+          <p className="text-xs text-gray-500">
+            {isMapped
+              ? 'Mapped to existing product'
+              : 'Use Quick Create to set par level & details, or select existing product'}
           </p>
         </div>
       </div>
+
+      {/* Quick Create Dialog */}
+      <QuickCreateProductDialog
+        open={quickCreateOpen}
+        onOpenChange={setQuickCreateOpen}
+        extractedData={{
+          name: editedName,
+          quantity: editedQuantity,
+          unit: editedUnit,
+          unitPrice: editedUnitPrice,
+        }}
+        onProductCreated={handleProductCreated}
+      />
     </div>
+    </>
   );
 }
