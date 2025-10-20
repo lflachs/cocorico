@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { useLanguage } from "@/providers/LanguageProvider";
 import { SiriWaveform } from "./SiriWaveform";
 
-type ConversationState = "idle" | "recording" | "transcribing" | "parsing" | "confirming" | "executing" | "speaking";
+type ConversationState = "idle" | "recording" | "transcribing" | "parsing" | "confirming" | "executing" | "speaking" | "asking_price";
 
 type ProductCommand = {
   product: string;
@@ -49,6 +49,13 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
   const [parsedCommand, setParsedCommand] = useState<ParsedCommand | null>(null);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
+  const [pendingProductsQueue, setPendingProductsQueue] = useState<Array<{
+    product: string;
+    quantity: number;
+    unit: string;
+    action: string;
+  }>>([]);
+  const [productPrice, setProductPrice] = useState<number | null>(null);
 
   // Load wake word setting from localStorage (default: disabled)
   const [enableWakeWord, setEnableWakeWord] = useState(() => {
@@ -104,6 +111,53 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
   const confirmationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const shouldListenForWakeWordRef = useRef<boolean>(true);
   const isDialogOpenRef = useRef<boolean>(false);
+  const notificationAudioContextRef = useRef<AudioContext | null>(null);
+
+  // Play notification sound when dialog opens
+  const playNotificationSound = useCallback(() => {
+    try {
+      // Create audio context if it doesn't exist
+      if (!notificationAudioContextRef.current) {
+        notificationAudioContextRef.current = new AudioContext();
+      }
+
+      const audioContext = notificationAudioContextRef.current;
+      const now = audioContext.currentTime;
+
+      // Create oscillator for a pleasant "chime" sound
+      const oscillator1 = audioContext.createOscillator();
+      const oscillator2 = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      // Create two tones for a harmonious sound (major third interval)
+      oscillator1.type = 'sine';
+      oscillator1.frequency.setValueAtTime(800, now); // E5
+
+      oscillator2.type = 'sine';
+      oscillator2.frequency.setValueAtTime(1000, now); // B5
+
+      // Connect oscillators to gain node
+      oscillator1.connect(gainNode);
+      oscillator2.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      // Envelope for smooth sound (attack and decay)
+      gainNode.gain.setValueAtTime(0, now);
+      gainNode.gain.linearRampToValueAtTime(0.15, now + 0.05); // Attack
+      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.4); // Decay
+
+      // Start and stop the sound
+      oscillator1.start(now);
+      oscillator2.start(now);
+      oscillator1.stop(now + 0.4);
+      oscillator2.stop(now + 0.4);
+
+      console.log("[Voice] Notification sound played");
+    } catch (error) {
+      console.error("[Voice] Error playing notification sound:", error);
+      // Silently fail - notification sound is not critical
+    }
+  }, []);
 
   // Stop everything and cleanup all resources
   const stopEverything = useCallback(() => {
@@ -178,6 +232,16 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
       confirmationContextRef.current = null;
     }
 
+    // Close notification audio context
+    if (notificationAudioContextRef.current) {
+      try {
+        notificationAudioContextRef.current.close();
+      } catch (e) {
+        console.log("[Voice] Error closing notification context:", e);
+      }
+      notificationAudioContextRef.current = null;
+    }
+
     // Clear all timeouts
     if (silenceTimeoutRef.current) {
       clearTimeout(silenceTimeoutRef.current);
@@ -196,6 +260,8 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
     setAudioLevel(0);
     setIsPlayingAudio(false);
     setState("idle");
+    setPendingProductsQueue([]);
+    setProductPrice(null);
   }, []);
 
   // Start recording with voice activity detection
@@ -357,6 +423,10 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
 
       mediaRecorder.start();
       setState("recording");
+
+      // Play notification sound when listening starts
+      playNotificationSound();
+
       toast.info("Listening... Speak your command");
 
       // Start monitoring audio levels
@@ -367,7 +437,7 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
       setState("idle");
       isRecordingRef.current = false; // Reset flag on error
     }
-  }, []);
+  }, [playNotificationSound]);
 
   // Stop recording
   const stopRecording = useCallback(() => {
@@ -496,6 +566,326 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
         toast.error("Failed to process command");
       }
       setState("idle");
+    }
+  };
+
+  // Create product with price and handle queue
+  const createProductWithPrice = async (
+    productData: { product: string; quantity: number; unit: string; action: string },
+    price: number | null,
+    currentLang: string
+  ) => {
+    try {
+      console.log("[Voice] Creating product with price:", productData, price);
+      setState("executing");
+
+      const response = await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: productData.product,
+          quantity: productData.quantity,
+          unit: productData.unit || "PC",
+          trackable: true,
+          unitPrice: price,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Failed to create product: ${response.status} - ${JSON.stringify(errorData)}`);
+      }
+
+      console.log("[Voice] Product created successfully with price");
+
+      // Trigger inventory refresh
+      onInventoryUpdate?.();
+
+      // Build success message
+      let successMessage = '';
+      if (price !== null) {
+        successMessage = currentLang === 'fr'
+          ? `Produit ${productData.product} créé avec ${productData.quantity} ${productData.unit} à ${price} euros.`
+          : `Product ${productData.product} created with ${productData.quantity} ${productData.unit} at ${price} euros.`;
+      } else {
+        successMessage = currentLang === 'fr'
+          ? `Produit ${productData.product} créé avec ${productData.quantity} ${productData.unit}.`
+          : `Product ${productData.product} created with ${productData.quantity} ${productData.unit}.`;
+      }
+
+      await speakText(successMessage);
+      toast.success(successMessage);
+
+      // Check if there are more products in the queue
+      setPendingProductsQueue(prevQueue => {
+        const remainingQueue = prevQueue.slice(1); // Remove the first product we just created
+
+        // If there are more products, ask for the next one's price
+        if (remainingQueue.length > 0) {
+          const nextProduct = remainingQueue[0];
+          console.log("[Voice] More products in queue, asking for next price:", nextProduct);
+
+          // Ask for price of next product
+          setTimeout(async () => {
+            const priceQuestion = currentLang === 'fr'
+              ? `Quel est le prix unitaire de ${nextProduct.product}? Vous pouvez dire le prix en euros, ou dire "je ne sais pas".`
+              : `What is the unit price for ${nextProduct.product}? You can say the price in euros, or say "I don't know".`;
+
+            await speakText(priceQuestion);
+            setState("asking_price");
+
+            // Listen for price response
+            await listenForPriceResponse();
+          }, 500); // Small delay for better UX
+        } else {
+          // No more products - reset and close
+          console.log("[Voice] All products created, resetting state");
+          setState("idle");
+          setProductPrice(null);
+          setTimeout(() => {
+            setIsOpen(false);
+            setTranscript("");
+            setParsedCommand(null);
+          }, 2000);
+        }
+
+        return remainingQueue;
+      });
+    } catch (error) {
+      console.error("[Voice] Error creating product:", error);
+      toast.error("Failed to create product");
+      setState("idle");
+    }
+  };
+
+  // Listen for price response via voice
+  const listenForPriceResponse = async () => {
+    console.log("[Voice] listenForPriceResponse called");
+
+    // Check if dialog is still open
+    if (!isDialogOpenRef.current) {
+      console.log("[Voice] Dialog closed, aborting price listening");
+      return;
+    }
+
+    try {
+      // Start recording for price
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      confirmationStreamRef.current = stream;
+
+      // Try to use the best supported audio format
+      const mimeTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        'audio/ogg;codecs=opus',
+        'audio/wav',
+      ];
+
+      let selectedMimeType = '';
+      for (const mimeType of mimeTypes) {
+        if (MediaRecorder.isTypeSupported(mimeType)) {
+          selectedMimeType = mimeType;
+          break;
+        }
+      }
+
+      const mediaRecorder = selectedMimeType
+        ? new MediaRecorder(stream, { mimeType: selectedMimeType })
+        : new MediaRecorder(stream);
+
+      confirmationRecorderRef.current = mediaRecorder;
+      const chunks: Blob[] = [];
+
+      // Set up audio analysis for voice activity detection
+      const audioContext = new AudioContext();
+      confirmationContextRef.current = audioContext;
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 2048;
+      const source = audioContext.createMediaStreamSource(stream);
+      source.connect(analyser);
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      const SILENCE_THRESHOLD = 20; // Lower threshold - more sensitive to voice
+      const SILENCE_DURATION = 2500; // 2.5 seconds of silence required
+      const MIN_RECORDING_TIME = 1000; // Minimum 1 second before allowing auto-stop
+
+      let hasDetectedVoice = false;
+      let silenceTimeout: NodeJS.Timeout | null = null;
+      const startTime = Date.now();
+
+      // Monitor audio levels
+      const checkAudioLevel = () => {
+        if (mediaRecorder.state !== "recording") {
+          confirmationAnimationFrameRef.current = null;
+          return;
+        }
+
+        analyser.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+
+        // Log audio level occasionally for debugging
+        if (Math.random() < 0.1) {
+          console.log("[Voice] Price audio level:", Math.round(average));
+        }
+
+        if (average > SILENCE_THRESHOLD) {
+          // Voice detected
+          hasDetectedVoice = true;
+          if (silenceTimeout) {
+            clearTimeout(silenceTimeout);
+            silenceTimeout = null;
+          }
+        } else if (hasDetectedVoice && (Date.now() - startTime) > MIN_RECORDING_TIME) {
+          // Silence detected after voice (and after minimum time)
+          if (!silenceTimeout) {
+            silenceTimeout = setTimeout(() => {
+              console.log("[Voice] Silence detected in price response, stopping");
+              if (mediaRecorder.state === "recording") {
+                mediaRecorder.stop();
+                setState("transcribing");
+              }
+            }, SILENCE_DURATION);
+          }
+        }
+
+        confirmationAnimationFrameRef.current = requestAnimationFrame(checkAudioLevel);
+      };
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunks.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        // Use the actual MIME type from the MediaRecorder
+        const actualMimeType = mediaRecorder.mimeType || "audio/webm";
+        const audioBlob = new Blob(chunks, { type: actualMimeType });
+
+        console.log("[Voice] Price recording stopped, blob size:", audioBlob.size, "bytes", "type:", actualMimeType);
+
+        // Clean up
+        if (silenceTimeout) clearTimeout(silenceTimeout);
+        if (confirmationContextRef.current) {
+          confirmationContextRef.current.close();
+          confirmationContextRef.current = null;
+        }
+
+        // Check if we have meaningful audio data
+        if (audioBlob.size < 1000) {
+          console.warn("[Voice] Price audio blob too small, treating as 'no price provided'");
+
+          // Clean up streams
+          if (confirmationStreamRef.current) {
+            confirmationStreamRef.current.getTracks().forEach((track) => track.stop());
+            confirmationStreamRef.current = null;
+          }
+
+          // Create product without price
+          if (pendingProductsQueue.length > 0) {
+            const getCookie = (name: string) => {
+              const value = `; ${document.cookie}`;
+              const parts = value.split(`; ${name}=`);
+              if (parts.length === 2) return parts.pop()?.split(';').shift();
+              return null;
+            };
+            const currentLang = getCookie('language') || localStorage.getItem('language') || 'en';
+            await createProductWithPrice(pendingProductsQueue[0], null, currentLang);
+          }
+          return;
+        }
+
+        // Check if dialog is still open before proceeding
+        if (!isDialogOpenRef.current) {
+          console.log("[Voice] Dialog closed during price recording, aborting");
+          if (confirmationStreamRef.current) {
+            confirmationStreamRef.current.getTracks().forEach((track) => track.stop());
+            confirmationStreamRef.current = null;
+          }
+          return;
+        }
+
+        // Get current language
+        const getCookie = (name: string) => {
+          const value = `; ${document.cookie}`;
+          const parts = value.split(`; ${name}=`);
+          if (parts.length === 2) return parts.pop()?.split(';').shift();
+          return null;
+        };
+        const currentLang = getCookie('language') || localStorage.getItem('language') || 'en';
+
+        // Transcribe the response
+        const formData = new FormData();
+        formData.append("audio", audioBlob, "price.webm");
+        formData.append("language", currentLang);
+
+        const transcribeRes = await fetch("/api/voice/transcribe", {
+          method: "POST",
+          body: formData,
+        });
+
+        // Check again after async operation
+        if (!isDialogOpenRef.current) {
+          console.log("[Voice] Dialog closed during price transcription, aborting");
+          if (confirmationStreamRef.current) {
+            confirmationStreamRef.current.getTracks().forEach((track) => track.stop());
+            confirmationStreamRef.current = null;
+          }
+          return;
+        }
+
+        if (transcribeRes.ok) {
+          const { text } = await transcribeRes.json();
+          console.log("[Voice] Price response:", text);
+
+          // Parse the price
+          const parseRes = await fetch("/api/voice/parse-price", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text, language: currentLang }),
+          });
+
+          if (parseRes.ok) {
+            const { price: priceData } = await parseRes.json();
+            console.log("[Voice] Parsed price:", priceData);
+
+            // Store the price (or null if not provided)
+            const finalPrice = priceData.understood && priceData.price !== null ? priceData.price : null;
+            setProductPrice(finalPrice);
+
+            // Now create the product with the price
+            if (pendingProductsQueue.length > 0) {
+              await createProductWithPrice(pendingProductsQueue[0], finalPrice, currentLang);
+            }
+          }
+        }
+
+        if (confirmationStreamRef.current) {
+          confirmationStreamRef.current.getTracks().forEach((track) => track.stop());
+          confirmationStreamRef.current = null;
+        }
+      };
+
+      mediaRecorder.start();
+      setState("recording");
+
+      // Start monitoring audio levels
+      checkAudioLevel();
+
+      // Fallback: Auto-stop after 8 seconds max
+      confirmationTimeoutRef.current = setTimeout(() => {
+        if (mediaRecorder.state === "recording") {
+          console.log("[Voice] Max time reached for price, stopping");
+          mediaRecorder.stop();
+          setState("transcribing");
+        }
+      }, 8000);
+
+    } catch (error) {
+      console.error("Price listening error:", error);
+      toast.error("Failed to listen for price");
+      setState("asking_price");
     }
   };
 
@@ -814,29 +1204,9 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
             // Trigger inventory refresh
             onInventoryUpdate?.();
           } else {
-            console.log("[Voice] Creating new product:", productCmd.product);
-            // Create new product
-            const response = await fetch("/api/products", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                name: productCmd.product,
-                quantity: productCmd.quantity,
-                unit: productCmd.unit || "PC",
-                trackable: true,
-              }),
-            });
-
-            if (!response.ok) {
-              const errorData = await response.json();
-              throw new Error(`Failed to create product: ${response.status} - ${JSON.stringify(errorData)}`);
-            }
-
-            console.log("[Voice] Product created successfully");
+            console.log("[Voice] New product detected:", productCmd.product);
+            // Store pending product creation - we'll ask for price first
             results.push({ name: productCmd.product, quantity: productCmd.quantity, unit: productCmd.unit, isNew: true });
-
-            // Trigger inventory refresh
-            onInventoryUpdate?.();
           }
         } else if (command.action === "remove") {
           if (productCmd.matchedProductId) {
@@ -861,38 +1231,59 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
         }
       }
 
-      // Generate success message for all products
-      let successMessage = '';
-      if (results.length === 1) {
-        const result = results[0];
-        if (result.isNew) {
-          successMessage = currentLang === 'fr'
-            ? `Nouveau produit ${result.name} créé avec une quantité de ${result.quantity}.`
-            : `Created new product ${result.name} with quantity ${result.quantity}.`;
-        } else {
+      // Check if we have new products to create
+      const newProducts = results.filter(r => r.isNew);
+      if (newProducts.length > 0) {
+        console.log("[Voice] New products detected, asking for prices before creation:", newProducts);
+
+        // Store all pending products in the queue
+        setPendingProductsQueue(newProducts.map(p => ({
+          product: p.name,
+          quantity: p.quantity,
+          unit: p.unit || "PC",
+          action: command.action
+        })));
+
+        // Ask for price of the first product
+        const firstProduct = newProducts[0];
+        const priceQuestion = currentLang === 'fr'
+          ? `Quel est le prix unitaire de ${firstProduct.name}? Vous pouvez dire le prix en euros, ou dire "je ne sais pas".`
+          : `What is the unit price for ${firstProduct.name}? You can say the price in euros, or say "I don't know".`;
+
+        await speakText(priceQuestion);
+        setState("asking_price");
+
+        // Listen for price response
+        await listenForPriceResponse();
+      } else {
+        // No new product - just updated existing products
+        // Generate success message
+        let successMessage = '';
+        if (results.length === 1) {
+          const result = results[0];
           successMessage = currentLang === 'fr'
             ? `Terminé! Vous avez maintenant ${result.quantity} ${result.unit || ""} de ${result.name}.`
             : `Done! You now have ${result.quantity} ${result.unit || ""} of ${result.name}.`;
+        } else {
+          // Multiple products
+          successMessage = currentLang === 'fr'
+            ? `Terminé! ${results.length} produits mis à jour avec succès.`
+            : `Done! ${results.length} products updated successfully.`;
         }
-      } else {
-        // Multiple products
-        successMessage = currentLang === 'fr'
-          ? `Terminé! ${results.length} produits mis à jour avec succès.`
-          : `Done! ${results.length} products updated successfully.`;
+
+        console.log("[Voice] Speaking success message:", successMessage);
+        await speakText(successMessage);
+        toast.success(successMessage);
+
+        // Reset normally
+        console.log("[Voice] Action completed, resetting state");
+        setState("idle");
+        setTimeout(() => {
+          setIsOpen(false);
+          setTranscript("");
+          setParsedCommand(null);
+        }, 2000);
       }
-
-      console.log("[Voice] Speaking success message:", successMessage);
-      await speakText(successMessage);
-      toast.success(successMessage);
-
-      // Reset
-      console.log("[Voice] Action completed, resetting state");
-      setState("idle");
-      setTimeout(() => {
-        setIsOpen(false);
-        setTranscript("");
-        setParsedCommand(null);
-      }, 2000);
     } catch (error) {
       console.error("[Voice] Execute error:", error);
       toast.error("Failed to execute command");
@@ -938,6 +1329,8 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
       stopEverything();
       setTranscript("");
       setParsedCommand(null);
+      setPendingProductsQueue([]);
+      setProductPrice(null);
     }
     setIsOpen(open);
   };
@@ -1120,6 +1513,8 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
         return { text: "Waiting for confirmation", icon: CheckCircle, color: "text-yellow-500" };
       case "executing":
         return { text: "Executing...", icon: Loader2, color: "text-green-500" };
+      case "asking_price":
+        return { text: "Waiting for price", icon: CheckCircle, color: "text-blue-500" };
       default:
         return { text: "Ready", icon: Mic, color: "text-gray-500" };
     }
@@ -1330,6 +1725,12 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
                       Cancel
                     </Button>
                   </>
+                )}
+
+                {state === "asking_price" && (
+                  <div className="flex-1 text-center text-[#f1faee] text-base sm:text-lg py-4">
+                    Listening for price...
+                  </div>
                 )}
 
                 {/* Emergency stop button - visible when not idle */}
