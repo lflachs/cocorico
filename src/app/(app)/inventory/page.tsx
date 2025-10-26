@@ -127,7 +127,7 @@ export default async function InventoryPage() {
   const t = getTranslation(language);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-hidden">
       {/* Header with gradient background */}
       <PageHeader
         title={t('inventory.title')}
