@@ -420,7 +420,7 @@ Product: ${p.name}
   return (
     <>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full overflow-hidden">
-        <TabsList className="grid w-full max-w-md grid-cols-2 mb-6">
+        <TabsList className="grid w-full sm:max-w-md grid-cols-2 mb-6">
           <TabsTrigger value="inventory" className="gap-1 sm:gap-2 min-w-0">
             <Package className="w-4 h-4 shrink-0" />
             <span className="truncate">Stock</span>
@@ -524,7 +524,7 @@ Product: ${p.name}
             </div>
 
             {/* Stock Filters */}
-            <div className="mb-4 space-y-2">
+            <div className="mb-4 space-y-2 overflow-hidden">
               <div className="flex flex-wrap items-center gap-2">
                 <Button
                   onClick={() => {
@@ -533,9 +533,9 @@ Product: ${p.name}
                   }}
                   size="sm"
                   variant={stockFilter === 'all' ? 'default' : 'outline'}
-                  className="cursor-pointer flex-1 min-w-[90px] sm:flex-none"
+                  className="cursor-pointer flex-1 min-w-0 sm:flex-none sm:min-w-[90px]"
                 >
-                  <Filter className="h-4 w-4 mr-1" />
+                  <Filter className="h-4 w-4 mr-1 shrink-0" />
                   <span className="text-xs truncate">All ({initialProducts.length})</span>
                 </Button>
                 <Button
@@ -545,9 +545,9 @@ Product: ${p.name}
                   }}
                   size="sm"
                   variant={stockFilter === 'low' ? 'default' : 'outline'}
-                  className="cursor-pointer flex-1 min-w-[90px] sm:flex-none"
+                  className="cursor-pointer flex-1 min-w-0 sm:flex-none sm:min-w-[90px]"
                 >
-                  <AlertTriangle className="h-4 w-4 mr-1" />
+                  <AlertTriangle className="h-4 w-4 mr-1 shrink-0" />
                   <span className="text-xs truncate">Low ({lowStockCount})</span>
                 </Button>
                 <Button
@@ -557,9 +557,9 @@ Product: ${p.name}
                   }}
                   size="sm"
                   variant={stockFilter === 'critical' ? 'default' : 'outline'}
-                  className="cursor-pointer flex-1 min-w-[90px] sm:flex-none"
+                  className="cursor-pointer flex-1 min-w-0 sm:flex-none sm:min-w-[90px]"
                 >
-                  <AlertTriangle className="h-4 w-4 mr-1 text-red-500" />
+                  <AlertTriangle className="h-4 w-4 mr-1 shrink-0 text-red-500" />
                   <span className="text-xs truncate">Critical ({criticalStockCount})</span>
                 </Button>
               </div>
@@ -574,7 +574,7 @@ Product: ${p.name}
             {filteredProducts.length > 0 ? (
               <>
                 {/* Mobile Card View */}
-                <div className="block lg:hidden space-y-3 overflow-hidden">
+                <div className="block lg:hidden space-y-4 overflow-hidden">
                   {filteredProducts.map((product) => {
                     const stockStatus = getStockStatus(product);
                     const cardClass =
@@ -585,17 +585,18 @@ Product: ${p.name}
                         : '';
 
                     return (
-                      <Card key={product.id} className={`${cardClass} overflow-hidden`}>
-                        <CardContent className="p-3">
+                      <Card key={product.id} className={`${cardClass} overflow-hidden`} style={{ width: '100%', maxWidth: '100%' }}>
+                        <CardContent className="p-4" style={{ width: '100%', maxWidth: '100%' }}>
                           {/* Header with checkbox and name */}
-                          <div className="flex items-start gap-2 mb-2">
+                          <div className="mb-2" style={{ display: 'grid', gridTemplateColumns: '16px 1fr', gap: '8px', width: '100%' }}>
                             <input
                               type="checkbox"
                               checked={selectedProducts.has(product.id)}
                               onChange={() => toggleSelectProduct(product.id)}
-                              className="h-4 w-4 mt-0.5 shrink-0 cursor-pointer rounded border-gray-300"
+                              className="h-4 w-4 mt-0.5 cursor-pointer rounded border-gray-300"
+                              style={{ width: '16px', flexShrink: 0 }}
                             />
-                            <div className="flex-1 min-w-0 overflow-hidden">
+                            <div style={{ overflow: 'hidden', minWidth: 0 }}>
                               {editingProduct === product.id ? (
                                 <Input
                                   value={editValues.name}
@@ -605,16 +606,22 @@ Product: ${p.name}
                                   className="w-full h-8 text-sm font-semibold"
                                 />
                               ) : (
-                                <h3 className="font-semibold text-sm truncate">{product.name}</h3>
+                                <h3 className="font-semibold text-base" style={{
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  width: '100%',
+                                  display: 'block'
+                                }}>{product.name}</h3>
                               )}
                             </div>
                           </div>
 
                           {/* Product Details Grid */}
-                          <div className="grid grid-cols-2 gap-2 mb-2">
+                          <div className="grid grid-cols-2 gap-3 mb-3 w-full max-w-full overflow-hidden">
                             {/* Quantity */}
-                            <div className="min-w-0">
-                              <p className="text-[10px] text-gray-500 mb-0.5 truncate">{t('inventory.table.quantity')}</p>
+                            <div className="min-w-0 overflow-hidden">
+                              <p className="text-xs text-gray-500 mb-1 truncate">{t('inventory.table.quantity')}</p>
                               {editingProduct === product.id ? (
                                 <Input
                                   type="number"
@@ -626,22 +633,22 @@ Product: ${p.name}
                                       quantity: parseFloat(e.target.value) || 0,
                                     })
                                   }
-                                  className="w-full h-7 text-xs"
+                                  className="w-full h-8 text-sm"
                                 />
                               ) : (
-                                <p className="font-mono font-medium text-xs truncate">{product.quantity.toFixed(1)}</p>
+                                <p className="font-mono font-medium text-sm truncate">{product.quantity.toFixed(1)}</p>
                               )}
                             </div>
 
                             {/* Unit */}
-                            <div className="min-w-0">
-                              <p className="text-[10px] text-gray-500 mb-0.5 truncate">{t('inventory.table.unit')}</p>
-                              <Badge variant="outline" className="text-[10px] px-1 py-0">{product.unit}</Badge>
+                            <div className="min-w-0 overflow-hidden">
+                              <p className="text-xs text-gray-500 mb-1 truncate">{t('inventory.table.unit')}</p>
+                              <Badge variant="outline" className="text-xs px-2 py-0.5 max-w-full truncate block">{product.unit}</Badge>
                             </div>
 
                             {/* Unit Price */}
-                            <div className="min-w-0">
-                              <p className="text-[10px] text-gray-500 mb-0.5 truncate">{t('inventory.table.unitPrice')}</p>
+                            <div className="min-w-0 overflow-hidden">
+                              <p className="text-xs text-gray-500 mb-1 truncate">{t('inventory.table.unitPrice')}</p>
                               {editingProduct === product.id ? (
                                 <Input
                                   type="number"
@@ -654,27 +661,27 @@ Product: ${p.name}
                                         e.target.value === '' ? null : parseFloat(e.target.value),
                                     })
                                   }
-                                  className="w-full h-7 text-xs"
+                                  className="w-full h-8 text-sm"
                                   placeholder="€"
                                 />
                               ) : (
-                                <p className="font-mono text-xs truncate">
+                                <p className="font-mono text-sm truncate">
                                   {product.unitPrice ? `${product.unitPrice.toFixed(2)} €` : '-'}
                                 </p>
                               )}
                             </div>
 
                             {/* Total Value */}
-                            <div className="min-w-0">
-                              <p className="text-[10px] text-gray-500 mb-0.5 truncate">{t('inventory.table.totalValue')}</p>
-                              <p className="font-mono font-medium text-green-600 text-xs truncate">
+                            <div className="min-w-0 overflow-hidden">
+                              <p className="text-xs text-gray-500 mb-1 truncate">{t('inventory.table.totalValue')}</p>
+                              <p className="font-mono font-medium text-green-600 text-sm truncate">
                                 {product.unitPrice ? `${calculateTotalValue(product).toFixed(2)} €` : '-'}
                               </p>
                             </div>
 
                             {/* Par Level */}
-                            <div className="col-span-2 min-w-0">
-                              <p className="text-[10px] text-gray-500 mb-0.5 truncate">{t('inventory.table.parLevel')}</p>
+                            <div className="col-span-2 min-w-0 overflow-hidden">
+                              <p className="text-xs text-gray-500 mb-1 truncate">{t('inventory.table.parLevel')}</p>
                               {editingProduct === product.id ? (
                                 <Input
                                   type="number"
@@ -687,13 +694,13 @@ Product: ${p.name}
                                         e.target.value === '' ? null : parseFloat(e.target.value),
                                     })
                                   }
-                                  className="w-full h-7 text-xs"
+                                  className="w-full h-8 text-sm"
                                   placeholder="0.0"
                                 />
                               ) : (
-                                <p className="font-mono text-xs truncate">
+                                <p className="font-mono text-sm truncate">
                                   {product.parLevel ? product.parLevel.toFixed(1) : (
-                                    <span className="text-[10px] text-gray-400">-</span>
+                                    <span className="text-xs text-gray-400">-</span>
                                   )}
                                 </p>
                               )}
@@ -701,24 +708,24 @@ Product: ${p.name}
                           </div>
 
                           {/* Actions */}
-                          <div className="flex gap-1.5 pt-2 border-t">
+                          <div className="flex gap-2 pt-2 border-t w-full max-w-full overflow-hidden">
                             {editingProduct === product.id ? (
                               <>
                                 <Button
                                   onClick={() => saveEdit(product.id)}
                                   size="sm"
-                                  className="flex-1 bg-green-600 hover:bg-green-700 h-8 text-xs px-2"
+                                  className="flex-1 min-w-0 bg-green-600 hover:bg-green-700 h-9 text-sm px-3"
                                 >
-                                  <Check className="h-3 w-3 mr-1" />
+                                  <Check className="h-4 w-4 mr-1 shrink-0" />
                                   <span className="truncate">Save</span>
                                 </Button>
                                 <Button
                                   onClick={cancelEditing}
                                   size="sm"
                                   variant="outline"
-                                  className="flex-1 h-8 text-xs px-2"
+                                  className="flex-1 min-w-0 h-9 text-sm px-3"
                                 >
-                                  <X className="h-3 w-3 mr-1" />
+                                  <X className="h-4 w-4 mr-1 shrink-0" />
                                   <span className="truncate">Cancel</span>
                                 </Button>
                               </>
@@ -728,18 +735,18 @@ Product: ${p.name}
                                   onClick={() => startEditing(product)}
                                   size="sm"
                                   variant="outline"
-                                  className="flex-1 h-8 text-xs px-2"
+                                  className="flex-1 min-w-0 h-9 text-sm px-3"
                                 >
-                                  <Edit className="h-3 w-3 mr-1" />
+                                  <Edit className="h-4 w-4 mr-1 shrink-0" />
                                   <span className="truncate">Edit</span>
                                 </Button>
                                 <Button
                                   onClick={() => deleteProduct(product.id, product.name)}
                                   size="sm"
                                   variant="outline"
-                                  className="flex-1 text-red-600 hover:bg-red-50 h-8 text-xs px-2"
+                                  className="flex-1 min-w-0 text-red-600 hover:bg-red-50 h-9 text-sm px-3"
                                 >
-                                  <Trash2 className="h-3 w-3 mr-1" />
+                                  <Trash2 className="h-4 w-4 mr-1 shrink-0" />
                                   <span className="truncate">Delete</span>
                                 </Button>
                               </>
