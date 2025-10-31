@@ -212,7 +212,7 @@ async function main() {
       },
     }),
 
-    // Proteins
+    // Proteins - Meats
     prisma.product.create({
       data: {
         name: 'Poulet fermier (entier)',
@@ -221,6 +221,18 @@ async function main() {
         unitPrice: 12.5,
         trackable: true,
         parLevel: 20,
+        category: 'Viandes',
+        isComposite: false,
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Magret de canard',
+        quantity: 8,
+        unit: Unit.PC,
+        unitPrice: 15.0,
+        trackable: true,
+        parLevel: 5,
         category: 'Viandes',
         isComposite: false,
       },
@@ -239,12 +251,61 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        name: 'Quasi de veau',
+        quantity: 6,
+        unit: Unit.KG,
+        unitPrice: 38.0,
+        trackable: true,
+        parLevel: 4,
+        category: 'Viandes',
+        isComposite: false,
+      },
+    }),
+    // Proteins - Seafood
+    prisma.product.create({
+      data: {
         name: 'Saumon norvégien',
         quantity: 15,
         unit: Unit.KG,
         unitPrice: 22.0,
         trackable: true,
         parLevel: 10,
+        category: 'Poissons',
+        isComposite: false,
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Bar de ligne',
+        quantity: 8,
+        unit: Unit.KG,
+        unitPrice: 28.0,
+        trackable: true,
+        parLevel: 6,
+        category: 'Poissons',
+        isComposite: false,
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Daurade royale',
+        quantity: 10,
+        unit: Unit.KG,
+        unitPrice: 24.0,
+        trackable: true,
+        parLevel: 8,
+        category: 'Poissons',
+        isComposite: false,
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Gambas (grosses crevettes)',
+        quantity: 5,
+        unit: Unit.KG,
+        unitPrice: 32.0,
+        trackable: true,
+        parLevel: 3,
         category: 'Poissons',
         isComposite: false,
       },
@@ -534,8 +595,8 @@ async function main() {
       recipeIngredients: {
         create: [
           {
-            productId: productMap['Poulet fermier (entier)'].id, // Placeholder for duck/foie gras
-            quantityRequired: 0.15,
+            productId: productMap['Magret de canard'].id,
+            quantityRequired: 0.5,
             unit: 'PC',
           },
           {
@@ -595,7 +656,7 @@ async function main() {
       recipeIngredients: {
         create: [
           {
-            productId: productMap['Saumon norvégien'].id, // Placeholder for sea bass
+            productId: productMap['Bar de ligne'].id,
             quantityRequired: 0.15,
             unit: 'KG',
           },
@@ -629,7 +690,7 @@ async function main() {
       recipeIngredients: {
         create: [
           {
-            productId: productMap['Saumon norvégien'].id, // Placeholder for daurade
+            productId: productMap['Daurade royale'].id,
             quantityRequired: 0.25,
             unit: 'KG',
           },
@@ -661,6 +722,11 @@ async function main() {
       isActive: true,
       recipeIngredients: {
         create: [
+          {
+            productId: productMap['Gambas (grosses crevettes)'].id,
+            quantityRequired: 0.2,
+            unit: 'KG',
+          },
           {
             productId: productMap['Tomates'].id,
             quantityRequired: 0.1,
@@ -2050,8 +2116,8 @@ async function main() {
   console.log(`  📦 Base Products: ${products.length}`);
   console.log('     - Produits laitiers: 4 (Lait, Crème, Beurre, Œufs)');
   console.log('     - Épicerie sèche: 3 (Farine, Sucre, Sel)');
-  console.log('     - Viandes: 2 (Poulet, Bœuf)');
-  console.log('     - Poissons: 1 (Saumon)');
+  console.log('     - Viandes: 4 (Poulet, Canard, Bœuf, Veau)');
+  console.log('     - Poissons: 4 (Saumon, Bar, Daurade, Gambas)');
   console.log('     - Légumes: 4 (Pommes de terre, Carottes, Oignons, Tomates)');
   console.log('     - Herbes: 2 (Persil, Thym)');
   console.log('');

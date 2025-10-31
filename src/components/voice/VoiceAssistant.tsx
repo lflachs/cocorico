@@ -44,9 +44,19 @@ type ParsedCommand = {
 
 type VoiceAssistantProps = {
   onInventoryUpdate?: () => void;
+  mode?: "inventory" | "consultation";
+  initialContext?: any;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
-export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
+export function VoiceAssistant({
+  onInventoryUpdate,
+  mode = "inventory",
+  initialContext,
+  isOpen: externalIsOpen,
+  onOpenChange
+}: VoiceAssistantProps) {
   const { language, t } = useLanguage();
 
   // Debug: Log language on mount and changes
@@ -56,7 +66,17 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
     console.log("[VoiceAssistant] LocalStorage:", localStorage.getItem('language'));
   }, [language]);
 
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+
+  // Use external control if provided, otherwise use internal state
+  const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
+  const setIsOpen = (open: boolean) => {
+    if (onOpenChange) {
+      onOpenChange(open);
+    } else {
+      setInternalIsOpen(open);
+    }
+  };
   const [state, setState] = useState<ConversationState>("idle");
   const [transcript, setTranscript] = useState("");
   const [parsedCommand, setParsedCommand] = useState<ParsedCommand | null>(null);
@@ -68,6 +88,14 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
     action: string;
   }>>([]);
   const [spokenText, setSpokenText] = useState<string>("");
+
+  // Consultation mode state
+  const [conversationHistory, setConversationHistory] = useState<Array<{
+    role: 'user' | 'assistant';
+    content: string;
+  }>>([]);
+  const [hasStartedConsultation, setHasStartedConsultation] = useState(false);
+  const [isInitialQuestion, setIsInitialQuestion] = useState(true);
 
   // Load wake word setting from localStorage (default: disabled)
   // Always start with false to match SSR, then update from localStorage on client
@@ -398,7 +426,12 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
         console.log("[Voice] Recording stopped - using language:", currentLang);
 
         try {
-          await processAudio(audioBlob);
+          // Use consultation mode processing if in consultation mode
+          if (mode === "consultation") {
+            await processConsultationAudio(audioBlob);
+          } else {
+            await processAudio(audioBlob);
+          }
         } catch (error) {
           console.error("[Voice] Error processing audio:", error);
           setState("idle");
@@ -1139,6 +1172,142 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
     }
   };
 
+  // Process audio in consultation mode - conversational flow
+  const processConsultationAudio = async (audioBlob: Blob) => {
+    try {
+      // Check if dialog is still open
+      if (!isDialogOpenRef.current) {
+        console.log("[Consultation] Dialog closed, aborting audio processing");
+        return;
+      }
+
+      // Step 1: Transcribe with Whisper
+      setState("transcribing");
+
+      const getCookie = (name: string) => {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop()?.split(';').shift();
+        return null;
+      };
+
+      const currentLang = getCookie('language') || localStorage.getItem('language') || 'en';
+      console.log("[Consultation] Current language:", currentLang);
+
+      const formData = new FormData();
+      formData.append("audio", audioBlob, "recording.webm");
+      formData.append("language", currentLang);
+
+      const transcribeRes = await fetch("/api/voice/transcribe", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!isDialogOpenRef.current) {
+        console.log("[Consultation] Dialog closed during transcription, aborting");
+        return;
+      }
+
+      if (!transcribeRes.ok) {
+        throw new Error("Transcription failed");
+      }
+
+      const { text } = await transcribeRes.json();
+      setTranscript(text);
+      console.log("[Consultation] User said:", text);
+
+      // Check if this is a decline to the initial question
+      if (isInitialQuestion) {
+        const lowerText = text.toLowerCase().trim();
+        const isDecline =
+          // French negatives
+          lowerText === 'non' ||
+          lowerText === 'non merci' ||
+          lowerText === 'non ça va' ||
+          lowerText === 'ça va' ||
+          lowerText === 'non pas maintenant' ||
+          lowerText === 'pas maintenant' ||
+          lowerText === 'pas besoin' ||
+          // English negatives
+          lowerText === 'no' ||
+          lowerText === 'no thanks' ||
+          lowerText === 'no thank you' ||
+          lowerText === "i'm good" ||
+          lowerText === 'not now' ||
+          lowerText === 'not right now';
+
+        if (isDecline) {
+          console.log("[Consultation] Chef declined initial question, closing panel");
+          setState("idle");
+          setIsOpen(false);
+          return;
+        }
+
+        // After first response, no longer the initial question
+        setIsInitialQuestion(false);
+      }
+
+      // Step 2: Send to conversation API
+      setState("parsing");
+
+      const newMessages = [
+        ...conversationHistory,
+        { role: 'user' as const, content: text }
+      ];
+
+      const conversationRes = await fetch("/api/voice/conversation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: newMessages,
+          language: currentLang,
+          initialContext
+        }),
+      });
+
+      if (!isDialogOpenRef.current) {
+        console.log("[Consultation] Dialog closed during conversation, aborting");
+        return;
+      }
+
+      if (!conversationRes.ok) {
+        throw new Error("Conversation API failed");
+      }
+
+      const { message } = await conversationRes.json();
+      console.log("[Consultation] Assistant response:", message);
+
+      // Update conversation history
+      setConversationHistory([
+        ...newMessages,
+        { role: 'assistant', content: message }
+      ]);
+
+      // Step 3: Speak the response
+      await speakText(message);
+
+      if (!isDialogOpenRef.current) {
+        console.log("[Consultation] Dialog closed after speaking, aborting");
+        return;
+      }
+
+      // Step 4: Automatically listen for next question
+      setState("idle");
+
+      // Brief pause before listening again
+      setTimeout(() => {
+        if (isDialogOpenRef.current) {
+          startRecording();
+        }
+      }, 500);
+
+    } catch (error) {
+      console.error("[Consultation] Error:", error);
+      toast.error(t('voice.toast.error') || "Something went wrong");
+      setState("idle");
+    }
+  };
+
   // Speak text using OpenAI TTS with mobile/iOS compatibility
   const speakText = async (text: string) => {
     try {
@@ -1147,10 +1316,15 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
 
       console.log("[Voice] Speaking text:", text);
 
+      // Select voice based on language for better personality
+      // French: "nova" - energetic, clear and engaging (original voice)
+      // English: "nova" - energetic, clear and engaging
+      const voice = 'nova';
+
       const response = await fetch("/api/voice/speak", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, voice: "nova", language }),
+        body: JSON.stringify({ text, voice, language }),
       });
 
       if (!response.ok) {
@@ -1491,6 +1665,9 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
       setParsedCommand(null);
       setPendingProductsQueue([]);
       setSpokenText("");
+      setHasStartedConsultation(false);
+      setConversationHistory([]);
+      setIsInitialQuestion(true);
     }
     setIsOpen(open);
   };
@@ -1507,21 +1684,103 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
     isDialogOpenRef.current = isOpen;
   }, [isOpen]);
 
-  // Auto-start recording when dialog opens
+  // Auto-start consultation or recording when dialog opens
   useEffect(() => {
     if (isOpen && state === "idle" && !isClosingRef.current && !isRecordingRef.current) {
-      // Small delay before starting recording
-      const timer = setTimeout(() => {
-        // Double check we're not closing and not already recording
-        if (!isClosingRef.current && !isRecordingRef.current && state === "idle") {
-          console.log("[Voice] Auto-starting recording after dialog open");
-          startRecording();
-        }
-      }, 800); // 800ms delay for smooth UX
+      // For consultation mode, start with Cocorico speaking
+      if (mode === "consultation" && !hasStartedConsultation) {
+        const timer = setTimeout(async () => {
+          if (!isClosingRef.current && state === "idle") {
+            console.log("[Consultation] Auto-starting consultation greeting");
+            setHasStartedConsultation(true);
 
-      return () => clearTimeout(timer);
+            // Get initial greeting from the conversation API
+            try {
+              setState("parsing");
+
+              const getCookie = (name: string) => {
+                const value = `; ${document.cookie}`;
+                const parts = value.split(`; ${name}=`);
+                if (parts.length === 2) return parts.pop()?.split(';').shift();
+                return null;
+              };
+
+              const currentLang = getCookie('language') || localStorage.getItem('language') || 'en';
+
+              // Create a prompt that asks for a SHORT, professional greeting with action
+              const initialPrompt = currentLang === 'fr'
+                ? `Vous êtes Cocorico, le sous-chef professionnel. Le chef vient de lire son briefing : "${initialContext?.briefSummary || ''}".
+
+CONSIGNE (2-3 phrases MAX, professionnel mais direct) :
+1. Saluez brièvement ("Chef" ou "Bonsoir Chef")
+2. Identifiez LA priorité ou l'action la plus importante (ne répétez pas tout !)
+3. Proposez UNE aide concrète sous forme de question (exemple: "Voulez-vous que je vous détaille les plats pour le saumon ?" ou "Je peux calculer vos capacités de production ?")
+
+Ton : Professionnel, efficace, respectueux de la hiérarchie. Comme un bon sous-chef qui brief son chef rapidement avant le service. Pas d'exclamation excessive, pas d'émojis. Allez droit au but avec expertise.`
+                : `You are Cocorico, the professional sous-chef. The chef just read their briefing: "${initialContext?.briefSummary || ''}".
+
+INSTRUCTION (2-3 sentences MAX, professional but direct):
+1. Brief greeting ("Chef" or "Good evening Chef")
+2. Identify THE priority or most important action (don't repeat everything!)
+3. Offer ONE concrete help as a question (example: "Would you like me to detail the salmon dishes?" or "Should I calculate your production capacity?")
+
+Tone: Professional, efficient, respectful of hierarchy. Like a good sous-chef briefing their chef quickly before service. No excessive exclamation, no emojis. Get straight to the point with expertise.`;
+
+              const conversationRes = await fetch("/api/voice/conversation", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  messages: [{ role: 'user', content: initialPrompt }],
+                  language: currentLang,
+                  initialContext
+                }),
+              });
+
+              if (!conversationRes.ok) {
+                throw new Error("Conversation API failed");
+              }
+
+              const { message } = await conversationRes.json();
+              console.log("[Consultation] Initial greeting:", message);
+
+              // Update conversation history
+              setConversationHistory([
+                { role: 'user', content: initialPrompt },
+                { role: 'assistant', content: message }
+              ]);
+
+              // Speak the greeting
+              await speakText(message);
+
+              // After speaking, start listening for user's question
+              setState("idle");
+              setTimeout(() => {
+                if (isDialogOpenRef.current && !isClosingRef.current) {
+                  startRecording();
+                }
+              }, 500);
+
+            } catch (error) {
+              console.error("[Consultation] Error starting consultation:", error);
+              setState("idle");
+            }
+          }
+        }, 800);
+
+        return () => clearTimeout(timer);
+      } else if (mode === "inventory") {
+        // For inventory mode, start recording directly
+        const timer = setTimeout(() => {
+          if (!isClosingRef.current && !isRecordingRef.current && state === "idle") {
+            console.log("[Voice] Auto-starting recording after dialog open");
+            startRecording();
+          }
+        }, 800);
+
+        return () => clearTimeout(timer);
+      }
     }
-  }, [isOpen, state, startRecording]);
+  }, [isOpen, state, startRecording, mode, hasStartedConsultation, initialContext, speakText]);
 
   // Wake word detection using browser's SpeechRecognition API
   useEffect(() => {
@@ -1760,10 +2019,16 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
           <div className="relative z-10 h-full flex flex-col items-center p-4 sm:p-6 md:p-8 overflow-y-auto overscroll-contain">
             <DialogHeader className="mb-4 sm:mb-6 text-center flex-shrink-0">
               <DialogTitle className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-[#f1faee] to-[#a8dadc] bg-clip-text text-transparent mb-2 sm:mb-3 animate-in slide-in-from-top duration-700">
-                {t('voice.title')}
+                {mode === "consultation"
+                  ? (language === 'fr' ? 'Cocorico à votre écoute' : 'Cocorico Consultation')
+                  : t('voice.title')}
               </DialogTitle>
               <DialogDescription className="text-sm sm:text-base md:text-lg text-[#f1faee]/90 animate-in slide-in-from-top duration-700 delay-150">
-                {t('voice.description')}
+                {mode === "consultation"
+                  ? (language === 'fr'
+                      ? 'Posez-moi toutes vos questions sur vos opérations du jour'
+                      : 'Ask me anything about your daily operations')
+                  : t('voice.description')}
               </DialogDescription>
             </DialogHeader>
 

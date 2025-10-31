@@ -42,7 +42,7 @@ export default async function TodayPage() {
       />
 
       {/* Daily Brief - Hero insight */}
-      <DailyBrief summary={insights.briefSummary} isAllGood={isAllGood} />
+      <DailyBrief summary={insights.briefSummary} isAllGood={isAllGood} insights={insights} />
 
       {/* Smart Grid Layout - Only show cards with content */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
