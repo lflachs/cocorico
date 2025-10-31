@@ -17,7 +17,7 @@ type LanguageContextType = {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguage] = useState<Language>('en');
+  const [language, setLanguage] = useState<Language>('fr'); // Default to French
   const [isInitialized, setIsInitialized] = useState(false);
 
   // Load from cookie first, then localStorage, then browser language (run only once)
@@ -33,9 +33,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     const cookieLang = getCookie('language') as Language;
     const storedLang = localStorage.getItem('language') as Language;
 
-    // Detect browser language if no preference stored
+    // Detect browser language if no preference stored - default to French
     const browserLang = navigator.language.toLowerCase();
-    const detectedLang: Language = browserLang.startsWith('fr') ? 'fr' : 'en';
+    const detectedLang: Language = browserLang.startsWith('en') ? 'en' : 'fr';
 
     const preferredLang = cookieLang || storedLang || detectedLang;
 

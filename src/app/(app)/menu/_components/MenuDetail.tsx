@@ -378,10 +378,8 @@ export function MenuDetail({ menuId, onBack }: MenuDetailProps) {
                 <div className="flex items-center gap-3">
                   <CardTitle>{menu.name}</CardTitle>
                   <span
-                    className={`text-xs px-2 py-1 rounded ${
-                      menu.isActive
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-600'
+                    className={`rounded px-2 py-1 text-xs ${
+                      menu.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
                     }`}
                   >
                     {menu.isActive ? 'Active' : 'Inactive'}
@@ -391,7 +389,7 @@ export function MenuDetail({ menuId, onBack }: MenuDetailProps) {
                   variant="outline"
                   size="sm"
                   onClick={handleEditDetails}
-                  className="gap-2 cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                  className="hover:bg-primary hover:text-primary-foreground cursor-pointer gap-2 transition-colors"
                 >
                   <Edit2 className="h-4 w-4" />
                   {t('menu.edit')}
@@ -400,8 +398,8 @@ export function MenuDetail({ menuId, onBack }: MenuDetailProps) {
               {menu.description && <CardDescription>{menu.description}</CardDescription>}
             </>
           ) : (
-            <div className="space-y-4 border-2 border-primary rounded-lg p-4 bg-primary/5">
-              <div className="flex items-center justify-between mb-2">
+            <div className="border-primary bg-primary/5 space-y-4 rounded-lg border-2 p-4">
+              <div className="mb-2 flex items-center justify-between">
                 <h3 className="text-lg font-semibold">{t('menu.menuForm.title.edit')}</h3>
                 <div className="flex gap-2">
                   <Button
@@ -409,7 +407,7 @@ export function MenuDetail({ menuId, onBack }: MenuDetailProps) {
                     size="sm"
                     onClick={handleCancelDetailsEdit}
                     disabled={savingDetails}
-                    className="gap-2 cursor-pointer hover:bg-destructive hover:text-destructive-foreground"
+                    className="hover:bg-destructive hover:text-destructive-foreground cursor-pointer gap-2"
                   >
                     <X className="h-4 w-4" />
                     Cancel
@@ -418,7 +416,7 @@ export function MenuDetail({ menuId, onBack }: MenuDetailProps) {
                     size="sm"
                     onClick={handleSaveDetails}
                     disabled={savingDetails || !detailsFormData.name.trim()}
-                    className="gap-2 cursor-pointer bg-primary hover:bg-primary/90"
+                    className="bg-primary hover:bg-primary/90 cursor-pointer gap-2"
                   >
                     {savingDetails ? (
                       <>
@@ -447,7 +445,7 @@ export function MenuDetail({ menuId, onBack }: MenuDetailProps) {
                     onChange={(e) =>
                       setDetailsFormData((prev) => ({ ...prev, name: e.target.value }))
                     }
-                    className="text-base cursor-text"
+                    className="cursor-text text-base"
                     disabled={savingDetails}
                   />
                 </div>
@@ -463,18 +461,16 @@ export function MenuDetail({ menuId, onBack }: MenuDetailProps) {
                       setDetailsFormData((prev) => ({ ...prev, description: e.target.value }))
                     }
                     rows={3}
-                    className="text-base resize-none cursor-text"
+                    className="cursor-text resize-none text-base"
                     disabled={savingDetails}
                   />
                 </div>
-                <div className="flex items-center justify-between p-3 border rounded-lg bg-background">
+                <div className="bg-background flex items-center justify-between rounded-lg border p-3">
                   <div className="space-y-0.5">
                     <Label htmlFor="menuActive" className="font-medium">
                       {t('menu.menuForm.isActive')}
                     </Label>
-                    <p className="text-sm text-muted-foreground">
-                      {t('menu.create.statusHint')}
-                    </p>
+                    <p className="text-muted-foreground text-sm">{t('menu.create.statusHint')}</p>
                   </div>
                   <Switch
                     id="menuActive"
@@ -494,13 +490,13 @@ export function MenuDetail({ menuId, onBack }: MenuDetailProps) {
           {/* Pricing Summary */}
           {!editingPricing ? (
             <div className="rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50 to-purple-50 p-4">
-              <div className="flex items-center justify-between mb-4">
+              <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-800">{t('menu.pricing.title')}</h3>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleEditPricing}
-                  className="gap-2 cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                  className="hover:bg-primary hover:text-primary-foreground cursor-pointer gap-2 transition-colors"
                 >
                   <Edit2 className="h-4 w-4" />
                   {t('menu.edit')}
@@ -546,8 +542,8 @@ export function MenuDetail({ menuId, onBack }: MenuDetailProps) {
               </div>
             </div>
           ) : (
-            <div className="rounded-lg border border-primary bg-gradient-to-r from-primary/5 to-secondary/5 p-6">
-              <div className="flex items-center justify-between mb-6">
+            <div className="border-primary from-primary/5 to-secondary/5 rounded-lg border bg-gradient-to-r p-6">
+              <div className="mb-6 flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-800">{t('menu.pricing.title')}</h3>
                 <div className="flex gap-2">
                   <Button
@@ -555,7 +551,7 @@ export function MenuDetail({ menuId, onBack }: MenuDetailProps) {
                     size="sm"
                     onClick={handleCancelPricingEdit}
                     disabled={savingPricing}
-                    className="gap-2 cursor-pointer hover:bg-destructive hover:text-destructive-foreground"
+                    className="hover:bg-destructive hover:text-destructive-foreground cursor-pointer gap-2"
                   >
                     <X className="h-4 w-4" />
                     Cancel
@@ -564,7 +560,7 @@ export function MenuDetail({ menuId, onBack }: MenuDetailProps) {
                     size="sm"
                     onClick={handleSavePricing}
                     disabled={savingPricing}
-                    className="gap-2 cursor-pointer bg-primary hover:bg-primary/90"
+                    className="bg-primary hover:bg-primary/90 cursor-pointer gap-2"
                   >
                     {savingPricing ? (
                       <>
@@ -587,26 +583,30 @@ export function MenuDetail({ menuId, onBack }: MenuDetailProps) {
                   <Label className="text-base font-semibold">
                     {t('menu.pricing.type')} <span className="text-destructive">*</span>
                   </Label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     {/* Prix Fixe Option */}
                     <button
                       type="button"
-                      onClick={() => setPricingFormData((prev) => ({ ...prev, pricingType: 'PRIX_FIXE' }))}
+                      onClick={() =>
+                        setPricingFormData((prev) => ({ ...prev, pricingType: 'PRIX_FIXE' }))
+                      }
                       disabled={savingPricing}
-                      className={`relative p-6 border-2 rounded-xl text-left transition-all cursor-pointer ${
+                      className={`relative cursor-pointer rounded-xl border-2 p-6 text-left transition-all ${
                         pricingFormData.pricingType === 'PRIX_FIXE'
                           ? 'border-primary bg-primary/5 shadow-md'
-                          : 'border-gray-200 hover:border-primary/50 hover:bg-gray-50'
+                          : 'hover:border-primary/50 border-gray-200 hover:bg-gray-50'
                       }`}
                     >
                       {pricingFormData.pricingType === 'PRIX_FIXE' && (
                         <div className="absolute top-4 right-4">
-                          <CheckCircle2 className="w-6 h-6 text-primary" />
+                          <CheckCircle2 className="text-primary h-6 w-6" />
                         </div>
                       )}
                       <div className="space-y-2">
-                        <div className="font-semibold text-lg">{t('menu.pricing.type.prixfixe')}</div>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
+                        <div className="text-lg font-semibold">
+                          {t('menu.pricing.type.prixfixe')}
+                        </div>
+                        <p className="text-muted-foreground text-sm leading-relaxed">
                           {t('menu.pricing.type.prixfixe.description')}
                         </p>
                       </div>
@@ -615,22 +615,24 @@ export function MenuDetail({ menuId, onBack }: MenuDetailProps) {
                     {/* Choice Option */}
                     <button
                       type="button"
-                      onClick={() => setPricingFormData((prev) => ({ ...prev, pricingType: 'CHOICE' }))}
+                      onClick={() =>
+                        setPricingFormData((prev) => ({ ...prev, pricingType: 'CHOICE' }))
+                      }
                       disabled={savingPricing}
-                      className={`relative p-6 border-2 rounded-xl text-left transition-all cursor-pointer ${
+                      className={`relative cursor-pointer rounded-xl border-2 p-6 text-left transition-all ${
                         pricingFormData.pricingType === 'CHOICE'
                           ? 'border-primary bg-primary/5 shadow-md'
-                          : 'border-gray-200 hover:border-primary/50 hover:bg-gray-50'
+                          : 'hover:border-primary/50 border-gray-200 hover:bg-gray-50'
                       }`}
                     >
                       {pricingFormData.pricingType === 'CHOICE' && (
                         <div className="absolute top-4 right-4">
-                          <CheckCircle2 className="w-6 h-6 text-primary" />
+                          <CheckCircle2 className="text-primary h-6 w-6" />
                         </div>
                       )}
                       <div className="space-y-2">
-                        <div className="font-semibold text-lg">{t('menu.pricing.type.choice')}</div>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
+                        <div className="text-lg font-semibold">{t('menu.pricing.type.choice')}</div>
+                        <p className="text-muted-foreground text-sm leading-relaxed">
                           {t('menu.pricing.type.choice.description')}
                         </p>
                       </div>
@@ -639,14 +641,16 @@ export function MenuDetail({ menuId, onBack }: MenuDetailProps) {
                 </div>
 
                 {/* Pricing Details */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {/* Fixed Price */}
                   <div className="space-y-3">
                     <Label htmlFor="editFixedPrice" className="text-base font-semibold">
                       {t('menu.pricing.menuPrice')} (€) <span className="text-destructive">*</span>
                     </Label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-lg">€</span>
+                      <span className="text-muted-foreground absolute top-1/2 left-3 -translate-y-1/2 text-lg">
+                        €
+                      </span>
                       <Input
                         id="editFixedPrice"
                         type="number"
@@ -660,7 +664,7 @@ export function MenuDetail({ menuId, onBack }: MenuDetailProps) {
                             fixedPrice: parseFloat(e.target.value) || 0,
                           }))
                         }
-                        className="text-base cursor-text pl-8"
+                        className="cursor-text pl-8 text-base"
                         disabled={savingPricing}
                       />
                     </div>
@@ -670,7 +674,8 @@ export function MenuDetail({ menuId, onBack }: MenuDetailProps) {
                   {pricingFormData.pricingType === 'CHOICE' && (
                     <div className="space-y-3">
                       <Label htmlFor="editNumberOfCourses" className="text-base font-semibold">
-                        {t('menu.pricing.numberOfCourses')} <span className="text-destructive">*</span>
+                        {t('menu.pricing.numberOfCourses')}{' '}
+                        <span className="text-destructive">*</span>
                       </Label>
                       <Input
                         id="editNumberOfCourses"
@@ -684,10 +689,10 @@ export function MenuDetail({ menuId, onBack }: MenuDetailProps) {
                             numberOfCourses: parseInt(e.target.value) || 2,
                           }))
                         }
-                        className="text-base cursor-text"
+                        className="cursor-text text-base"
                         disabled={savingPricing}
                       />
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-muted-foreground text-sm">
                         {t('menu.pricing.numberOfCourses.hint')}
                       </p>
                     </div>
@@ -817,7 +822,7 @@ export function MenuDetail({ menuId, onBack }: MenuDetailProps) {
             <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform" />
             <Input
               type="text"
-              placeholder="Search dishes..."
+              placeholder={t('menu.search') || 'Search dishes...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="cursor-text pl-10"

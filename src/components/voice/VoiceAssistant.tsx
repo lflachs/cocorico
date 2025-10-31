@@ -8,6 +8,15 @@ import { toast } from "sonner";
 import { Mic, MicOff, Loader2, Volume2, CheckCircle, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/providers/LanguageProvider";
+import {
+  getSpokenUnit,
+  getSpokenPrice,
+  getCurrentLanguage,
+  playNotificationSound as playSound,
+  getBestAudioMimeType,
+  vibrate,
+  VibrationPatterns
+} from "@/lib/voice-utils";
 
 // Lazy load the SiriWaveform component for better initial load performance
 const SiriWaveform = lazy(() => import("./SiriWaveform").then(module => ({ default: module.SiriWaveform })));
@@ -74,15 +83,49 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
     }
   }, []);
 
-  // Save wake word setting to localStorage whenever it changes
+  // Sync state when localStorage changes (e.g., from PermissionManager or other tabs)
   useEffect(() => {
-    localStorage.setItem('voiceAssistantWakeWordEnabled', String(enableWakeWord));
+    const handleStorageChange = () => {
+      const stored = localStorage.getItem('voiceAssistantWakeWordEnabled');
+      if (stored !== null) {
+        const newValue = stored === 'true';
+        if (newValue !== enableWakeWord) {
+          setEnableWakeWord(newValue);
+          // If disabling, stop wake word listening
+          if (!newValue && wakeWordRecognitionRef.current) {
+            try {
+              wakeWordRecognitionRef.current.abort();
+            } catch (e) {
+              console.log("[WakeWord] Error stopping:", e);
+            }
+            wakeWordRecognitionRef.current = null;
+            setIsWakeWordListening(false);
+            wakeWordInitializedRef.current = false;
+          }
+        }
+      }
+    };
+
+    // Listen for storage changes from other tabs
+    window.addEventListener('storage', handleStorageChange);
+
+    // Also check periodically in case changes happen in the same tab
+    const interval = setInterval(handleStorageChange, 1000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
   }, [enableWakeWord]);
 
   // Toggle wake word function
   const toggleWakeWord = useCallback(() => {
-    setEnableWakeWord(prev => !prev);
-    if (enableWakeWord) {
+    const newValue = !enableWakeWord;
+    setEnableWakeWord(newValue);
+    // Save to localStorage immediately
+    localStorage.setItem('voiceAssistantWakeWordEnabled', String(newValue));
+
+    if (!newValue) {
       // If disabling, stop wake word listening
       if (wakeWordRecognitionRef.current) {
         try {
@@ -118,79 +161,9 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
   const notificationAudioContextRef = useRef<AudioContext | null>(null);
   const isClosingRef = useRef<boolean>(false);
 
-  // Helper function to convert unit abbreviations to spoken form
-  const getSpokenUnit = (unit: string, quantity: number) => {
-    const isFrench = language === 'fr';
-    const isPlural = quantity > 1;
-
-    switch (unit) {
-      case 'KG':
-        return isFrench
-          ? (isPlural ? 'kilogrammes' : 'kilogramme')
-          : (isPlural ? 'kilograms' : 'kilogram');
-      case 'L':
-        return isFrench
-          ? (isPlural ? 'litres' : 'litre')
-          : (isPlural ? 'liters' : 'liter');
-      case 'PC':
-        return isFrench
-          ? (isPlural ? 'pièces' : 'pièce')
-          : (isPlural ? 'pieces' : 'piece');
-      default:
-        return unit;
-    }
-  };
-
-  // Helper function to convert price to spoken form
-  const getSpokenPrice = (price: number, isFrench: boolean) => {
-    // If less than 1 euro, speak in cents
-    if (price < 1) {
-      const cents = Math.round(price * 100);
-      if (isFrench) {
-        return cents === 1 ? "1 centime" : `${cents} centimes`;
-      } else {
-        return cents === 1 ? "1 cent" : `${cents} cents`;
-      }
-    }
-
-    // If exactly a whole number of euros
-    const euros = Math.floor(price);
-    const cents = Math.round((price - euros) * 100);
-
-    if (cents === 0) {
-      if (isFrench) {
-        return euros === 1 ? "1 euro" : `${euros} euros`;
-      } else {
-        return euros === 1 ? "1 euro" : `${euros} euros`;
-      }
-    }
-
-    // If has both euros and cents
-    if (isFrench) {
-      const euroText = euros === 1 ? "1 euro" : `${euros} euros`;
-      const centText = cents === 1 ? "1 centime" : `${cents} centimes`;
-      return `${euroText} ${centText}`;
-    } else {
-      const euroText = euros === 1 ? "1 euro" : `${euros} euros`;
-      const centText = cents === 1 ? "1 cent" : `${cents} cents`;
-      return `${euroText} ${centText}`;
-    }
-  };
-
-  // Play notification sound when dialog opens
+  // Wrapper for notification sound that respects user's sound preference
   const playNotificationSound = useCallback(() => {
-    try {
-      const audio = new Audio('/sounds/cocorico-notification.mp3');
-      audio.volume = 0.5;
-      audio.play().catch((error) => {
-        console.error("[Voice] Error playing notification sound:", error);
-        // Silently fail - notification sound is not critical
-      });
-      console.log("[Voice] Notification sound played");
-    } catch (error) {
-      console.error("[Voice] Error playing notification sound:", error);
-      // Silently fail - notification sound is not critical
-    }
+    playSound();
   }, []);
 
   // Stop everything and cleanup all resources
@@ -312,24 +285,8 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaStreamRef.current = stream;
 
-      // Try to use the best supported audio format
-      // Prefer formats that OpenAI Whisper supports well
-      const mimeTypes = [
-        'audio/webm;codecs=opus',
-        'audio/webm',
-        'audio/mp4',
-        'audio/ogg;codecs=opus',
-        'audio/wav',
-      ];
-
-      let selectedMimeType = '';
-      for (const mimeType of mimeTypes) {
-        if (MediaRecorder.isTypeSupported(mimeType)) {
-          selectedMimeType = mimeType;
-          console.log('[Voice] Using MIME type:', mimeType);
-          break;
-        }
-      }
+      // Use optimized MIME type selection
+      const selectedMimeType = getBestAudioMimeType();
 
       const mediaRecorder = selectedMimeType
         ? new MediaRecorder(stream, { mimeType: selectedMimeType })
@@ -457,8 +414,9 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
       mediaRecorder.start();
       setState("recording");
 
-      // Play notification sound when listening starts
+      // Play notification sound and vibrate when listening starts
       playNotificationSound();
+      vibrate(VibrationPatterns.startListening);
 
       toast.info("Listening... Speak your command");
 
@@ -478,6 +436,7 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
       mediaRecorderRef.current.stop();
       setState("transcribing");
       setAudioLevel(0); // Reset audio level
+      vibrate(VibrationPatterns.stopListening);
     }
   }, []);
 
@@ -503,21 +462,8 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       console.log("[Voice] Microphone access granted");
 
-      const mimeTypes = [
-        'audio/webm;codecs=opus',
-        'audio/webm',
-        'audio/mp4',
-        'audio/ogg;codecs=opus',
-        'audio/wav',
-      ];
-
-      let selectedMimeType = '';
-      for (const mimeType of mimeTypes) {
-        if (MediaRecorder.isTypeSupported(mimeType)) {
-          selectedMimeType = mimeType;
-          break;
-        }
-      }
+      // Use optimized MIME type selection
+      const selectedMimeType = getBestAudioMimeType();
 
       const mediaRecorder = selectedMimeType
         ? new MediaRecorder(stream, { mimeType: selectedMimeType })
@@ -603,6 +549,7 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
 
         if (playNotification) {
           playNotificationSound();
+          vibrate(VibrationPatterns.startListening);
         }
 
         // Wait for notification to finish before starting VAD
@@ -780,8 +727,11 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
       // Trigger inventory refresh
       onInventoryUpdate?.();
 
+      // Success vibration
+      vibrate(VibrationPatterns.success);
+
       // Build success message with spoken units
-      const spokenUnit = getSpokenUnit(product.unit, product.quantity);
+      const spokenUnit = getSpokenUnit(product.unit, product.quantity, currentLang);
       const spokenPrice = getSpokenPrice(product.unitPrice, currentLang === 'fr');
       const successMessage = currentLang === 'fr'
         ? `Produit ${product.name} créé avec ${product.quantity} ${spokenUnit} à ${spokenPrice}.`
@@ -793,6 +743,7 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
       console.log("[Voice] Product created directly, no queue management needed");
     } catch (error) {
       console.error("[Voice] Error creating product directly:", error);
+      vibrate(VibrationPatterns.error);
       toast.error("Failed to create product");
       throw error; // Re-throw so caller can handle
     }
@@ -831,8 +782,11 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
       // Trigger inventory refresh
       onInventoryUpdate?.();
 
+      // Success vibration
+      vibrate(VibrationPatterns.success);
+
       // Build success message with spoken units
-      const spokenUnit = getSpokenUnit(productData.unit, productData.quantity);
+      const spokenUnit = getSpokenUnit(productData.unit, productData.quantity, currentLang);
       let successMessage = '';
       if (price !== null) {
         const spokenPrice = getSpokenPrice(price, currentLang === 'fr');
@@ -883,6 +837,7 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
       }
     } catch (error) {
       console.error("[Voice] Error creating product:", error);
+      vibrate(VibrationPatterns.error);
       toast.error("Failed to create product");
       setState("idle");
     }
@@ -1384,7 +1339,7 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
 
         if (response.ok) {
           onInventoryUpdate?.();
-          const spokenUnit = getSpokenUnit(mismatch.unit || "PC", mismatch.quantity);
+          const spokenUnit = getSpokenUnit(mismatch.unit || "PC", mismatch.quantity, currentLang);
           const successMessage = currentLang === 'fr'
             ? `Quantité mise à jour. Vous avez maintenant ${mismatch.quantity} ${spokenUnit} de ${mismatch.name}.`
             : `Quantity updated. You now have ${mismatch.quantity} ${spokenUnit} of ${mismatch.name}.`;
@@ -1463,7 +1418,7 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
         let successMessage = '';
         if (results.length === 1) {
           const result = results[0];
-          const spokenUnit = getSpokenUnit(result.unit || "PC", result.quantity);
+          const spokenUnit = getSpokenUnit(result.unit || "PC", result.quantity, currentLang);
           successMessage = currentLang === 'fr'
             ? `Terminé! Vous avez maintenant ${result.quantity} ${spokenUnit} de ${result.name}.`
             : `Done! You now have ${result.quantity} ${spokenUnit} of ${result.name}.`;
@@ -1590,7 +1545,14 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
       return;
     }
 
-    wakeWordInitializedRef.current = true;
+    // Delay wake word initialization to avoid blocking initial page load
+    // This improves perceived performance
+    const initTimeout = setTimeout(() => {
+      if (!enableWakeWord || wakeWordInitializedRef.current) {
+        return;
+      }
+
+      wakeWordInitializedRef.current = true;
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = false;
@@ -1649,21 +1611,22 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
       }
     };
 
-    // Start wake word detection
-    try {
-      recognition.start();
-      wakeWordRecognitionRef.current = recognition;
-      setIsWakeWordListening(true);
-      console.log("[WakeWord] Wake word detection initialized");
-    } catch (error) {
-      console.error("[WakeWord] Failed to start:", error);
-      wakeWordInitializedRef.current = false;
-    }
+      // Start wake word detection
+      try {
+        recognition.start();
+        wakeWordRecognitionRef.current = recognition;
+        setIsWakeWordListening(true);
+        console.log("[WakeWord] Wake word detection initialized");
+      } catch (error) {
+        console.error("[WakeWord] Failed to start:", error);
+        wakeWordInitializedRef.current = false;
+      }
+    }, 2000); // Delay 2 seconds for better initial load performance
 
     // Cleanup on unmount
     return () => {
+      clearTimeout(initTimeout);
       if (wakeWordRecognitionRef.current) {
-        isRunning = false;
         try {
           wakeWordRecognitionRef.current.abort();
         } catch (e) {
@@ -1734,7 +1697,7 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
     <>
       {/* Floating Voice Button with gradient animation - Brand Colors */}
       <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 group">
-        {/* Wake word toggle - only visible on hover and when dialog is closed */}
+        {/* Wake word toggle - visible on hover and when dialog is closed */}
         {!isOpen && (
           <div className="absolute bottom-full right-0 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none group-hover:pointer-events-auto">
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#1d3557]/90 backdrop-blur-lg border border-white/10 shadow-lg">
@@ -1782,6 +1745,7 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
               : "bg-gradient-to-r from-[#1d3557]/90 via-[#457b9d]/90 to-[#1d3557]/90 hover:shadow-xl hover:scale-105 shadow-[#1d3557]/30 border border-white/20"
           )}
           onClick={() => setIsOpen(true)}
+          onTouchStart={() => vibrate(VibrationPatterns.medium)}
         >
           <Mic className="h-5 w-5 sm:h-6 sm:w-6 relative z-10 text-white" />
         </Button>
@@ -1885,7 +1849,7 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
                       {parsedCommand.action}
                     </Badge>
                     {parsedCommand.products.map((prod, idx) => {
-                      const spokenUnit = getSpokenUnit(prod.unit || "PC", prod.quantity);
+                      const spokenUnit = getSpokenUnit(prod.unit || "PC", prod.quantity, language);
                       return (
                         <Badge
                           key={idx}
@@ -1937,6 +1901,7 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
                     onClick={startRecording}
                     className="flex-1 bg-gradient-to-r from-[#1d3557]/90 via-[#457b9d]/90 to-[#1d3557]/90 hover:from-[#1d3557] hover:via-[#457b9d] hover:to-[#1d3557] hover:shadow-xl hover:shadow-[#457b9d]/30 transition-all duration-500 hover:scale-105 text-white text-base sm:text-lg py-4 sm:py-6 rounded-xl sm:rounded-2xl border border-white/20 backdrop-blur-sm"
                     size="lg"
+                    onTouchStart={() => vibrate(VibrationPatterns.light)}
                   >
                     <Mic className="mr-2 sm:mr-3 h-5 w-5 sm:h-6 sm:w-6" />
                     <span className="hidden sm:inline">Start Speaking</span>
@@ -1949,6 +1914,7 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
                     onClick={stopRecording}
                     className="flex-1 bg-[#e63946]/90 hover:bg-[#e63946] hover:shadow-xl hover:shadow-[#e63946]/50 animate-pulse transition-all duration-500 text-white text-base sm:text-lg py-4 sm:py-6 rounded-xl sm:rounded-2xl border border-white/20 backdrop-blur-sm"
                     size="lg"
+                    onTouchStart={() => vibrate(VibrationPatterns.light)}
                   >
                     <MicOff className="mr-2 sm:mr-3 h-5 w-5 sm:h-6 sm:w-6" />
                     Stop
@@ -1961,6 +1927,7 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
                       onClick={handleConfirm}
                       className="flex-1 bg-[#457b9d]/90 hover:bg-[#457b9d] hover:shadow-xl hover:shadow-[#457b9d]/40 transition-all duration-500 hover:scale-105 text-white text-base sm:text-lg py-4 sm:py-6 rounded-xl sm:rounded-2xl border border-white/20 backdrop-blur-sm"
                       size="lg"
+                      onTouchStart={() => vibrate(VibrationPatterns.medium)}
                     >
                       <CheckCircle className="mr-2 sm:mr-3 h-5 w-5 sm:h-6 sm:w-6" />
                       Confirm
@@ -1969,6 +1936,7 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
                       onClick={handleCancel}
                       className="flex-1 bg-white/5 hover:bg-white/10 border border-white/20 backdrop-blur-sm transition-all duration-500 hover:scale-105 text-[#f1faee] text-base sm:text-lg py-4 sm:py-6 rounded-xl sm:rounded-2xl"
                       size="lg"
+                      onTouchStart={() => vibrate(VibrationPatterns.medium)}
                     >
                       <XCircle className="mr-2 sm:mr-3 h-5 w-5 sm:h-6 sm:w-6" />
                       Cancel

@@ -1,14 +1,16 @@
 'use client';
 
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useState, lazy, Suspense } from 'react';
 import { LanguageProvider } from '@/providers/LanguageProvider';
 import { Toaster } from '@/components/ui/sonner';
 import { MobileMenuToggle } from '@/components/layout/MobileMenuToggle';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { MobileHeader } from '@/components/layout/MobileHeader';
-import { VoiceAssistant } from '@/components/voice/VoiceAssistant';
 import { PermissionManager } from '@/components/PermissionManager';
 import { useRouter } from 'next/navigation';
+
+// Lazy load VoiceAssistant for better initial page load performance
+const VoiceAssistant = lazy(() => import('@/components/voice/VoiceAssistant').then(module => ({ default: module.VoiceAssistant })));
 
 /**
  * App Layout
@@ -35,8 +37,10 @@ function AppContent({ children }: { children: ReactNode }) {
         </main>
       </div>
 
-      {/* Global Voice Assistant */}
-      <VoiceAssistant onInventoryUpdate={() => router.refresh()} />
+      {/* Global Voice Assistant - Lazy loaded for performance */}
+      <Suspense fallback={null}>
+        <VoiceAssistant onInventoryUpdate={() => router.refresh()} />
+      </Suspense>
 
       {/* Permission Manager for PWA features */}
       <PermissionManager />
