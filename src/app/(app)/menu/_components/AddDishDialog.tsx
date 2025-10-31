@@ -124,9 +124,8 @@ export function AddDishDialog({ open, onOpenChange, sectionId, onDishAdded }: Ad
     try {
       const { addDishToSectionAction } = await import('@/lib/actions/menu.actions');
 
-      const priceOverrideValue = priceOverride && parseFloat(priceOverride) > 0
-        ? parseFloat(priceOverride)
-        : undefined;
+      const priceOverrideValue =
+        priceOverride && parseFloat(priceOverride) > 0 ? parseFloat(priceOverride) : undefined;
 
       const result = await addDishToSectionAction(
         sectionId,
@@ -163,7 +162,7 @@ export function AddDishDialog({ open, onOpenChange, sectionId, onDishAdded }: Ad
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
         {step === 'choice' ? (
           // Step 1: Choose to create new or select existing
           <>
@@ -174,19 +173,19 @@ export function AddDishDialog({ open, onOpenChange, sectionId, onDishAdded }: Ad
               </DialogDescription>
             </DialogHeader>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8 mb-4">
+            <div className="mt-8 mb-4 grid grid-cols-1 gap-6 md:grid-cols-2">
               {/* Create New Dish */}
               <Card
-                className="cursor-pointer hover:border-primary hover:shadow-lg transition-all group h-full"
+                className="hover:border-primary group h-full cursor-pointer transition-all hover:shadow-lg"
                 onClick={handleCreateNew}
               >
-                <CardContent className="p-8 text-center space-y-4 h-full flex flex-col items-center justify-center">
-                  <div className="w-20 h-20 mx-auto bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Plus className="w-10 h-10 text-white" />
+                <CardContent className="flex h-full flex-col items-center justify-center space-y-4 p-8 text-center">
+                  <div className="from-primary to-secondary mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br transition-transform group-hover:scale-110">
+                    <Plus className="h-10 w-10 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-xl mb-2">{t('menu.createDish')}</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <h3 className="mb-2 text-xl font-semibold">{t('menu.createDish')}</h3>
+                    <p className="text-muted-foreground text-sm">
                       Create a brand new dish with ingredients and pricing
                     </p>
                   </div>
@@ -195,16 +194,16 @@ export function AddDishDialog({ open, onOpenChange, sectionId, onDishAdded }: Ad
 
               {/* Add Existing Dish */}
               <Card
-                className="cursor-pointer hover:border-primary hover:shadow-lg transition-all group h-full"
+                className="hover:border-primary group h-full cursor-pointer transition-all hover:shadow-lg"
                 onClick={handleSelectExisting}
               >
-                <CardContent className="p-8 text-center space-y-4 h-full flex flex-col items-center justify-center">
-                  <div className="w-20 h-20 mx-auto bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <ChefHat className="w-10 h-10 text-white" />
+                <CardContent className="flex h-full flex-col items-center justify-center space-y-4 p-8 text-center">
+                  <div className="from-primary to-secondary mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br transition-transform group-hover:scale-110">
+                    <ChefHat className="h-10 w-10 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-xl mb-2">{t('menu.selectExisting')}</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <h3 className="mb-2 text-xl font-semibold">{t('menu.selectExisting')}</h3>
+                    <p className="text-muted-foreground text-sm">
                       Choose from your existing dishes to add to this menu
                     </p>
                   </div>
@@ -217,32 +216,30 @@ export function AddDishDialog({ open, onOpenChange, sectionId, onDishAdded }: Ad
           <>
             <DialogHeader>
               <DialogTitle className="text-2xl">{t('menu.selectExisting')}</DialogTitle>
-              <DialogDescription>
-                Search and select a dish to add to this section
-              </DialogDescription>
+              <DialogDescription>Search and select a dish to add to this section</DialogDescription>
             </DialogHeader>
 
             {/* Search */}
             <div className="relative mt-4">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform" />
               <Input
                 type="text"
-                placeholder="Search dishes..."
+                placeholder={t('menu.search')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 cursor-text"
+                className="cursor-text pl-10"
               />
             </div>
 
             {/* Dishes List */}
-            <div className="mt-4 space-y-2 max-h-96 overflow-y-auto">
+            <div className="mt-4 max-h-96 space-y-2 overflow-y-auto">
               {loading ? (
-                <div className="text-center py-8">
-                  <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
-                  <p className="text-sm text-muted-foreground mt-2">Loading dishes...</p>
+                <div className="py-8 text-center">
+                  <Loader2 className="text-primary mx-auto h-8 w-8 animate-spin" />
+                  <p className="text-muted-foreground mt-2 text-sm">Loading dishes...</p>
                 </div>
               ) : filteredDishes.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
+                <div className="text-muted-foreground py-8 text-center">
                   {searchQuery ? (
                     <>
                       <p>No dishes found matching "{searchQuery}"</p>
@@ -271,14 +268,13 @@ export function AddDishDialog({ open, onOpenChange, sectionId, onDishAdded }: Ad
                 filteredDishes.map((dish) => {
                   const cost = calculateDishCost(dish);
                   const sellingPrice = dish.sellingPrice;
-                  const margin = cost > 0 && sellingPrice
-                    ? ((sellingPrice - cost) / sellingPrice) * 100
-                    : null;
+                  const margin =
+                    cost > 0 && sellingPrice ? ((sellingPrice - cost) / sellingPrice) * 100 : null;
 
                   return (
                     <Card
                       key={dish.id}
-                      className="cursor-pointer hover:border-primary hover:shadow-md transition-all"
+                      className="hover:border-primary cursor-pointer transition-all hover:shadow-md"
                       onClick={() => handleSelectDish(dish)}
                     >
                       <CardContent className="p-4">
@@ -286,11 +282,11 @@ export function AddDishDialog({ open, onOpenChange, sectionId, onDishAdded }: Ad
                           <div className="flex-1">
                             <h4 className="font-semibold">{dish.name}</h4>
                             {dish.description && (
-                              <p className="text-sm text-muted-foreground mt-1">
+                              <p className="text-muted-foreground mt-1 text-sm">
                                 {dish.description}
                               </p>
                             )}
-                            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
+                            <div className="text-muted-foreground mt-2 flex items-center gap-3 text-xs">
                               <span>
                                 {dish.recipeIngredients?.length || 0} {t('menu.dish.ingredients')}
                               </span>
@@ -299,19 +295,21 @@ export function AddDishDialog({ open, onOpenChange, sectionId, onDishAdded }: Ad
                                   {t('menu.dish.cost')}: €{cost.toFixed(2)}
                                 </span>
                               )}
-                              {sellingPrice && (
-                                <span>
-                                  Price: €{sellingPrice.toFixed(2)}
-                                </span>
-                              )}
+                              {sellingPrice && <span>Price: €{sellingPrice.toFixed(2)}</span>}
                               {margin !== null && (
-                                <span className={margin > 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>
+                                <span
+                                  className={
+                                    margin > 0
+                                      ? 'font-semibold text-green-600'
+                                      : 'font-semibold text-red-600'
+                                  }
+                                >
                                   {margin.toFixed(1)}%
                                 </span>
                               )}
                             </div>
                           </div>
-                          <Plus className="w-5 h-5 text-primary shrink-0 ml-4" />
+                          <Plus className="text-primary ml-4 h-5 w-5 shrink-0" />
                         </div>
                       </CardContent>
                     </Card>
@@ -321,7 +319,7 @@ export function AddDishDialog({ open, onOpenChange, sectionId, onDishAdded }: Ad
             </div>
 
             {/* Back Button */}
-            <div className="mt-4 pt-4 border-t">
+            <div className="mt-4 border-t pt-4">
               <Button
                 variant="outline"
                 onClick={() => setStep('choice')}
@@ -347,53 +345,65 @@ export function AddDishDialog({ open, onOpenChange, sectionId, onDishAdded }: Ad
                 {/* Dish Info */}
                 <Card className="bg-muted/50">
                   <CardContent className="p-4">
-                    <h4 className="font-semibold mb-2">{selectedDish.name}</h4>
+                    <h4 className="mb-2 font-semibold">{selectedDish.name}</h4>
                     {selectedDish.description && (
-                      <p className="text-sm text-muted-foreground mb-3">{selectedDish.description}</p>
+                      <p className="text-muted-foreground mb-3 text-sm">
+                        {selectedDish.description}
+                      </p>
                     )}
                     <div className="flex items-center gap-4 text-sm">
                       {selectedDish.sellingPrice && (
                         <div>
                           <span className="text-muted-foreground">Standard Price: </span>
-                          <span className="font-semibold">€{selectedDish.sellingPrice.toFixed(2)}</span>
+                          <span className="font-semibold">
+                            €{selectedDish.sellingPrice.toFixed(2)}
+                          </span>
                         </div>
                       )}
-                      {selectedDish.recipeIngredients && selectedDish.recipeIngredients.length > 0 && (
-                        <div>
-                          <span className="text-muted-foreground">Cost: </span>
-                          <span className="font-semibold">€{calculateDishCost(selectedDish).toFixed(2)}</span>
-                        </div>
-                      )}
+                      {selectedDish.recipeIngredients &&
+                        selectedDish.recipeIngredients.length > 0 && (
+                          <div>
+                            <span className="text-muted-foreground">Cost: </span>
+                            <span className="font-semibold">
+                              €{calculateDishCost(selectedDish).toFixed(2)}
+                            </span>
+                          </div>
+                        )}
                     </div>
                   </CardContent>
                 </Card>
 
                 {/* Price Override Input */}
                 <div className="space-y-3">
-                  <label htmlFor="priceOverride" className="text-base font-semibold block">
-                    Menu Price (€) <span className="text-muted-foreground text-sm font-normal">(Optional)</span>
+                  <label htmlFor="priceOverride" className="block text-base font-semibold">
+                    Menu Price (€){' '}
+                    <span className="text-muted-foreground text-sm font-normal">(Optional)</span>
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-lg">€</span>
+                    <span className="text-muted-foreground absolute top-1/2 left-3 -translate-y-1/2 text-lg">
+                      €
+                    </span>
                     <Input
                       id="priceOverride"
                       type="number"
                       step="0.01"
                       min="0"
-                      placeholder={selectedDish.sellingPrice ? selectedDish.sellingPrice.toString() : "0.00"}
+                      placeholder={
+                        selectedDish.sellingPrice ? selectedDish.sellingPrice.toString() : '0.00'
+                      }
                       value={priceOverride}
                       onChange={(e) => setPriceOverride(e.target.value)}
-                      className="text-base pl-8"
+                      className="pl-8 text-base"
                     />
                   </div>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-muted-foreground text-sm">
                     Leave empty to use the standard dish price
                     {selectedDish.sellingPrice && ` (€${selectedDish.sellingPrice.toFixed(2)})`}
                   </p>
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex gap-3 pt-4 border-t">
+                <div className="flex gap-3 border-t pt-4">
                   <Button
                     variant="outline"
                     onClick={() => setStep('select')}
@@ -405,16 +415,16 @@ export function AddDishDialog({ open, onOpenChange, sectionId, onDishAdded }: Ad
                   <Button
                     onClick={handleAddDish}
                     disabled={adding}
-                    className="flex-1 bg-primary hover:bg-primary/90"
+                    className="bg-primary hover:bg-primary/90 flex-1"
                   >
                     {adding ? (
                       <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Adding...
                       </>
                     ) : (
                       <>
-                        <Plus className="w-4 h-4 mr-2" />
+                        <Plus className="mr-2 h-4 w-4" />
                         Add to Menu
                       </>
                     )}

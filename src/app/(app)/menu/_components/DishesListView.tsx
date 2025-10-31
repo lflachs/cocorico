@@ -123,9 +123,9 @@ export function DishesListView() {
 
   if (loading) {
     return (
-      <div className="text-center py-12">
-        <RefreshCw className="w-8 h-8 animate-spin mx-auto text-primary" />
-        <p className="text-sm text-muted-foreground mt-2">Loading dishes...</p>
+      <div className="py-12 text-center">
+        <RefreshCw className="text-primary mx-auto h-8 w-8 animate-spin" />
+        <p className="text-muted-foreground mt-2 text-sm">Loading dishes...</p>
       </div>
     );
   }
@@ -135,29 +135,18 @@ export function DishesListView() {
       <div className="space-y-6">
         {/* Actions Bar */}
         <div className="flex items-center justify-between gap-4">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <div className="relative max-w-md flex-1">
+            <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform" />
             <Input
               type="text"
-              placeholder="Search dishes..."
+              placeholder={t('menu.search') || 'Search dishes...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 cursor-text"
+              className="cursor-text pl-10"
             />
           </div>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={loadDishes}
-              className="cursor-pointer"
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh
-            </Button>
-            <CreateButton onClick={handleCreateDish}>
-              {t('menu.createDish')}
-            </CreateButton>
+            <CreateButton onClick={handleCreateDish}>{t('menu.createDish')}</CreateButton>
           </div>
         </div>
 
@@ -175,38 +164,35 @@ export function DishesListView() {
                     onClick={() => setSearchQuery('')}
                     className="cursor-pointer"
                   >
-                    Clear search
+                    {t('menu.clearSearch')}
                   </Button>
                 </>
               ) : (
                 <>
-                  <p className="text-muted-foreground mb-4">No dishes created yet</p>
-                  <CreateButton onClick={handleCreateDish}>
-                    Create your first dish
-                  </CreateButton>
+                  <p className="text-muted-foreground mb-4">{t('menu.empty')}</p>
+                  <CreateButton onClick={handleCreateDish}>{t('menu.emptyHint')}</CreateButton>
                 </>
               )}
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredDishes.map((dish) => {
               const cost = calculateDishCost(dish);
               const sellingPrice = dish.sellingPrice;
-              const margin = cost > 0 && sellingPrice
-                ? ((sellingPrice - cost) / sellingPrice) * 100
-                : null;
+              const margin =
+                cost > 0 && sellingPrice ? ((sellingPrice - cost) / sellingPrice) * 100 : null;
 
               return (
-                <Card key={dish.id} className="hover:shadow-lg transition-shadow">
+                <Card key={dish.id} className="transition-shadow hover:shadow-lg">
                   <CardContent className="p-6">
                     <div className="space-y-4">
                       {/* Header */}
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <h3 className="font-semibold text-lg">{dish.name}</h3>
+                          <h3 className="text-lg font-semibold">{dish.name}</h3>
                           {!dish.isActive && (
-                            <span className="text-xs text-muted-foreground">Inactive</span>
+                            <span className="text-muted-foreground text-xs">Inactive</span>
                           )}
                         </div>
                         <div className="flex gap-1">
@@ -214,41 +200,41 @@ export function DishesListView() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleEditDish(dish)}
-                            className="cursor-pointer h-8 w-8 p-0"
+                            className="h-8 w-8 cursor-pointer p-0"
                           >
-                            <Pencil className="w-4 h-4" />
+                            <Pencil className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDeleteDish(dish.id, dish.name)}
-                            className="cursor-pointer h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8 cursor-pointer p-0"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
 
                       {/* Description */}
                       {dish.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-2">
+                        <p className="text-muted-foreground line-clamp-2 text-sm">
                           {dish.description}
                         </p>
                       )}
 
                       {/* Stats */}
-                      <div className="pt-4 border-t space-y-2">
+                      <div className="space-y-2 border-t pt-4">
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-muted-foreground">Ingredients</span>
-                          <span className="font-medium">
-                            {dish.recipeIngredients?.length || 0}
-                          </span>
+                          <span className="font-medium">{dish.recipeIngredients?.length || 0}</span>
                         </div>
 
                         {/* Cost - Always show */}
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-muted-foreground">{t('menu.dish.cost')}</span>
-                          <span className={`font-medium ${cost === 0 ? 'text-muted-foreground' : ''}`}>
+                          <span
+                            className={`font-medium ${cost === 0 ? 'text-muted-foreground' : ''}`}
+                          >
                             €{cost.toFixed(2)}
                           </span>
                         </div>
@@ -258,7 +244,9 @@ export function DishesListView() {
                           <span className="text-muted-foreground">
                             {t('menu.dishWizard.sellingPrice')}
                           </span>
-                          <span className={`font-medium ${!sellingPrice ? 'text-muted-foreground' : ''}`}>
+                          <span
+                            className={`font-medium ${!sellingPrice ? 'text-muted-foreground' : ''}`}
+                          >
                             {sellingPrice ? `€${sellingPrice.toFixed(2)}` : '-'}
                           </span>
                         </div>
