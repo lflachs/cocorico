@@ -47,7 +47,7 @@ type VoiceAssistantProps = {
 };
 
 export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
 
   // Debug: Log language on mount and changes
   useEffect(() => {
@@ -418,7 +418,7 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
       playNotificationSound();
       vibrate(VibrationPatterns.startListening);
 
-      toast.info("Listening... Speak your command");
+      toast.info(t('voice.toast.listening'));
 
       // Start monitoring audio levels
       checkAudioLevel();
@@ -1673,23 +1673,23 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
   const stateDisplay = useMemo(() => {
     switch (state) {
       case "recording":
-        return { text: "Listening...", icon: Mic, color: "text-red-500" };
+        return { text: t('voice.state.listening'), icon: Mic, color: "text-red-500" };
       case "transcribing":
-        return { text: "Transcribing...", icon: Loader2, color: "text-blue-500" };
+        return { text: t('voice.state.transcribing'), icon: Loader2, color: "text-blue-500" };
       case "parsing":
-        return { text: "Understanding...", icon: Loader2, color: "text-purple-500" };
+        return { text: t('voice.state.understanding'), icon: Loader2, color: "text-purple-500" };
       case "speaking":
-        return { text: "Speaking...", icon: Volume2, color: "text-green-500" };
+        return { text: t('voice.state.speaking'), icon: Volume2, color: "text-green-500" };
       case "confirming":
-        return { text: "Waiting for confirmation", icon: CheckCircle, color: "text-yellow-500" };
+        return { text: t('voice.state.confirming'), icon: CheckCircle, color: "text-yellow-500" };
       case "executing":
-        return { text: "Executing...", icon: Loader2, color: "text-green-500" };
+        return { text: t('voice.state.executing'), icon: Loader2, color: "text-green-500" };
       case "asking_price":
-        return { text: "Waiting for price", icon: CheckCircle, color: "text-blue-500" };
+        return { text: t('voice.state.askingPrice'), icon: CheckCircle, color: "text-blue-500" };
       default:
-        return { text: "Ready", icon: Mic, color: "text-gray-500" };
+        return { text: t('voice.state.ready'), icon: Mic, color: "text-gray-500" };
     }
-  }, [state]);
+  }, [state, t]);
 
   const StateIcon = stateDisplay.icon;
 
@@ -1703,7 +1703,7 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#1d3557]/90 backdrop-blur-lg border border-white/10 shadow-lg">
               <div className="w-1.5 h-1.5 bg-[#e63946] rounded-full animate-pulse shadow-sm shadow-[#e63946]/50" />
               <span className="text-xs font-medium text-white/90 whitespace-nowrap">
-                Say "Cocorico"
+                {t('voice.wakeWord')}
               </span>
             </div>
             {/* Invisible bridge to prevent gap */}
@@ -1724,7 +1724,7 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
             state === "recording"
               ? "bg-gradient-to-r from-[#e63946]/90 via-[#457b9d]/90 to-[#1d3557]/90 hover:shadow-2xl hover:scale-110 shadow-[#e63946]/40 border border-white/20"
               : state === "speaking"
-              ? "bg-gradient-to-r from-[#457b9d]/90 via-[#a8dadc]/90 to-[#1d3557]/90 animate-pulse shadow-[#457b9d]/40 border border-white/20"
+              ? "bg-gradient-to-r from-[#457b9d]/90 via-[#a8dadc]/90 to-[#1d3557]/90 shadow-[#457b9d]/40 border border-white/20"
               : "bg-gradient-to-r from-[#1d3557]/90 via-[#457b9d]/90 to-[#1d3557]/90 hover:shadow-xl hover:scale-105 shadow-[#1d3557]/30 border border-white/20"
           )}
           onClick={() => setIsOpen(true)}
@@ -1743,9 +1743,9 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
           {/* Subtle gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-br from-[#1d3557]/15 via-transparent to-[#457b9d]/15" />
 
-          {/* Floating gradient orbs - subtle */}
-          <div className="absolute top-20 left-20 w-64 h-64 bg-[#457b9d] rounded-full mix-blend-soft-light filter blur-3xl opacity-10 animate-blob" />
-          <div className="absolute bottom-20 right-20 w-64 h-64 bg-[#a8dadc] rounded-full mix-blend-soft-light filter blur-3xl opacity-10 animate-blob animation-delay-2000" />
+          {/* Static gradient orbs for depth - no animation */}
+          <div className="absolute top-20 left-20 w-64 h-64 bg-[#457b9d] rounded-full mix-blend-soft-light filter blur-3xl opacity-10" />
+          <div className="absolute bottom-20 right-20 w-64 h-64 bg-[#a8dadc] rounded-full mix-blend-soft-light filter blur-3xl opacity-10" />
 
           {/* Custom close button */}
           <button
@@ -1757,19 +1757,19 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
           </button>
 
           {/* Content container */}
-          <div className="relative z-10 h-full flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 overflow-y-auto">
-            <DialogHeader className="mb-6 sm:mb-8 text-center">
-              <DialogTitle className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-[#f1faee] to-[#a8dadc] bg-clip-text text-transparent mb-2 sm:mb-4 animate-in slide-in-from-top duration-700">
-                Voice Assistant
+          <div className="relative z-10 h-full flex flex-col items-center p-4 sm:p-6 md:p-8 overflow-y-auto overscroll-contain">
+            <DialogHeader className="mb-4 sm:mb-6 text-center flex-shrink-0">
+              <DialogTitle className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-[#f1faee] to-[#a8dadc] bg-clip-text text-transparent mb-2 sm:mb-3 animate-in slide-in-from-top duration-700">
+                {t('voice.title')}
               </DialogTitle>
-              <DialogDescription className="text-base sm:text-lg md:text-xl text-[#f1faee]/90 animate-in slide-in-from-top duration-700 delay-150">
-                Speak naturally to add, remove, or check inventory
+              <DialogDescription className="text-sm sm:text-base md:text-lg text-[#f1faee]/90 animate-in slide-in-from-top duration-700 delay-150">
+                {t('voice.description')}
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4 sm:space-y-6 w-full max-w-3xl">
+            <div className="space-y-3 sm:space-y-4 w-full max-w-3xl pb-6">
               {/* Siri-like Waveform Animation */}
-              <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden bg-white/5 backdrop-blur-lg border border-white/10 p-4 sm:p-6 md:p-8 shadow-lg animate-in fade-in scale-in duration-700 delay-300">
+              <div className="relative rounded-xl sm:rounded-2xl overflow-hidden bg-white/5 backdrop-blur-lg border border-white/10 p-3 sm:p-4 shadow-lg animate-in fade-in scale-in duration-700 delay-300">
                 <Suspense fallback={
                   <div className="w-full h-32 flex items-center justify-center">
                     <Loader2 className="h-8 w-8 animate-spin text-[#457b9d]" />
@@ -1782,9 +1782,9 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
                   />
                 </Suspense>
                 {/* State indicator overlay */}
-                <div className="flex items-center justify-center gap-2 sm:gap-3 py-3 sm:py-4 transition-all duration-300">
+                <div className="flex items-center justify-center gap-2 py-2 sm:py-3 transition-all duration-300">
                   <StateIcon className={cn(
-                    "h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 transition-all duration-300",
+                    "h-5 w-5 sm:h-6 sm:w-6 transition-all duration-300",
                     state === "recording" ? "text-[#e63946]" :
                     state === "speaking" ? "text-[#a8dadc]" :
                     state === "transcribing" || state === "parsing" ? "text-[#457b9d]" :
@@ -1793,7 +1793,7 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
                     state === "transcribing" || state === "parsing" || state === "executing" ? "animate-spin" : ""
                   )} />
                   <span className={cn(
-                    "text-lg sm:text-xl md:text-2xl font-semibold transition-all duration-300",
+                    "text-base sm:text-lg font-semibold transition-all duration-300",
                     "text-[#f1faee]"
                   )}>
                     {stateDisplay.text}
@@ -1803,27 +1803,27 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
 
               {/* Assistant is speaking */}
               {spokenText && (state === "speaking" || state === "asking_price") && (
-                <div className="border border-[#457b9d]/40 rounded-xl sm:rounded-2xl p-4 sm:p-6 bg-[#457b9d]/10 backdrop-blur-lg animate-in fade-in slide-in-from-top-2 duration-500 shadow-lg">
-                  <p className="text-xs sm:text-sm text-[#a8dadc] mb-1 sm:mb-2 font-medium">Assistant:</p>
-                  <p className="text-base sm:text-lg font-medium text-[#f1faee] break-words">{spokenText}</p>
+                <div className="border border-[#457b9d]/40 rounded-xl p-3 sm:p-4 bg-[#457b9d]/10 backdrop-blur-lg animate-in fade-in slide-in-from-top-2 duration-500 shadow-lg">
+                  <p className="text-xs text-[#a8dadc] mb-1 font-medium">{t('voice.label.assistant')}</p>
+                  <p className="text-sm sm:text-base font-medium text-[#f1faee] break-words leading-relaxed">{spokenText}</p>
                 </div>
               )}
 
               {/* Transcript */}
               {transcript && (
-                <div className="border border-white/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 bg-white/5 backdrop-blur-lg animate-in fade-in slide-in-from-top-2 duration-500 shadow-lg">
-                  <p className="text-xs sm:text-sm text-[#a8dadc] mb-1 sm:mb-2 font-medium">You said:</p>
-                  <p className="text-base sm:text-lg font-medium text-[#f1faee] break-words">{transcript}</p>
+                <div className="border border-white/20 rounded-xl p-3 sm:p-4 bg-white/5 backdrop-blur-lg animate-in fade-in slide-in-from-top-2 duration-500 shadow-lg">
+                  <p className="text-xs text-[#a8dadc] mb-1 font-medium">{t('voice.label.youSaid')}</p>
+                  <p className="text-sm sm:text-base font-medium text-[#f1faee] break-words leading-relaxed">{transcript}</p>
                 </div>
               )}
 
               {/* Parsed command */}
               {parsedCommand && (
-                <div className="border border-white/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 space-y-3 animate-in fade-in slide-in-from-top-2 duration-700 bg-white/5 backdrop-blur-lg shadow-lg">
-                  <div className="flex items-center gap-2 flex-wrap">
+                <div className="border border-white/20 rounded-xl p-3 sm:p-4 space-y-2 sm:space-y-3 animate-in fade-in slide-in-from-top-2 duration-700 bg-white/5 backdrop-blur-lg shadow-lg">
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                     <Badge
                       className={cn(
-                        "transition-all duration-300 text-sm sm:text-base px-3 sm:px-4 py-1 sm:py-1.5",
+                        "transition-all duration-300 text-xs sm:text-sm px-2 sm:px-3 py-0.5 sm:py-1",
                         parsedCommand.action === "add" ? "bg-[#457b9d]/90 text-white" :
                         parsedCommand.action === "remove" ? "bg-[#e63946]/90 text-white" :
                         "bg-[#a8dadc]/90 text-[#1d3557]"
@@ -1836,7 +1836,7 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
                       return (
                         <Badge
                           key={idx}
-                          className="bg-white/10 text-[#f1faee] border border-white/20 transition-all duration-300 hover:scale-105 text-sm sm:text-base px-3 sm:px-4 py-1 sm:py-1.5 backdrop-blur-sm"
+                          className="bg-white/10 text-[#f1faee] border border-white/20 transition-all duration-300 hover:scale-105 text-xs sm:text-sm px-2 sm:px-3 py-0.5 sm:py-1 backdrop-blur-sm"
                         >
                           {prod.matchedProductName || prod.product} ({prod.quantity} {spokenUnit})
                         </Badge>
@@ -1846,21 +1846,21 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
 
                   {/* Show multiple matches if they exist */}
                   {parsedCommand.products.some(p => p.matchedProducts && p.matchedProducts.length > 1) && (
-                    <div className="space-y-2">
-                      <p className="text-xs sm:text-sm text-[#a8dadc] font-medium">Available options:</p>
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <p className="text-xs text-[#a8dadc] font-medium">{t('voice.label.availableOptions')}</p>
                       {parsedCommand.products.map((prod, idx) => (
                         prod.matchedProducts && prod.matchedProducts.length > 1 && (
-                          <div key={idx} className="flex flex-wrap gap-2">
+                          <div key={idx} className="flex flex-wrap gap-1.5">
                             {prod.matchedProducts.map((match, matchIdx) => (
                               <Badge
                                 key={matchIdx}
-                                className="bg-[#457b9d]/20 text-[#f1faee] border border-[#457b9d]/40 text-xs sm:text-sm px-2 sm:px-3 py-1 backdrop-blur-sm"
+                                className="bg-[#457b9d]/20 text-[#f1faee] border border-[#457b9d]/40 text-xs px-2 py-0.5 backdrop-blur-sm"
                               >
                                 {match.name} ({match.quantity} {match.unit})
                               </Badge>
                             ))}
-                            <Badge className="bg-[#a8dadc]/20 text-[#f1faee] border border-[#a8dadc]/40 text-xs sm:text-sm px-2 sm:px-3 py-1 backdrop-blur-sm">
-                              + New
+                            <Badge className="bg-[#a8dadc]/20 text-[#f1faee] border border-[#a8dadc]/40 text-xs px-2 py-0.5 backdrop-blur-sm">
+                              + {t('voice.label.new')}
                             </Badge>
                           </div>
                         )
@@ -1868,39 +1868,39 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
                     </div>
                   )}
 
-                  <p className="text-sm sm:text-base text-[#f1faee]/90 leading-relaxed">{parsedCommand.confirmationMessage}</p>
+                  <p className="text-xs sm:text-sm text-[#f1faee]/90 leading-relaxed">{parsedCommand.confirmationMessage}</p>
                   {parsedCommand.confidence < 0.7 && (
-                    <p className="text-xs sm:text-sm text-[#e63946] animate-pulse font-medium">
-                      Low confidence match - please verify
+                    <p className="text-xs text-[#e63946] font-medium">
+                      {t('voice.warning.lowConfidence')}
                     </p>
                   )}
                 </div>
               )}
 
               {/* Recording controls */}
-              <div className="flex gap-2 sm:gap-3 w-full">
+              <div className="flex gap-2 w-full">
                 {state === "idle" && (
                   <Button
                     onClick={startRecording}
-                    className="flex-1 bg-gradient-to-r from-[#1d3557]/90 via-[#457b9d]/90 to-[#1d3557]/90 hover:from-[#1d3557] hover:via-[#457b9d] hover:to-[#1d3557] hover:shadow-xl hover:shadow-[#457b9d]/30 transition-all duration-500 hover:scale-105 text-white text-base sm:text-lg py-4 sm:py-6 rounded-xl sm:rounded-2xl border border-white/20 backdrop-blur-sm"
+                    className="flex-1 bg-gradient-to-r from-[#1d3557]/90 via-[#457b9d]/90 to-[#1d3557]/90 hover:from-[#1d3557] hover:via-[#457b9d] hover:to-[#1d3557] hover:shadow-xl hover:shadow-[#457b9d]/30 transition-all duration-500 hover:scale-105 text-white text-sm sm:text-base py-3 sm:py-4 rounded-xl border border-white/20 backdrop-blur-sm"
                     size="lg"
                     onTouchStart={() => vibrate(VibrationPatterns.light)}
                   >
-                    <Mic className="mr-2 sm:mr-3 h-5 w-5 sm:h-6 sm:w-6" />
-                    <span className="hidden sm:inline">Start Speaking</span>
-                    <span className="sm:hidden">Speak</span>
+                    <Mic className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                    <span className="hidden sm:inline">{t('voice.button.startSpeaking')}</span>
+                    <span className="sm:hidden">{t('voice.button.speak')}</span>
                   </Button>
                 )}
 
                 {state === "recording" && (
                   <Button
                     onClick={stopRecording}
-                    className="flex-1 bg-[#e63946]/90 hover:bg-[#e63946] hover:shadow-xl hover:shadow-[#e63946]/50 animate-pulse transition-all duration-500 text-white text-base sm:text-lg py-4 sm:py-6 rounded-xl sm:rounded-2xl border border-white/20 backdrop-blur-sm"
+                    className="flex-1 bg-[#e63946]/90 hover:bg-[#e63946] hover:shadow-xl hover:shadow-[#e63946]/50 transition-all duration-500 text-white text-sm sm:text-base py-3 sm:py-4 rounded-xl border border-white/20 backdrop-blur-sm"
                     size="lg"
                     onTouchStart={() => vibrate(VibrationPatterns.light)}
                   >
-                    <MicOff className="mr-2 sm:mr-3 h-5 w-5 sm:h-6 sm:w-6" />
-                    Stop
+                    <MicOff className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                    {t('voice.button.stop')}
                   </Button>
                 )}
 
@@ -1908,21 +1908,21 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
                   <>
                     <Button
                       onClick={handleConfirm}
-                      className="flex-1 bg-[#457b9d]/90 hover:bg-[#457b9d] hover:shadow-xl hover:shadow-[#457b9d]/40 transition-all duration-500 hover:scale-105 text-white text-base sm:text-lg py-4 sm:py-6 rounded-xl sm:rounded-2xl border border-white/20 backdrop-blur-sm"
+                      className="flex-1 bg-[#457b9d]/90 hover:bg-[#457b9d] hover:shadow-xl hover:shadow-[#457b9d]/40 transition-all duration-500 hover:scale-105 text-white text-sm sm:text-base py-3 sm:py-4 rounded-xl border border-white/20 backdrop-blur-sm"
                       size="lg"
                       onTouchStart={() => vibrate(VibrationPatterns.medium)}
                     >
-                      <CheckCircle className="mr-2 sm:mr-3 h-5 w-5 sm:h-6 sm:w-6" />
-                      Confirm
+                      <CheckCircle className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                      {t('voice.button.confirm')}
                     </Button>
                     <Button
                       onClick={handleCancel}
-                      className="flex-1 bg-white/5 hover:bg-white/10 border border-white/20 backdrop-blur-sm transition-all duration-500 hover:scale-105 text-[#f1faee] text-base sm:text-lg py-4 sm:py-6 rounded-xl sm:rounded-2xl"
+                      className="flex-1 bg-white/5 hover:bg-white/10 border border-white/20 backdrop-blur-sm transition-all duration-500 hover:scale-105 text-[#f1faee] text-sm sm:text-base py-3 sm:py-4 rounded-xl"
                       size="lg"
                       onTouchStart={() => vibrate(VibrationPatterns.medium)}
                     >
-                      <XCircle className="mr-2 sm:mr-3 h-5 w-5 sm:h-6 sm:w-6" />
-                      Cancel
+                      <XCircle className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                      {t('voice.button.cancel')}
                     </Button>
                   </>
                 )}
@@ -1948,10 +1948,10 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
                         }
                       }}
                       variant="outline"
-                      className="flex-1 bg-white/5 hover:bg-white/10 border border-white/20 backdrop-blur-sm transition-all duration-500 hover:scale-105 text-[#f1faee] text-base sm:text-lg py-4 sm:py-6 rounded-xl sm:rounded-2xl"
+                      className="flex-1 bg-white/5 hover:bg-white/10 border border-white/20 backdrop-blur-sm transition-all duration-500 hover:scale-105 text-[#f1faee] text-sm sm:text-base py-3 sm:py-4 rounded-xl"
                       size="lg"
                     >
-                      Skip Price
+                      {t('voice.button.skipPrice')}
                     </Button>
                   </>
                 )}
@@ -1963,13 +1963,13 @@ export function VoiceAssistant({ onInventoryUpdate }: VoiceAssistantProps) {
                       stopEverything();
                       setTranscript("");
                       setParsedCommand(null);
-                      toast.info("Stopped");
+                      toast.info(t('voice.toast.stopped'));
                     }}
-                    className="bg-[#e63946]/10 hover:bg-[#e63946]/90 border border-[#e63946]/50 text-[#e63946] hover:text-white transition-all duration-500 h-12 w-12 sm:h-14 sm:w-14 rounded-full backdrop-blur-sm"
+                    className="bg-[#e63946]/10 hover:bg-[#e63946]/90 border border-[#e63946]/50 text-[#e63946] hover:text-white transition-all duration-500 h-10 w-10 sm:h-12 sm:w-12 rounded-full backdrop-blur-sm flex-shrink-0"
                     size="icon"
-                    title="Stop everything"
+                    title={t('voice.button.stopEverything')}
                   >
-                    <XCircle className="h-5 w-5 sm:h-6 sm:w-6" />
+                    <XCircle className="h-4 w-4 sm:h-5 sm:w-5" />
                   </Button>
                 )}
               </div>
