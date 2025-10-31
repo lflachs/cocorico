@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { prepareTextForTTS } from "@/lib/utils/number-to-words";
+import crypto from "crypto";
+
+// In-memory cache for TTS audio
+// Key: hash of text + language
+// Value: { audio: Buffer, timestamp: number }
+const ttsCache = new Map<string, { audio: Buffer; timestamp: number }>();
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
 /**
  * POST /api/voice/speak
- * Convert text to speech using OpenAI TTS API
+ * Convert text to speech using OpenAI TTS API with caching
  */
 export async function POST(request: NextRequest) {
   try {
@@ -23,7 +31,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("[Voice] Converting to speech:", text, "language:", language);
+    // Prepare text for TTS: convert numbers and currency to words
+    const preparedText = prepareTextForTTS(text, language as 'fr' | 'en');
+
+    console.log("[Voice] Converting to speech:", preparedText, "language:", language);
+
+    // Create cache key from text + language + voice
+    const cacheKey = crypto
+      .createHash('md5')
+      .update(`${preparedText}-${language}-${voice}`)
+      .digest('hex');
+
+    // Check cache
+    const cached = ttsCache.get(cacheKey);
+    const now = Date.now();
+
+    if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+      console.log("[Voice] Using cached audio:", cached.audio.length, "bytes");
+      return new NextResponse(cached.audio, {
+        status: 200,
+        headers: {
+          "Content-Type": "audio/mpeg",
+          "Content-Length": cached.audio.length.toString(),
+          "X-Cache": "HIT",
+        },
+      });
+    }
+
+    // Clean up expired cache entries (every 100 requests)
+    if (Math.random() < 0.01) {
+      for (const [key, value] of ttsCache.entries()) {
+        if (now - value.timestamp >= CACHE_DURATION) {
+          ttsCache.delete(key);
+        }
+      }
+    }
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -33,7 +75,7 @@ export async function POST(request: NextRequest) {
     const mp3 = await openai.audio.speech.create({
       model: "tts-1",
       voice: voice as "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer",
-      input: text,
+      input: preparedText,
       speed: 1.0,
     });
 
@@ -42,12 +84,16 @@ export async function POST(request: NextRequest) {
 
     console.log("[Voice] Speech generated:", buffer.length, "bytes");
 
+    // Store in cache
+    ttsCache.set(cacheKey, { audio: buffer, timestamp: now });
+
     // Return audio as response
     return new NextResponse(buffer, {
       status: 200,
       headers: {
         "Content-Type": "audio/mpeg",
         "Content-Length": buffer.length.toString(),
+        "X-Cache": "MISS",
       },
     });
   } catch (error) {

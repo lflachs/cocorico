@@ -45,7 +45,6 @@ export async function getProductDetails(productNameOrId?: string) {
         ],
       },
       include: {
-        category: true,
         dlcs: {
           where: {
             expirationDate: {
@@ -67,7 +66,7 @@ export async function getProductDetails(productNameOrId?: string) {
       quantity: product.quantity,
       unit: product.unit,
       parLevel: product.parLevel,
-      category: product.category?.name,
+      category: product.category,
       upcomingDlcs: product.dlcs.map((dlc) => ({
         expirationDate: dlc.expirationDate,
         quantity: dlc.quantity,

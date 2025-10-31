@@ -830,39 +830,44 @@ async function generateEveningBrief(insights: Omit<DailyInsights, 'briefSummary'
         actionNum++;
       }
 
-      // Smart dish recommendations based on expiring products
+      // Smart dish recommendations - GROUP BY INGREDIENT first, then suggest dishes
       const relevantExpiring = [...criticalExpiring, ...soonExpiring.slice(0, 2)];
       if (relevantExpiring.length > 0) {
-        const dishUtilization = new Map<string, { ingredients: string[]; isCritical: boolean }>();
+        // Group by ingredient and collect all dishes that use it
+        const ingredientToDishes = new Map<string, { productName: string; dishes: string[]; isCritical: boolean; value: number }>();
 
         relevantExpiring.forEach(product => {
           const isCritical = product.daysUntilExpiration <= 1;
-          product.usedInDishes.forEach(dish => {
-            if (!dishUtilization.has(dish.name)) {
-              dishUtilization.set(dish.name, { ingredients: [], isCritical: false });
-            }
-            const entry = dishUtilization.get(dish.name)!;
-            entry.ingredients.push(product.productName.toLowerCase());
-            if (isCritical) entry.isCritical = true;
-          });
+          if (product.usedInDishes.length > 0) {
+            ingredientToDishes.set(product.productName, {
+              productName: product.productName,
+              dishes: product.usedInDishes.map(d => d.name),
+              isCritical,
+              value: product.estimatedValue,
+            });
+          }
         });
 
-        const sortedDishes = Array.from(dishUtilization.entries())
+        // Sort ingredients by: critical first, then by value, then by number of dishes
+        const sortedIngredients = Array.from(ingredientToDishes.values())
           .sort((a, b) => {
-            // Prioritize dishes using critical ingredients, then by number of ingredients
-            if (a[1].isCritical !== b[1].isCritical) {
-              return a[1].isCritical ? -1 : 1;
-            }
-            return b[1].ingredients.length - a[1].ingredients.length;
+            if (a.isCritical !== b.isCritical) return a.isCritical ? -1 : 1;
+            if (b.value !== a.value) return b.value - a.value;
+            return b.dishes.length - a.dishes.length;
           })
           .slice(0, 3);
 
-        sortedDishes.forEach(([dishName, data]) => {
-          const action = data.isCritical ? 'Mettre en avant' : 'Planifier';
-          if (data.ingredients.length > 1) {
-            brief += `   ${actionNum}️⃣ ${action} : ${dishName} (utilise ${data.ingredients.join(' + ')} — ${data.ingredients.length} produits)\n`;
+        sortedIngredients.forEach(({ productName, dishes, isCritical }) => {
+          const action = isCritical ? 'Mettre en avant' : 'Planifier';
+          if (dishes.length === 1) {
+            brief += `   ${actionNum}️⃣ ${action} : ${dishes[0]} (utilise ${productName.toLowerCase()})\n`;
+          } else if (dishes.length === 2) {
+            brief += `   ${actionNum}️⃣ ${action} : ${dishes.join(' ou ')} (utilisent ${productName.toLowerCase()})\n`;
           } else {
-            brief += `   ${actionNum}️⃣ ${action} : ${dishName} (utilise ${data.ingredients[0]})\n`;
+            // List all dishes with proper formatting
+            const lastDish = dishes[dishes.length - 1];
+            const otherDishes = dishes.slice(0, -1).join(', ');
+            brief += `   ${actionNum}️⃣ ${action} : ${otherDishes} ou ${lastDish} (utilisent ${productName.toLowerCase()})\n`;
           }
           actionNum++;
         });
@@ -1068,15 +1073,18 @@ async function getTodaySalesSummary() {
     },
   });
 
-  const totalRevenue = sales.reduce((sum, sale) => sum + (sale.totalPrice || 0), 0);
-  const totalDishes = sales.reduce((sum, sale) => sum + (sale.quantity || 0), 0);
+  const totalRevenue = sales.reduce((sum, sale) => {
+    const dishPrice = sale.dish.sellingPrice || 0;
+    return sum + (dishPrice * sale.quantitySold);
+  }, 0);
+  const totalDishes = sales.reduce((sum, sale) => sum + sale.quantitySold, 0);
 
   // Top 3 dishes by quantity
   const dishSales = new Map<string, { name: string; quantity: number; revenue: number }>();
   sales.forEach(sale => {
     const existing = dishSales.get(sale.dishId) || { name: sale.dish.name, quantity: 0, revenue: 0 };
-    existing.quantity += (sale.quantity || 0);
-    existing.revenue += (sale.totalPrice || 0);
+    existing.quantity += sale.quantitySold;
+    existing.revenue += (sale.dish.sellingPrice || 0) * sale.quantitySold;
     dishSales.set(sale.dishId, existing);
   });
 
