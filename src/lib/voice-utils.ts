@@ -155,6 +155,11 @@ export const VibrationPatterns = {
  * @param pattern - Vibration pattern (number or array)
  */
 export function vibrate(pattern: number | number[]): void {
+  // Check if we're in a browser environment
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return;
+  }
+
   // Check if vibration is supported
   if (!navigator.vibrate) {
     console.log('[Vibration] API not supported');
@@ -169,8 +174,20 @@ export function vibrate(pattern: number | number[]): void {
   }
 
   try {
-    navigator.vibrate(pattern);
-    console.log('[Vibration] Triggered:', pattern);
+    // iOS requires vibrations to happen synchronously within user gesture
+    // Use requestAnimationFrame for better timing on iOS
+    requestAnimationFrame(() => {
+      try {
+        const success = navigator.vibrate(pattern);
+        if (success) {
+          console.log('[Vibration] Triggered:', pattern);
+        } else {
+          console.log('[Vibration] Failed - possibly blocked by browser');
+        }
+      } catch (innerError) {
+        console.error('[Vibration] Inner error:', innerError);
+      }
+    });
   } catch (error) {
     console.error('[Vibration] Error:', error);
     // Silently fail - vibration is not critical

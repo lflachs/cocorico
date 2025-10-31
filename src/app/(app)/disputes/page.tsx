@@ -182,7 +182,7 @@ export default function DisputesPage() {
     <div className="space-y-6">
       {/* Header with gradient background */}
       <PageHeader
-        title="Disputes & Returns"
+        title={t('disputes.title') || 'Disputes'}
         subtitle="Manage supplier disputes, returns, and complaints"
         icon={AlertCircle}
       />
@@ -207,10 +207,7 @@ export default function DisputesPage() {
                 All Disputes
               </Button>
             </div>
-            <Button
-              onClick={() => setCreateModalOpen(true)}
-              className="gap-2 cursor-pointer"
-            >
+            <Button onClick={() => setCreateModalOpen(true)} className="cursor-pointer gap-2">
               <Plus className="h-4 w-4" />
               Create Dispute
             </Button>
@@ -247,12 +244,12 @@ export default function DisputesPage() {
                 return (
                   <div
                     key={dispute.id}
-                    className={`border rounded-lg p-6 ${
+                    className={`rounded-lg border p-6 ${
                       isUrgent ? 'border-red-300 bg-red-50/30' : ''
                     }`}
                   >
                     <div className="flex items-start justify-between">
-                      <div className="flex gap-4 flex-1">
+                      <div className="flex flex-1 gap-4">
                         <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orange-50">
                           <AlertCircle className="h-6 w-6 text-orange-600" />
                         </div>
@@ -269,9 +266,7 @@ export default function DisputesPage() {
                           </div>
 
                           {dispute.description && (
-                            <p className="mt-1 text-sm text-gray-600">
-                              {dispute.description}
-                            </p>
+                            <p className="mt-1 text-sm text-gray-600">{dispute.description}</p>
                           )}
 
                           <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-gray-600">
@@ -302,7 +297,8 @@ export default function DisputesPage() {
                               {dispute.products.map((dp) => (
                                 <div key={dp.id} className="text-sm text-gray-600">
                                   • {dp.product.name}
-                                  {dp.quantityDisputed && ` (${dp.quantityDisputed} ${dp.product.unit})`}
+                                  {dp.quantityDisputed &&
+                                    ` (${dp.quantityDisputed} ${dp.product.unit})`}
                                   : {dp.reason}
                                 </div>
                               ))}
@@ -310,16 +306,11 @@ export default function DisputesPage() {
                           )}
 
                           {dispute.resolvedAt && dispute.resolutionNotes && (
-                            <div className="mt-3 rounded-md bg-green-50 p-3 border border-green-200">
-                              <p className="text-xs font-medium text-green-800">
-                                Resolution:
-                              </p>
-                              <p className="text-sm text-green-700">
-                                {dispute.resolutionNotes}
-                              </p>
-                              <p className="text-xs text-green-600 mt-1">
-                                Resolved on{' '}
-                                {new Date(dispute.resolvedAt).toLocaleDateString()}
+                            <div className="mt-3 rounded-md border border-green-200 bg-green-50 p-3">
+                              <p className="text-xs font-medium text-green-800">Resolution:</p>
+                              <p className="text-sm text-green-700">{dispute.resolutionNotes}</p>
+                              <p className="mt-1 text-xs text-green-600">
+                                Resolved on {new Date(dispute.resolvedAt).toLocaleDateString()}
                               </p>
                             </div>
                           )}
@@ -332,9 +323,7 @@ export default function DisputesPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() =>
-                                handleStatusChange(dispute.id, 'IN_PROGRESS')
-                              }
+                              onClick={() => handleStatusChange(dispute.id, 'IN_PROGRESS')}
                               className="cursor-pointer"
                             >
                               Mark In Progress
