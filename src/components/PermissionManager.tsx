@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Mic, Bell, Volume2, MessageSquare } from 'lucide-react';
+import { Mic, Bell, Volume2, MessageSquare, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -38,6 +38,7 @@ export function PermissionManager({
   const [wakeWordEnabled, setWakeWordEnabled] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<'granted' | 'denied' | 'default'>('default');
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
   useEffect(() => {
     // Check notification permission status
@@ -145,125 +146,146 @@ export function PermissionManager({
     localStorage.setItem('permissionsDialogDismissed', new Date().toISOString());
   }
 
+  const PermissionItem = ({
+    id,
+    icon: Icon,
+    iconBg,
+    iconColor,
+    title,
+    description,
+    checked,
+    onCheckedChange,
+    disabled,
+    warningMessage,
+  }: {
+    id: string;
+    icon: typeof Bell;
+    iconBg: string;
+    iconColor: string;
+    title: string;
+    description: string;
+    checked: boolean;
+    onCheckedChange: (checked: boolean) => void;
+    disabled?: boolean;
+    warningMessage?: string;
+  }) => {
+    const isExpanded = expandedSection === id;
+
+    return (
+      <div className="border rounded-lg p-3">
+        <div className="flex items-center gap-3">
+          <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${iconBg} shrink-0`}>
+            <Icon className={`h-5 w-5 ${iconColor}`} />
+          </div>
+          <button
+            onClick={() => setExpandedSection(isExpanded ? null : id)}
+            className="flex-1 text-left"
+          >
+            <h4 className="font-semibold text-sm">{title}</h4>
+          </button>
+          <ChevronDown
+            className={`h-4 w-4 text-muted-foreground transition-transform cursor-pointer shrink-0 ${
+              isExpanded ? 'rotate-180' : ''
+            }`}
+            onClick={() => setExpandedSection(isExpanded ? null : id)}
+          />
+          <Switch
+            checked={checked}
+            onCheckedChange={onCheckedChange}
+            disabled={disabled}
+            className="shrink-0"
+          />
+        </div>
+        {isExpanded && (
+          <div className="mt-3 pl-13 space-y-2">
+            <p className="text-sm text-muted-foreground">{description}</p>
+            {warningMessage && (
+              <p className="text-xs text-orange-600">{warningMessage}</p>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <Dialog open={showDialog} onOpenChange={setShowDialog}>
-      <DialogContent className="sm:max-w-[500px]" showCloseButton={false}>
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto" showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle className="text-xl">{t('permissions.title')}</DialogTitle>
-          <DialogDescription className="text-base pt-2">
+          <DialogTitle className="text-lg sm:text-xl">{t('permissions.title')}</DialogTitle>
+          <DialogDescription className="text-sm sm:text-base pt-1">
             {t('permissions.description')}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {/* Notifications */}
-          <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-100 shrink-0">
-              <Bell className="h-6 w-6 text-green-600" />
-            </div>
-            <div className="flex-1 space-y-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-semibold text-base">{t('permissions.notifications.title')}</h4>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {t('permissions.notifications.description')}
-                  </p>
-                </div>
-                <Switch
-                  checked={notificationsEnabled}
-                  onCheckedChange={handleNotificationToggle}
-                  disabled={isProcessing || notificationPermission === 'denied'}
-                  className="ml-4"
-                />
-              </div>
-              {notificationPermission === 'denied' && (
-                <p className="text-xs text-orange-600">
-                  {t('permissions.notifications.blocked')}
-                </p>
-              )}
-            </div>
-          </div>
+        <div className="space-y-3 py-3">
+          <PermissionItem
+            id="notifications"
+            icon={Bell}
+            iconBg="bg-green-100"
+            iconColor="text-green-600"
+            title={t('permissions.notifications.title')}
+            description={t('permissions.notifications.description')}
+            checked={notificationsEnabled}
+            onCheckedChange={handleNotificationToggle}
+            disabled={isProcessing || notificationPermission === 'denied'}
+            warningMessage={
+              notificationPermission === 'denied'
+                ? t('permissions.notifications.blocked')
+                : undefined
+            }
+          />
 
-          {/* Microphone */}
-          <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100 shrink-0">
-              <Mic className="h-6 w-6 text-blue-600" />
-            </div>
-            <div className="flex-1 space-y-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-semibold text-base">{t('permissions.microphone.title')}</h4>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {t('permissions.microphone.description')}
-                  </p>
-                </div>
-                <Switch
-                  checked={microphoneEnabled}
-                  onCheckedChange={handleMicrophoneToggle}
-                  disabled={isProcessing}
-                  className="ml-4"
-                />
-              </div>
-            </div>
-          </div>
+          <PermissionItem
+            id="microphone"
+            icon={Mic}
+            iconBg="bg-blue-100"
+            iconColor="text-blue-600"
+            title={t('permissions.microphone.title')}
+            description={t('permissions.microphone.description')}
+            checked={microphoneEnabled}
+            onCheckedChange={handleMicrophoneToggle}
+            disabled={isProcessing}
+          />
 
-          {/* Sound Effects */}
-          <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100 shrink-0">
-              <Volume2 className="h-6 w-6 text-purple-600" />
-            </div>
-            <div className="flex-1 space-y-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-semibold text-base">{t('permissions.sound.title')}</h4>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {t('permissions.sound.description')}
-                  </p>
-                </div>
-                <Switch
-                  checked={soundEnabled}
-                  onCheckedChange={handleSoundToggle}
-                  className="ml-4"
-                />
-              </div>
-            </div>
-          </div>
+          <PermissionItem
+            id="sound"
+            icon={Volume2}
+            iconBg="bg-purple-100"
+            iconColor="text-purple-600"
+            title={t('permissions.sound.title')}
+            description={t('permissions.sound.description')}
+            checked={soundEnabled}
+            onCheckedChange={handleSoundToggle}
+          />
 
-          {/* Wake Word Detection */}
-          <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orange-100 shrink-0">
-              <MessageSquare className="h-6 w-6 text-orange-600" />
-            </div>
-            <div className="flex-1 space-y-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-semibold text-base">{t('permissions.wakeWord.title')}</h4>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {t('permissions.wakeWord.description')}
-                  </p>
-                </div>
-                <Switch
-                  checked={wakeWordEnabled}
-                  onCheckedChange={handleWakeWordToggle}
-                  disabled={!microphoneEnabled || (typeof window !== 'undefined' && !('SpeechRecognition' in window || 'webkitSpeechRecognition' in window))}
-                  className="ml-4"
-                />
-              </div>
-              {!microphoneEnabled && (
-                <p className="text-xs text-orange-600">
-                  {t('permissions.wakeWord.needsMicrophone')}
-                </p>
-              )}
-              {microphoneEnabled && typeof window !== 'undefined' && !('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) && (
-                <p className="text-xs text-orange-600">
-                  {t('permissions.wakeWord.notSupported')}
-                </p>
-              )}
-            </div>
-          </div>
+          <PermissionItem
+            id="wakeword"
+            icon={MessageSquare}
+            iconBg="bg-orange-100"
+            iconColor="text-orange-600"
+            title={t('permissions.wakeWord.title')}
+            description={t('permissions.wakeWord.description')}
+            checked={wakeWordEnabled}
+            onCheckedChange={handleWakeWordToggle}
+            disabled={
+              !microphoneEnabled ||
+              (typeof window !== 'undefined' &&
+                !('SpeechRecognition' in window || 'webkitSpeechRecognition' in window))
+            }
+            warningMessage={
+              !microphoneEnabled
+                ? t('permissions.wakeWord.needsMicrophone')
+                : microphoneEnabled &&
+                  typeof window !== 'undefined' &&
+                  !('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
+                ? t('permissions.wakeWord.notSupported')
+                : undefined
+            }
+          />
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="pt-2">
           <Button
             onClick={handleContinue}
             className="w-full sm:w-auto"
