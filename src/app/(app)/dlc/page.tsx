@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/PageHeader";
 import { CreateButton } from "@/components/CreateButton";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
+import { useLanguage } from "@/providers/LanguageProvider";
 import Link from "next/link";
 
 type DlcItem = {
@@ -28,6 +29,7 @@ type DlcItem = {
 };
 
 export default function DlcPage() {
+  const { t } = useLanguage();
   const [dlcs, setDlcs] = useState<DlcItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "active" | "expiring">("active");
@@ -72,24 +74,24 @@ export default function DlcPage() {
     const days = getDaysUntilExpiration(dlc.expirationDate);
 
     if (dlc.status === "CONSUMED") {
-      return <Badge variant="secondary">Consumed</Badge>;
+      return <Badge variant="secondary">{t('dlc.status.consumed')}</Badge>;
     }
     if (dlc.status === "DISCARDED") {
-      return <Badge variant="secondary">Discarded</Badge>;
+      return <Badge variant="secondary">{t('dlc.status.discarded')}</Badge>;
     }
     if (dlc.status === "EXPIRED" || days <= 0) {
-      return <Badge variant="destructive">Expired</Badge>;
+      return <Badge variant="destructive">{t('dlc.status.expired')}</Badge>;
     }
     if (days === 1) {
-      return <Badge variant="destructive">Tomorrow</Badge>;
+      return <Badge variant="destructive">{t('dlc.status.tomorrow')}</Badge>;
     }
     if (days <= 3) {
-      return <Badge className="bg-orange-500">Urgent ({days}d)</Badge>;
+      return <Badge className="bg-orange-500">{t('dlc.status.urgent').replace('{days}', days.toString())}</Badge>;
     }
     if (days <= 7) {
-      return <Badge className="bg-yellow-500">{days} days</Badge>;
+      return <Badge className="bg-yellow-500">{days} {t('dlc.status.days')}</Badge>;
     }
-    return <Badge variant="secondary">{days} days</Badge>;
+    return <Badge variant="secondary">{days} {t('dlc.status.days')}</Badge>;
   };
 
   const handleConsumed = async (id: string) => {
@@ -114,8 +116,8 @@ export default function DlcPage() {
     <div className="space-y-6">
       {/* Header with gradient background */}
       <PageHeader
-        title="Best Before Dates"
-        subtitle="Track product expiration dates"
+        title={t('dlc.title')}
+        subtitle={t('dlc.subtitle')}
         icon={Calendar}
       />
 
@@ -132,7 +134,7 @@ export default function DlcPage() {
                 className="cursor-pointer flex-1 min-w-[80px] sm:flex-none"
                 size="sm"
               >
-                Active
+                {t('dlc.filter.active')}
               </Button>
               <Button
                 variant={filter === "expiring" ? "default" : "outline"}
@@ -141,8 +143,8 @@ export default function DlcPage() {
                 size="sm"
               >
                 <AlertTriangle className="mr-1 h-4 w-4" />
-                <span className="hidden sm:inline">Expiring Soon</span>
-                <span className="sm:hidden">Expiring</span>
+                <span className="hidden sm:inline">{t('dlc.filter.expiringSoon')}</span>
+                <span className="sm:hidden">{t('dlc.expiring')}</span>
               </Button>
               <Button
                 variant={filter === "all" ? "default" : "outline"}
@@ -150,11 +152,11 @@ export default function DlcPage() {
                 className="cursor-pointer flex-1 min-w-[80px] sm:flex-none"
                 size="sm"
               >
-                All
+                {t('dlc.filter.all')}
               </Button>
             </div>
             <Link href="/dlc/new" className="w-full sm:w-auto">
-              <CreateButton className="w-full sm:w-auto">Add Best Before</CreateButton>
+              <CreateButton className="w-full sm:w-auto">{t('dlc.addBestBefore')}</CreateButton>
             </Link>
           </CardTitle>
         </CardHeader>
@@ -162,15 +164,15 @@ export default function DlcPage() {
 
           {loading ? (
             <div className="py-8">
-              <p className="text-center text-gray-500">Loading...</p>
+              <p className="text-center text-gray-500">{t('dlc.loading')}</p>
             </div>
           ) : dlcs.length === 0 ? (
             <div className="py-8">
               <div className="text-center">
                 <Calendar className="mx-auto h-12 w-12 text-gray-400" />
-                <p className="mt-2 text-gray-500">No expiration dates found</p>
+                <p className="mt-2 text-gray-500">{t('dlc.empty')}</p>
                 <Link href="/dlc/new">
-                  <CreateButton className="mt-4">Add Best Before</CreateButton>
+                  <CreateButton className="mt-4">{t('dlc.addBestBefore')}</CreateButton>
                 </Link>
               </div>
             </div>
@@ -191,12 +193,12 @@ export default function DlcPage() {
                           </span>
                           <span className="hidden sm:inline">•</span>
                           <span className="whitespace-nowrap">
-                            Expires: {new Date(dlc.expirationDate).toLocaleDateString()}
+                            {t('dlc.expires')}: {new Date(dlc.expirationDate).toLocaleDateString()}
                           </span>
                           {dlc.batchNumber && (
                             <>
                               <span className="hidden sm:inline">•</span>
-                              <span className="whitespace-nowrap">Lot: {dlc.batchNumber}</span>
+                              <span className="whitespace-nowrap">{t('dlc.lot')}: {dlc.batchNumber}</span>
                             </>
                           )}
                           {dlc.supplier && (
@@ -218,8 +220,8 @@ export default function DlcPage() {
                             onClick={() => handleConsumed(dlc.id)}
                             className="cursor-pointer text-xs sm:text-sm"
                           >
-                            <span className="hidden sm:inline">Mark Consumed</span>
-                            <span className="sm:hidden">Consumed</span>
+                            <span className="hidden sm:inline">{t('dlc.markConsumed')}</span>
+                            <span className="sm:hidden">{t('dlc.consumed')}</span>
                           </Button>
                           <Button
                             size="sm"
@@ -227,7 +229,7 @@ export default function DlcPage() {
                             onClick={() => handleDiscarded(dlc.id)}
                             className="cursor-pointer text-xs sm:text-sm"
                           >
-                            Discard
+                            {t('dlc.discard')}
                           </Button>
                         </div>
                       )}
