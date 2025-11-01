@@ -38,6 +38,7 @@ export async function getDishes(query: DishQuery = {}): Promise<DishWithRecipe[]
       }),
     },
     include: {
+      folder: true,
       recipeIngredients: includeRecipe
         ? {
             include: {

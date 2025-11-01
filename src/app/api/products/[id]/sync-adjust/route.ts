@@ -22,6 +22,9 @@ export async function POST(
       );
     }
 
+    // Round quantity to 2 decimal places to avoid floating point precision errors
+    const roundedQuantity = Math.round(newQuantity * 100) / 100;
+
     // Get current product state
     const currentProduct = await db.product.findUnique({
       where: { id },
@@ -35,14 +38,21 @@ export async function POST(
     }
 
     const oldQuantity = currentProduct.quantity;
-    const difference = newQuantity - oldQuantity;
+    const difference = roundedQuantity - oldQuantity;
 
-    // Skip if no change
+    // Even if no quantity change, mark as verified
     if (difference === 0) {
+      const updatedProduct = await db.product.update({
+        where: { id },
+        data: {
+          lastVerifiedAt: new Date(), // Mark as verified even without quantity change
+        },
+      });
+
       return NextResponse.json({
-        product: currentProduct,
+        product: updatedProduct,
         movement: null,
-        message: 'No change in quantity',
+        message: 'No change in quantity, but marked as verified',
       });
     }
 
@@ -52,14 +62,15 @@ export async function POST(
 
     // Use Prisma transaction to update product and create movement atomically
     const result = await db.$transaction(async (tx) => {
-      // Update product
+      // Update product with verification timestamp
       const updatedProduct = await tx.product.update({
         where: { id },
         data: {
-          quantity: newQuantity,
+          quantity: roundedQuantity,
           totalValue: currentProduct.unitPrice
-            ? newQuantity * currentProduct.unitPrice
+            ? roundedQuantity * currentProduct.unitPrice
             : null,
+          lastVerifiedAt: new Date(), // Mark as verified during sync
         },
       });
 
@@ -69,11 +80,11 @@ export async function POST(
           productId: id,
           movementType: 'ADJUSTMENT',
           quantity: absoluteDifference,
-          balanceAfter: newQuantity,
+          balanceAfter: roundedQuantity,
           reason: 'Inventory Sync Adjustment',
           description: difference > 0
-            ? `Stock increased by ${absoluteDifference.toFixed(1)} ${currentProduct.unit} during inventory sync (was ${oldQuantity.toFixed(1)}, now ${newQuantity.toFixed(1)})`
-            : `Stock decreased by ${absoluteDifference.toFixed(1)} ${currentProduct.unit} during inventory sync (was ${oldQuantity.toFixed(1)}, now ${newQuantity.toFixed(1)})`,
+            ? `Stock increased by ${absoluteDifference.toFixed(2)} ${currentProduct.unit} during inventory sync (was ${oldQuantity.toFixed(2)}, now ${roundedQuantity.toFixed(2)})`
+            : `Stock decreased by ${absoluteDifference.toFixed(2)} ${currentProduct.unit} during inventory sync (was ${oldQuantity.toFixed(2)}, now ${roundedQuantity.toFixed(2)})`,
           source: 'MANUAL', // Sync is a manual verification process
           unitPrice: currentProduct.unitPrice,
           totalValue: currentProduct.unitPrice
@@ -92,7 +103,7 @@ export async function POST(
       movement: result.movement,
       difference: {
         oldQuantity,
-        newQuantity,
+        newQuantity: roundedQuantity,
         change: difference,
         type: difference > 0 ? 'addition' : 'loss',
       },

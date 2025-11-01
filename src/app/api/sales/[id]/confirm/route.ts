@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
+import { createSale } from '@/lib/services/sale.service';
 
 /**
  * POST /api/sales/[id]/confirm
- * Confirm sales and deduct stock based on recipes
+ * Confirm sales and deduct stock based on recipes (with smart detection)
  */
 
 export async function POST(
@@ -24,28 +25,23 @@ export async function POST(
 
     const results = [];
 
-    // Process each dish
+    // Process each dish using the smart detection service
     for (const dishInput of dishes) {
-      const { name, quantity } = dishInput;
+      const { name, quantity, dishId } = dishInput;
 
-      // Find or create dish
-      let dish = await db.dish.findFirst({
-        where: {
-          name: {
-            equals: name,
-            mode: 'insensitive',
-          },
-        },
-        include: {
-          recipeIngredients: {
-            include: {
-              product: true,
+      // Use dishId if provided (from DishConfirmCard matching), otherwise search by name
+      let dish = dishId
+        ? await db.dish.findUnique({ where: { id: dishId } })
+        : await db.dish.findFirst({
+            where: {
+              name: {
+                equals: name,
+                mode: 'insensitive',
+              },
             },
-          },
-        },
-      });
+          });
 
-      // If dish doesn't exist, create it without recipe (manual handling needed)
+      // If dish doesn't exist, create placeholder
       if (!dish) {
         console.log(`Dish not found: ${name}, creating placeholder`);
         dish = await db.dish.create({
@@ -53,80 +49,30 @@ export async function POST(
             name: name,
             isActive: true,
           },
-          include: {
-            recipeIngredients: {
-              include: {
-                product: true,
-              },
-            },
-          },
         });
       }
 
-      // Create sale record
-      const sale = await db.sale.create({
-        data: {
+      try {
+        // Use the smart detection service - it handles prepared vs raw ingredients
+        await createSale({
           dishId: dish.id,
           quantitySold: quantity,
           saleDate: saleDate ? new Date(saleDate) : new Date(),
           notes: `Imported from receipt scan - ${receiptId}`,
-        },
-      });
-
-      // Deduct ingredients from stock based on recipe
-      const stockMovements = [];
-
-      if (dish.recipeIngredients.length > 0) {
-        for (const ingredient of dish.recipeIngredients) {
-          const quantityToDeduct = ingredient.quantityRequired * quantity;
-          const product = ingredient.product;
-
-          // Calculate new balance
-          const newBalance = product.quantity - quantityToDeduct;
-
-          // Create stock movement
-          const movement = await db.stockMovement.create({
-            data: {
-              productId: product.id,
-              movementType: 'OUT',
-              quantity: -quantityToDeduct,
-              balanceAfter: newBalance,
-              movementDate: saleDate ? new Date(saleDate) : new Date(),
-              saleId: sale.id,
-              source: 'RECIPE_DEDUCTION', // Automated deduction
-              reason: `Sale: ${dish.name} (x${quantity})`,
-              description: `Automatic deduction from recipe`,
-            },
-          });
-
-          // Update product quantity
-          await db.product.update({
-            where: { id: product.id },
-            data: { quantity: newBalance },
-          });
-
-          stockMovements.push({
-            productName: product.name,
-            quantityDeducted: quantityToDeduct,
-            unit: product.unit,
-            newBalance,
-          });
-        }
-
-        results.push({
-          dishName: dish.name,
-          quantitySold: quantity,
-          ingredientsDeducted: stockMovements.length,
-          hasRecipe: true,
         });
-      } else {
-        console.warn(`No recipe found for dish: ${dish.name}`);
+
         results.push({
           dishName: dish.name,
           quantitySold: quantity,
-          ingredientsDeducted: 0,
-          hasRecipe: false,
-          warning: 'No recipe found - stock not deducted',
+          success: true,
+        });
+      } catch (error) {
+        console.error(`Error recording sale for ${dish.name}:`, error);
+        results.push({
+          dishName: dish.name,
+          quantitySold: quantity,
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
         });
       }
     }

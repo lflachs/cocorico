@@ -114,9 +114,15 @@ export function InventorySyncFlow({ open, onOpenChange, products, initialConfide
   };
 
   const handleStart = () => {
-    // Sort products by updatedAt (oldest first) to prioritize items that need updating
+    // Sort products by lastVerifiedAt (oldest/never verified first) to prioritize items that need verification
     const sorted = [...products].sort((a, b) => {
-      return new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+      // Products never verified (null lastVerifiedAt) should come first
+      if (!a.lastVerifiedAt && !b.lastVerifiedAt) return 0;
+      if (!a.lastVerifiedAt) return -1; // a comes first
+      if (!b.lastVerifiedAt) return 1;  // b comes first
+
+      // Both have verification dates, sort by oldest first
+      return new Date(a.lastVerifiedAt).getTime() - new Date(b.lastVerifiedAt).getTime();
     });
 
     setSortedProducts(sorted);
@@ -145,26 +151,26 @@ export function InventorySyncFlow({ open, onOpenChange, products, initialConfide
       return;
     }
 
-    // If quantity changed, update it with tracking
-    if (editedQuantity !== currentProduct.quantity) {
-      try {
-        const response = await fetch(`/api/products/${currentProduct.id}/sync-adjust`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            newQuantity: editedQuantity,
-            lossReason: isLoss ? lossReason : undefined,
-          }),
-        });
+    // Always call the API to mark as verified (even if quantity unchanged)
+    try {
+      const response = await fetch(`/api/products/${currentProduct.id}/sync-adjust`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          newQuantity: editedQuantity,
+          lossReason: isLoss ? lossReason : undefined,
+        }),
+      });
 
-        if (!response.ok) {
-          toast.error('Erreur lors de la mise à jour');
-          return;
-        }
+      if (!response.ok) {
+        toast.error('Erreur lors de la mise à jour');
+        return;
+      }
 
-        const result = await response.json();
+      const result = await response.json();
 
-        // Track the change
+      // Track the change if quantity was modified
+      if (editedQuantity !== currentProduct.quantity) {
         const newChanges = new Map(stockChanges);
         newChanges.set(currentProduct.id, {
           oldQty: currentProduct.quantity,
@@ -174,21 +180,21 @@ export function InventorySyncFlow({ open, onOpenChange, products, initialConfide
         setStockChanges(newChanges);
 
         updatedQuantities.set(currentProduct.id, editedQuantity);
-
-        // Log for analytics
-        if (result.movement) {
-          console.log('Stock movement recorded:', {
-            product: currentProduct.name,
-            change: result.difference.change,
-            type: result.difference.type,
-            movementId: result.movement.id,
-          });
-        }
-      } catch (error) {
-        console.error('Update error:', error);
-        toast.error('Erreur lors de la mise à jour');
-        return;
       }
+
+      // Log for analytics
+      if (result.movement) {
+        console.log('Stock movement recorded:', {
+          product: currentProduct.name,
+          change: result.difference.change,
+          type: result.difference.type,
+          movementId: result.movement.id,
+        });
+      }
+    } catch (error) {
+      console.error('Update error:', error);
+      toast.error('Erreur lors de la mise à jour');
+      return;
     }
 
     // Mark as confirmed
@@ -358,9 +364,9 @@ export function InventorySyncFlow({ open, onOpenChange, products, initialConfide
     // SYNCING state - Card carousel
     if (state === 'SYNCING' && currentProduct) {
       const progress = ((confirmedProducts.size) / sortedProducts.length) * 100;
-      const daysAgo = Math.floor(
-        (Date.now() - new Date(currentProduct.updatedAt).getTime()) / (1000 * 60 * 60 * 24)
-      );
+      const daysSinceVerification = currentProduct.lastVerifiedAt
+        ? Math.floor((Date.now() - new Date(currentProduct.lastVerifiedAt).getTime()) / (1000 * 60 * 60 * 24))
+        : null; // null means never verified
 
       return (
         <div className="flex flex-col h-full">
@@ -395,12 +401,17 @@ export function InventorySyncFlow({ open, onOpenChange, products, initialConfide
                     )}
                   </div>
                 </div>
-                {daysAgo > 0 && (
+                {daysSinceVerification === null ? (
+                  <Badge variant="outline" className="text-red-600 border-red-300">
+                    <AlertTriangle className="h-3 w-3 mr-1" />
+                    Jamais vérifié
+                  </Badge>
+                ) : daysSinceVerification > 0 ? (
                   <Badge variant="outline" className="text-orange-600 border-orange-300">
                     <Clock className="h-3 w-3 mr-1" />
-                    {daysAgo}j
+                    {daysSinceVerification}j
                   </Badge>
-                )}
+                ) : null}
               </div>
 
               {/* Quantity update section */}

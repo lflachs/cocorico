@@ -26,6 +26,7 @@ model User {
   // Relations
   stockMovements StockMovement[]
   sales          Sale[]
+  productions    Production[]
 
   @@index([email])
   @@map("users")
@@ -62,6 +63,7 @@ model Product {
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  lastVerifiedAt DateTime? // Last time this product was verified during inventory sync
 
   // Relations
   movements         StockMovement[]
@@ -132,10 +134,11 @@ model StockMovement {
   movementDate DateTime     @default(now())
 
   // References
-  billId    String?
-  disputeId String?
-  saleId    String?
-  userId    String?
+  billId       String?
+  disputeId    String?
+  saleId       String?
+  productionId String?
+  userId       String?
 
   // Metadata
   reason      String
@@ -149,16 +152,18 @@ model StockMovement {
   createdAt DateTime @default(now())
 
   // Relations
-  product Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  bill    Bill?    @relation(fields: [billId], references: [id])
-  dispute Dispute? @relation(fields: [disputeId], references: [id])
-  sale    Sale?    @relation(fields: [saleId], references: [id])
-  user    User?    @relation(fields: [userId], references: [id])
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  bill       Bill?       @relation(fields: [billId], references: [id])
+  dispute    Dispute?    @relation(fields: [disputeId], references: [id])
+  sale       Sale?       @relation(fields: [saleId], references: [id])
+  production Production? @relation(fields: [productionId], references: [id])
+  user       User?       @relation(fields: [userId], references: [id])
 
   @@index([productId])
   @@index([movementDate])
   @@index([billId])
   @@index([saleId])
+  @@index([productionId])
   @@index([source])
   @@map("stock_movements")
 }
@@ -175,6 +180,7 @@ enum MovementSource {
   SCAN_RECEPTION      // Automated from reception flow (bill scan)
   SCAN_SALES          // Automated from sales flow (receipt scan)
   RECIPE_DEDUCTION    // Automated stock deduction from recipe
+  PRODUCTION          // Automated from production/preparation flow
   SYSTEM_ADJUSTMENT   // System-initiated adjustment
 }
 
@@ -339,6 +345,21 @@ model DisputeProduct {
 // MENU & RECIPES
 // ============================================================================
 
+model DishFolder {
+  id        String   @id @default(cuid())
+  name      String
+  color     String?  // Optional color for visual organization
+  order     Int      @default(0) // Display order
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  dishes Dish[]
+
+  @@index([order])
+  @@map("dish_folders")
+}
+
 model Dish {
   id          String  @id @default(cuid())
   name        String
@@ -348,6 +369,10 @@ model Dish {
   // Pricing
   sellingPrice Float? // Price sold to customers
 
+  // Folder organization
+  folderId String?
+  folder   DishFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -355,9 +380,11 @@ model Dish {
   // Relations
   recipeIngredients RecipeIngredient[]
   sales             Sale[]
+  productions       Production[]
   menuDishes        MenuDish[]
 
   @@index([name])
+  @@index([folderId])
   @@map("dishes")
 }
 
@@ -477,6 +504,32 @@ model Sale {
   @@index([saleDate])
   @@index([userId])
   @@map("sales")
+}
+
+// ============================================================================
+// PRODUCTION TRACKING
+// ============================================================================
+
+model Production {
+  id               String   @id @default(cuid())
+  dishId           String
+  quantityProduced Float
+  productionDate   DateTime @default(now())
+  notes            String?  @db.Text
+  userId           String?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  // Relations
+  dish           Dish            @relation(fields: [dishId], references: [id], onDelete: Restrict)
+  user           User?           @relation(fields: [userId], references: [id])
+  stockMovements StockMovement[]
+
+  @@index([dishId])
+  @@index([productionDate])
+  @@index([userId])
+  @@map("productions")
 }
 
 // ============================================================================

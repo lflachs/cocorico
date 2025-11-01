@@ -72,6 +72,7 @@ export async function getSaleById(id: string): Promise<SaleWithDetails | null> {
 
 /**
  * Create a new sale and deplete inventory
+ * Smart detection: tries prepared dish first, falls back to raw ingredients
  */
 export async function createSale(data: CreateSaleInput): Promise<Sale> {
   const { dishId, quantitySold, saleDate, notes, userId } = data;
@@ -96,37 +97,105 @@ export async function createSale(data: CreateSaleInput): Promise<Sale> {
     throw new Error('Cannot record sale for inactive dish');
   }
 
-  // Check if we have enough inventory for all ingredients
-  const insufficientIngredients: string[] = [];
-  for (const ingredient of dish.recipeIngredients) {
-    const requiredQuantity = ingredient.quantityRequired * quantitySold;
-    if (ingredient.product.quantity < requiredQuantity) {
-      insufficientIngredients.push(
-        `${ingredient.product.name} (need ${requiredQuantity} ${ingredient.unit}, have ${ingredient.product.quantity} ${ingredient.product.unit})`
+  // SMART DETECTION: Check if prepared dish exists in inventory
+  const preparedDish = await db.product.findFirst({
+    where: {
+      name: dish.name,
+      category: 'Prepared Dish',
+    },
+  });
+
+  let usesPreparedStock = false;
+  if (preparedDish && preparedDish.quantity >= quantitySold) {
+    // We have enough prepared dishes in stock - use those!
+    usesPreparedStock = true;
+  }
+
+  // Validation: Check if we have enough inventory
+  if (usesPreparedStock) {
+    // Simple check for prepared dish
+    if (preparedDish!.quantity < quantitySold) {
+      throw new Error(
+        `Insufficient prepared dishes in stock (need ${quantitySold}, have ${preparedDish!.quantity})`
+      );
+    }
+  } else {
+    // Check raw ingredients
+    const insufficientIngredients: string[] = [];
+    for (const ingredient of dish.recipeIngredients) {
+      const requiredQuantity = ingredient.quantityRequired * quantitySold;
+      if (ingredient.product.quantity < requiredQuantity) {
+        insufficientIngredients.push(
+          `${ingredient.product.name} (need ${requiredQuantity} ${ingredient.unit}, have ${ingredient.product.quantity} ${ingredient.product.unit})`
+        );
+      }
+    }
+
+    if (insufficientIngredients.length > 0) {
+      throw new Error(
+        `Insufficient inventory for: ${insufficientIngredients.join(', ')}`
       );
     }
   }
 
-  if (insufficientIngredients.length > 0) {
-    throw new Error(
-      `Insufficient inventory for: ${insufficientIngredients.join(', ')}`
-    );
-  }
-
   // Use a transaction to ensure atomicity
   const sale = await db.$transaction(async (tx) => {
-    // Deplete inventory for each ingredient
-    for (const ingredient of dish.recipeIngredients) {
-      const depletionAmount = ingredient.quantityRequired * quantitySold;
+    if (usesPreparedStock) {
+      // Deduct from prepared dish inventory
+      const newBalance = preparedDish!.quantity - quantitySold;
 
       await tx.product.update({
-        where: { id: ingredient.productId },
+        where: { id: preparedDish!.id },
+        data: { quantity: newBalance },
+      });
+
+      // Create stock movement for traceability
+      await tx.stockMovement.create({
         data: {
-          quantity: {
-            decrement: depletionAmount,
-          },
+          productId: preparedDish!.id,
+          movementType: 'OUT',
+          quantity: quantitySold,
+          balanceAfter: newBalance,
+          userId,
+          reason: `Sale: ${quantitySold}x ${dish.name}`,
+          description: 'Sold from prepared inventory',
+          source: 'SCAN_SALES',
         },
       });
+    } else {
+      // Deduct from raw ingredient inventory
+      for (const ingredient of dish.recipeIngredients) {
+        const depletionAmount = ingredient.quantityRequired * quantitySold;
+        const currentProduct = await tx.product.findUnique({
+          where: { id: ingredient.productId },
+          select: { quantity: true },
+        });
+
+        if (!currentProduct) {
+          throw new Error(`Product ${ingredient.product.name} not found`);
+        }
+
+        const newBalance = currentProduct.quantity - depletionAmount;
+
+        await tx.product.update({
+          where: { id: ingredient.productId },
+          data: { quantity: newBalance },
+        });
+
+        // Create stock movement for traceability
+        await tx.stockMovement.create({
+          data: {
+            productId: ingredient.productId,
+            movementType: 'OUT',
+            quantity: depletionAmount,
+            balanceAfter: newBalance,
+            userId,
+            reason: `Sale: ${quantitySold}x ${dish.name}`,
+            description: `Raw ingredient used for sale (à la minute)`,
+            source: 'SCAN_SALES',
+          },
+        });
+      }
     }
 
     // Create the sale record

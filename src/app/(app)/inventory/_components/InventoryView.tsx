@@ -32,6 +32,7 @@ import { useLanguage } from '@/providers/LanguageProvider';
 import Link from 'next/link';
 import { CreateButton } from '@/components/CreateButton';
 import { InventorySyncFlow } from './InventorySyncFlow';
+import { StockMovementsList } from './StockMovementsList';
 import { formatQuantity, translateUnit } from '@/lib/utils/unit-converter';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
@@ -379,32 +380,39 @@ export function InventoryView({ initialProducts, menuIngredients }: InventoryVie
     }, 0);
   };
 
-  // Calculate inventory confidence level based on how recently products were updated
+  // Calculate inventory confidence level based on how recently products were verified during sync
   const calculateConfidenceLevel = () => {
     if (initialProducts.length === 0) return { level: 0, label: 'Aucune donnée', color: 'gray', emoji: '⚪', lastUpdate: null };
 
     const now = Date.now();
     let totalScore = 0;
-    let mostRecentUpdate: Date | null = null;
+    let mostRecentVerification: Date | null = null;
 
     initialProducts.forEach((product) => {
-      const productUpdateDate = new Date(product.updatedAt);
+      // Use lastVerifiedAt if available, otherwise fall back to null for unverified products
+      const verificationDate = product.lastVerifiedAt ? new Date(product.lastVerifiedAt) : null;
 
-      // Track most recent update
-      if (!mostRecentUpdate || productUpdateDate > mostRecentUpdate) {
-        mostRecentUpdate = productUpdateDate;
+      // Track most recent verification
+      if (verificationDate && (!mostRecentVerification || verificationDate > mostRecentVerification)) {
+        mostRecentVerification = verificationDate;
       }
 
-      const daysSinceUpdate = Math.floor((now - productUpdateDate.getTime()) / (1000 * 60 * 60 * 24));
+      // If never verified, score is 0
+      if (!verificationDate) {
+        totalScore += 0;
+        return;
+      }
 
-      // Scoring system: more recent = higher score
+      const daysSinceVerification = Math.floor((now - verificationDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      // Scoring system: more recent verification = higher score
       let score = 0;
-      if (daysSinceUpdate === 0) score = 100; // Today
-      else if (daysSinceUpdate === 1) score = 90; // Yesterday
-      else if (daysSinceUpdate <= 3) score = 75; // Last 3 days
-      else if (daysSinceUpdate <= 7) score = 50; // Last week
-      else if (daysSinceUpdate <= 14) score = 30; // Last 2 weeks
-      else if (daysSinceUpdate <= 30) score = 15; // Last month
+      if (daysSinceVerification === 0) score = 100; // Today
+      else if (daysSinceVerification === 1) score = 90; // Yesterday
+      else if (daysSinceVerification <= 3) score = 75; // Last 3 days
+      else if (daysSinceVerification <= 7) score = 50; // Last week
+      else if (daysSinceVerification <= 14) score = 30; // Last 2 weeks
+      else if (daysSinceVerification <= 30) score = 15; // Last month
       else score = 0; // Over a month
 
       totalScore += score;
@@ -414,15 +422,15 @@ export function InventoryView({ initialProducts, menuIngredients }: InventoryVie
 
     // Determine confidence level
     if (avgScore >= 80) {
-      return { level: avgScore, label: 'Très élevée', color: 'green', emoji: '🟢', lastUpdate: mostRecentUpdate };
+      return { level: avgScore, label: 'Très élevée', color: 'green', emoji: '🟢', lastUpdate: mostRecentVerification };
     } else if (avgScore >= 60) {
-      return { level: avgScore, label: 'Élevée', color: 'blue', emoji: '🔵', lastUpdate: mostRecentUpdate };
+      return { level: avgScore, label: 'Élevée', color: 'blue', emoji: '🔵', lastUpdate: mostRecentVerification };
     } else if (avgScore >= 40) {
-      return { level: avgScore, label: 'Moyenne', color: 'yellow', emoji: '🟡', lastUpdate: mostRecentUpdate };
+      return { level: avgScore, label: 'Moyenne', color: 'yellow', emoji: '🟡', lastUpdate: mostRecentVerification };
     } else if (avgScore >= 20) {
-      return { level: avgScore, label: 'Faible', color: 'orange', emoji: '🟠', lastUpdate: mostRecentUpdate };
+      return { level: avgScore, label: 'Faible', color: 'orange', emoji: '🟠', lastUpdate: mostRecentVerification };
     } else {
-      return { level: avgScore, label: 'Très faible', color: 'red', emoji: '🔴', lastUpdate: mostRecentUpdate };
+      return { level: avgScore, label: 'Très faible', color: 'red', emoji: '🔴', lastUpdate: mostRecentVerification };
     }
   };
 
@@ -506,7 +514,7 @@ Product: ${p.name}
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full overflow-hidden">
-        <TabsList className="grid w-full sm:max-w-md grid-cols-2 mb-6">
+        <TabsList className="grid w-full sm:max-w-md grid-cols-3 mb-6">
           <TabsTrigger value="sync" className="gap-1 sm:gap-2 min-w-0">
             <RefreshCw className="w-4 h-4 shrink-0" />
             <span className="truncate text-xs sm:text-sm">Sync</span>
@@ -514,6 +522,10 @@ Product: ${p.name}
           <TabsTrigger value="inventory" className="gap-1 sm:gap-2 min-w-0">
             <Package className="w-4 h-4 shrink-0" />
             <span className="truncate text-xs sm:text-sm">Stock</span>
+          </TabsTrigger>
+          <TabsTrigger value="movements" className="gap-1 sm:gap-2 min-w-0">
+            <Clock className="w-4 h-4 shrink-0" />
+            <span className="truncate text-xs sm:text-sm">Historique</span>
           </TabsTrigger>
         </TabsList>
 
@@ -1286,6 +1298,23 @@ Product: ${p.name}
             )}
           </CardContent>
         </Card>
+        </TabsContent>
+
+        <TabsContent value="movements" className="space-y-6 overflow-hidden">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Historique des mouvements
+              </CardTitle>
+              <CardDescription>
+                Tous les mouvements de stock (entrées, sorties, ajustements)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <StockMovementsList />
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </>
