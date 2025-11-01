@@ -13,7 +13,7 @@ export async function POST(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { newQuantity } = body;
+    const { newQuantity, lossReason } = body;
 
     if (newQuantity === undefined || newQuantity === null) {
       return NextResponse.json(
@@ -79,6 +79,7 @@ export async function POST(
           totalValue: currentProduct.unitPrice
             ? absoluteDifference * currentProduct.unitPrice
             : null,
+          lossReason: difference < 0 && lossReason ? lossReason : null, // Only set for losses
         },
       });
 

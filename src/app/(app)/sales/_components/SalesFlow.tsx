@@ -16,6 +16,7 @@ type ExtractedDish = {
   name: string;
   quantity: number;
   price?: number;
+  dishId?: string; // Added to store the matched dish ID
 };
 
 type SalesFlowProps = {

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { ArrowLeft, Upload, Plus, FileSpreadsheet, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AddProductDialog } from '../_components/AddProductDialog';
+import { InlineIngredientCreator } from '../../menu/_components/InlineIngredientCreator';
 import { toast } from 'sonner';
 
 /**
@@ -246,8 +246,15 @@ export default function AddProductPage() {
         </CardContent>
       </Card>
 
-      {/* Manual Entry Dialog */}
-      <AddProductDialog open={showManualDialog} onOpenChange={setShowManualDialog} />
+      {/* Manual Entry Dialog - Using InlineIngredientCreator */}
+      <InlineIngredientCreator
+        open={showManualDialog}
+        onOpenChange={setShowManualDialog}
+        onSuccess={(product) => {
+          toast.success(`Produit "${product.name}" ajouté à l'inventaire`);
+          router.push('/inventory');
+        }}
+      />
     </div>
   );
 }

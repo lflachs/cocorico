@@ -2,6 +2,7 @@ import { type Product } from '@prisma/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
+import { formatQuantity, translateUnit } from '@/lib/utils/unit-converter';
 
 /**
  * ProductCard Component (Server Component)
@@ -29,7 +30,7 @@ export function ProductCard({ product }: ProductCardProps) {
               <div className="flex justify-between text-gray-600">
                 <span>Quantity:</span>
                 <span className="font-medium text-gray-900">
-                  {product.quantity} {product.unit.toLowerCase()}
+                  {formatQuantity(product.quantity)} {translateUnit(product.unit, product.quantity)}
                 </span>
               </div>
 

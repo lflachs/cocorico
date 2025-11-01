@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChefHat, Calendar, Trash2, DollarSign } from 'lucide-react';
+import { ChefHat, Calendar, Trash2, DollarSign, Zap } from 'lucide-react';
 import { useLanguage } from '@/providers/LanguageProvider';
 import { toast } from 'sonner';
 import { CreateButton } from '@/components/CreateButton';
@@ -18,6 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { MenuQuickCreateFlow } from './MenuQuickCreateFlow';
 
 /**
  * Menu List
@@ -48,6 +49,7 @@ export function MenuList({ onSelectMenu }: MenuListProps) {
   const [loading, setLoading] = useState(true);
   const [menuToDelete, setMenuToDelete] = useState<Menu | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [showQuickCreate, setShowQuickCreate] = useState(false);
 
   const loadMenus = useCallback(async () => {
     setLoading(true);
@@ -140,9 +142,14 @@ export function MenuList({ onSelectMenu }: MenuListProps) {
               <CardDescription>{t('menu.subtitle')}</CardDescription>
             </div>
             <div className="flex gap-2">
-              <CreateButton onClick={handleCreateMenu}>
-                {t('menu.createMenu')}
-              </CreateButton>
+              <Button
+                onClick={() => setShowQuickCreate(true)}
+                size="lg"
+                className="gap-2 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90"
+              >
+                <Zap className="w-5 h-5" />
+                Création rapide
+              </Button>
             </div>
           </div>
         </CardHeader>
@@ -245,6 +252,16 @@ export function MenuList({ onSelectMenu }: MenuListProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <MenuQuickCreateFlow
+        open={showQuickCreate}
+        onOpenChange={(open) => {
+          setShowQuickCreate(open);
+          if (!open) {
+            loadMenus();
+          }
+        }}
+      />
     </>
   );
 }

@@ -88,3 +88,56 @@ export function getCategoryDisplayName(category: string): string {
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 }
+
+/**
+ * Suggest a simplified display name from a full product name
+ * @param fullName - The full product name (e.g., "Tomates rondes bio Fournisseur X")
+ * @returns A suggested simplified display name (e.g., "Tomate")
+ */
+export function suggestDisplayName(fullName: string): string | null {
+  if (!fullName || fullName.trim().length === 0) {
+    return null;
+  }
+
+  const normalized = fullName.trim();
+  const allIngredients = getAllIngredientSuggestions();
+
+  // Try to find a matching ingredient in our database
+  const lowerName = normalized.toLowerCase();
+
+  // Check for exact matches first
+  const exactMatch = allIngredients.find(ing =>
+    lowerName === ing.name.toLowerCase()
+  );
+  if (exactMatch) {
+    return exactMatch.name;
+  }
+
+  // Check if any ingredient name is contained in the product name
+  const partialMatch = allIngredients.find(ing =>
+    lowerName.includes(ing.name.toLowerCase())
+  );
+  if (partialMatch) {
+    return partialMatch.name;
+  }
+
+  // Check if the product name starts with any ingredient
+  const startsWithMatch = allIngredients.find(ing =>
+    lowerName.startsWith(ing.name.toLowerCase())
+  );
+  if (startsWithMatch) {
+    return startsWithMatch.name;
+  }
+
+  // Fallback: Take the first 1-2 words (but not more than 20 chars)
+  const words = normalized.split(/\s+/);
+  if (words.length >= 2 && words[0].length + words[1].length < 20) {
+    return words[0] + ' ' + words[1];
+  }
+  if (words[0].length < 20) {
+    return words[0];
+  }
+
+  // If nothing works, return null to use the full name
+  return null;
+}

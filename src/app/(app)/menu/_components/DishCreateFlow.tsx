@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,17 +8,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PageHeader } from '@/components/PageHeader';
 import { useLanguage } from '@/providers/LanguageProvider';
-import { ChefHat, ArrowLeft, CheckCircle2, AlertCircle, Plus, Trash2 } from 'lucide-react';
+import { ChefHat, ArrowLeft, CheckCircle2, AlertCircle, Plus, Trash2, Package, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { IngredientAutocomplete } from '@/components/ui/ingredient-autocomplete';
+import { InlineIngredientCreator } from './InlineIngredientCreator';
+import { QuantityInput } from '@/components/ui/quantity-input';
+import { UnitSelector } from '@/components/ui/unit-selector';
 
 /**
  * Dish Create Flow - Full screen, user-friendly dish creation
@@ -32,9 +30,17 @@ type FormData = {
   isActive: boolean;
 };
 
+type Product = {
+  id: string;
+  name: string;
+  unit: string;
+  unitPrice?: number | null;
+};
+
 type Ingredient = {
+  productId?: string; // Set if using existing product
   productName: string;
-  quantity: string;
+  quantity: number;
   unit: string;
 };
 
@@ -56,11 +62,30 @@ export function DishCreateFlow() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [currentIngredient, setCurrentIngredient] = useState<Ingredient>({
     productName: '',
-    quantity: '',
+    quantity: 0,
     unit: 'KG',
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [products, setProducts] = useState<Product[]>([]);
+  const [showIngredientCreator, setShowIngredientCreator] = useState(false);
+
+  // Load existing products on mount
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  const loadProducts = async () => {
+    try {
+      const { getProductsAction } = await import('@/lib/actions/product.actions');
+      const result = await getProductsAction();
+      if (result.success && result.data) {
+        setProducts(result.data);
+      }
+    } catch (error) {
+      console.error('Error loading products:', error);
+    }
+  };
 
   const validateField = (name: keyof FormData, value: any): string | undefined => {
     if (name === 'name') {
@@ -81,34 +106,66 @@ export function DishCreateFlow() {
   };
 
   const handleFieldChange = (field: keyof FormData, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
 
     if (touched[field]) {
       const error = validateField(field, value);
-      setErrors(prev => ({ ...prev, [field]: error }));
+      setErrors((prev) => ({ ...prev, [field]: error }));
     }
   };
 
   const handleFieldBlur = (field: keyof FormData) => {
-    setTouched(prev => ({ ...prev, [field]: true }));
+    setTouched((prev) => ({ ...prev, [field]: true }));
     const error = validateField(field, formData[field]);
-    setErrors(prev => ({ ...prev, [field]: error }));
+    setErrors((prev) => ({ ...prev, [field]: error }));
   };
 
   const handleAddIngredient = () => {
-    if (!currentIngredient.productName || !currentIngredient.quantity) {
+    if (!currentIngredient.productName || currentIngredient.quantity <= 0) {
       toast.error('Please enter ingredient name and quantity');
       return;
     }
 
-    const qty = parseFloat(currentIngredient.quantity);
-    if (isNaN(qty) || qty <= 0) {
-      toast.error('Quantity must be a positive number');
-      return;
-    }
+    // Check if product exists
+    const existingProduct = products.find(
+      (p) => p.name.toLowerCase() === currentIngredient.productName.toLowerCase()
+    );
 
-    setIngredients([...ingredients, currentIngredient]);
-    setCurrentIngredient({ productName: '', quantity: '', unit: 'KG' });
+    if (existingProduct) {
+      // Use existing product
+      setIngredients([
+        ...ingredients,
+        {
+          productId: existingProduct.id,
+          productName: existingProduct.name,
+          quantity: currentIngredient.quantity,
+          unit: existingProduct.unit,
+        },
+      ]);
+      setCurrentIngredient({ productName: '', quantity: 0, unit: 'KG' });
+    } else {
+      // Show creator for new ingredient
+      setShowIngredientCreator(true);
+    }
+  };
+
+  const handleIngredientCreated = (product: Product) => {
+    // Add to products list
+    setProducts([...products, product]);
+
+    // Add to ingredients
+    setIngredients([
+      ...ingredients,
+      {
+        productId: product.id,
+        productName: product.name,
+        quantity: currentIngredient.quantity,
+        unit: product.unit,
+      },
+    ]);
+
+    // Reset current ingredient
+    setCurrentIngredient({ productName: '', quantity: 0, unit: 'KG' });
   };
 
   const handleRemoveIngredient = (index: number) => {
@@ -149,31 +206,21 @@ export function DishCreateFlow() {
       return;
     }
 
+    // Validate all ingredients have productId (should be set by now)
+    const missingProduct = ingredients.find((ing) => !ing.productId);
+    if (missingProduct) {
+      toast.error(`Ingredient "${missingProduct.productName}" is not properly configured`);
+      return;
+    }
+
     setSaving(true);
     try {
-      // Create ingredients/products and the dish
-      const ingredientData = await Promise.all(
-        ingredients.map(async (ing) => {
-          // Create new product for this ingredient
-          const formData = new FormData();
-          formData.append('name', ing.productName);
-          formData.append('quantity', '0');
-          formData.append('unit', ing.unit);
-          formData.append('trackable', 'true');
-
-          const { createProductWithoutRedirectAction } = await import('@/lib/actions/product.actions');
-          const result = await createProductWithoutRedirectAction(formData);
-
-          if (result.success && result.data) {
-            return {
-              productId: result.data.id,
-              quantityRequired: parseFloat(ing.quantity),
-              unit: ing.unit,
-            };
-          }
-          throw new Error(result.error || 'Failed to create ingredient');
-        })
-      );
+      // Map ingredients to the format expected by the API
+      const ingredientData = ingredients.map((ing) => ({
+        productId: ing.productId!,
+        quantityRequired: ing.quantity,
+        unit: ing.unit,
+      }));
 
       // Create the dish
       const { createDishAction } = await import('@/lib/actions/dish.actions');
@@ -206,11 +253,11 @@ export function DishCreateFlow() {
   const isFormValid = !errors.name && !errors.sellingPrice && formData.name.trim().length > 0;
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="mx-auto max-w-4xl space-y-6">
       {/* Header */}
       <PageHeader
         title={t('menu.dishWizard.title')}
-        subtitle={t('menu.create.subtitle').replace('menu', 'dish')}
+        subtitle={t('menu.create.subtitle').replace('menu', 'plat')}
         icon={ChefHat}
       />
 
@@ -220,7 +267,7 @@ export function DishCreateFlow() {
           {/* Basic Info Card */}
           <Card>
             <CardContent className="p-8">
-              <h3 className="text-lg font-semibold mb-6">{t('menu.dishWizard.basicInfo')}</h3>
+              <h3 className="mb-6 text-lg font-semibold">{t('menu.dishWizard.basicInfo')}</h3>
               <div className="space-y-6">
                 {/* Dish Name */}
                 <div className="space-y-3">
@@ -229,7 +276,7 @@ export function DishCreateFlow() {
                       {t('menu.dishWizard.name')} <span className="text-destructive">*</span>
                     </Label>
                     {touched.name && !errors.name && formData.name && (
-                      <CheckCircle2 className="w-5 h-5 text-success" />
+                      <CheckCircle2 className="text-success h-5 w-5" />
                     )}
                   </div>
                   <Input
@@ -239,18 +286,18 @@ export function DishCreateFlow() {
                     value={formData.name}
                     onChange={(e) => handleFieldChange('name', e.target.value)}
                     onBlur={() => handleFieldBlur('name')}
-                    className={`text-base cursor-text ${
+                    className={`cursor-text text-base ${
                       errors.name && touched.name
                         ? 'border-destructive focus-visible:ring-destructive'
                         : touched.name && formData.name
-                        ? 'border-success focus-visible:ring-success'
-                        : ''
+                          ? 'border-success focus-visible:ring-success'
+                          : ''
                     }`}
                     disabled={saving}
                   />
                   {errors.name && touched.name && (
-                    <div className="flex items-start gap-2 text-sm text-destructive">
-                      <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                    <div className="text-destructive flex items-start gap-2 text-sm">
+                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                       <span>{errors.name}</span>
                     </div>
                   )}
@@ -259,7 +306,10 @@ export function DishCreateFlow() {
                 {/* Description */}
                 <div className="space-y-3">
                   <Label htmlFor="description" className="text-base font-semibold">
-                    {t('menu.dishWizard.description')} <span className="text-muted-foreground text-sm">({t('menu.create.optional')})</span>
+                    {t('menu.dishWizard.description')}{' '}
+                    <span className="text-muted-foreground text-sm">
+                      ({t('menu.create.optional')})
+                    </span>
                   </Label>
                   <Textarea
                     id="description"
@@ -267,7 +317,7 @@ export function DishCreateFlow() {
                     value={formData.description}
                     onChange={(e) => handleFieldChange('description', e.target.value)}
                     rows={3}
-                    className="text-base resize-none cursor-text"
+                    className="cursor-text resize-none text-base"
                     disabled={saving}
                   />
                 </div>
@@ -275,7 +325,10 @@ export function DishCreateFlow() {
                 {/* Selling Price */}
                 <div className="space-y-3">
                   <Label htmlFor="sellingPrice" className="text-base font-semibold">
-                    {t('menu.dishWizard.sellingPrice')} <span className="text-muted-foreground text-sm">({t('menu.create.optional')})</span>
+                    {t('menu.dishWizard.sellingPrice')}{' '}
+                    <span className="text-muted-foreground text-sm">
+                      ({t('menu.create.optional')})
+                    </span>
                   </Label>
                   <Input
                     id="sellingPrice"
@@ -285,7 +338,7 @@ export function DishCreateFlow() {
                     value={formData.sellingPrice}
                     onChange={(e) => handleFieldChange('sellingPrice', e.target.value)}
                     onBlur={() => handleFieldBlur('sellingPrice')}
-                    className={`text-base cursor-text ${
+                    className={`cursor-text text-base ${
                       errors.sellingPrice && touched.sellingPrice
                         ? 'border-destructive focus-visible:ring-destructive'
                         : ''
@@ -293,12 +346,12 @@ export function DishCreateFlow() {
                     disabled={saving}
                   />
                   {errors.sellingPrice && touched.sellingPrice ? (
-                    <div className="flex items-start gap-2 text-sm text-destructive">
-                      <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                    <div className="text-destructive flex items-start gap-2 text-sm">
+                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                       <span>{errors.sellingPrice}</span>
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-muted-foreground text-sm">
                       {t('menu.dishWizard.sellingPriceOptional')}
                     </p>
                   )}
@@ -309,12 +362,10 @@ export function DishCreateFlow() {
                   <Label htmlFor="isActive" className="text-base font-semibold">
                     {t('menu.create.statusTitle')}
                   </Label>
-                  <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
+                  <div className="bg-muted/30 flex items-center justify-between rounded-lg border p-4">
                     <div className="space-y-0.5">
                       <div className="font-medium">Active</div>
-                      <p className="text-sm text-muted-foreground">
-                        Dish is available for sale
-                      </p>
+                      <p className="text-muted-foreground text-sm">Dish is available for sale</p>
                     </div>
                     <Switch
                       id="isActive"
@@ -332,52 +383,75 @@ export function DishCreateFlow() {
           {/* Ingredients Card */}
           <Card>
             <CardContent className="p-8">
-              <h3 className="text-lg font-semibold mb-6">
+              <h3 className="mb-6 text-lg font-semibold">
                 {t('menu.dishWizard.ingredients')} <span className="text-destructive">*</span>
               </h3>
 
               {/* Add Ingredient Form */}
-              <div className="space-y-4 p-4 border rounded-lg bg-muted/30 mb-6">
+              <div className="bg-muted/30 mb-6 space-y-4 rounded-lg border p-4">
                 <div className="space-y-3">
                   <Label htmlFor="ingredientName" className="text-sm font-medium">
                     Nom de l'ingrédient
                   </Label>
                   <IngredientAutocomplete
                     value={currentIngredient.productName}
-                    onChange={(value) => setCurrentIngredient({ ...currentIngredient, productName: value })}
+                    onChange={(value) => {
+                      setCurrentIngredient({ ...currentIngredient, productName: value });
+                      // Auto-fill unit if existing product
+                      const existingProduct = products.find(
+                        (p) => p.name.toLowerCase() === value.toLowerCase()
+                      );
+                      if (existingProduct) {
+                        setCurrentIngredient({
+                          ...currentIngredient,
+                          productName: value,
+                          unit: existingProduct.unit,
+                        });
+                      }
+                    }}
                     placeholder="Tapez pour rechercher... (ex: Tomate, Oignon, Poulet)"
+                    existingProducts={products}
                     disabled={saving}
+                    onCreateNew={() => setShowIngredientCreator(true)}
                   />
+                  {currentIngredient.productName && (
+                    <div className="mt-2">
+                      {products.find(
+                        (p) => p.name.toLowerCase() === currentIngredient.productName.toLowerCase()
+                      ) ? (
+                        <div className="flex items-center gap-2 text-sm text-green-600">
+                          <CheckCircle2 className="w-4 h-4" />
+                          Ingrédient existant
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-sm text-blue-600">
+                          <Info className="w-4 h-4" />
+                          Nouvel ingrédient - sera créé avec prix unitaire
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="col-span-2 space-y-3">
-                    <Label htmlFor="quantity" className="text-sm font-medium">
-                      {t('menu.dishWizard.quantity')}
-                    </Label>
-                    <Input
-                      id="quantity"
-                      type="number"
-                      step="0.01"
-                      placeholder="e.g., 250"
-                      value={currentIngredient.quantity}
-                      onChange={(e) => setCurrentIngredient({ ...currentIngredient, quantity: e.target.value })}
-                      className="cursor-text"
-                    />
-                  </div>
-                  <div className="space-y-3">
-                    <Label htmlFor="unit" className="text-sm font-medium">
-                      {t('menu.dishWizard.unit')}
-                    </Label>
-                    <Input
-                      id="unit"
-                      value={currentIngredient.unit}
-                      onChange={(e) => setCurrentIngredient({ ...currentIngredient, unit: e.target.value.toUpperCase() })}
-                      placeholder="KG"
-                      className="cursor-text"
-                    />
-                  </div>
-                </div>
+                {/* Quantity Input - Reusable component */}
+                <QuantityInput
+                  value={currentIngredient.quantity}
+                  onChange={(value) => setCurrentIngredient({ ...currentIngredient, quantity: value })}
+                  label={t('menu.dishWizard.quantity')}
+                  disabled={saving}
+                />
+
+                {/* Unit Selector - Reusable component */}
+                <UnitSelector
+                  value={currentIngredient.unit}
+                  onChange={(value) => setCurrentIngredient({ ...currentIngredient, unit: value })}
+                  label={t('menu.dishWizard.unit')}
+                  disabled={saving}
+                  locked={!!products.find(
+                    (p) => p.name.toLowerCase() === currentIngredient.productName.toLowerCase()
+                  )}
+                  lockMessage="Unité de l'inventaire"
+                />
 
                 <Button
                   type="button"
@@ -386,24 +460,27 @@ export function DishCreateFlow() {
                   className="w-full cursor-pointer"
                   disabled={!currentIngredient.productName || !currentIngredient.quantity}
                 >
-                  <Plus className="w-4 h-4 mr-2" />
+                  <Plus className="mr-2 h-4 w-4" />
                   {t('menu.dishWizard.addIngredient')}
                 </Button>
               </div>
 
               {/* Ingredients List */}
               {ingredients.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
+                <div className="text-muted-foreground py-8 text-center">
                   <p>{t('menu.dishWizard.noIngredients')}</p>
-                  <p className="text-sm mt-1">Add at least one ingredient to continue</p>
+                  <p className="mt-1 text-sm">Add at least one ingredient to continue</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {ingredients.map((ing, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg bg-card">
+                    <div
+                      key={index}
+                      className="bg-card flex items-center justify-between rounded-lg border p-4"
+                    >
                       <div className="flex-1">
                         <div className="font-medium">{ing.productName}</div>
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-muted-foreground text-sm">
                           {ing.quantity} {ing.unit}
                         </div>
                       </div>
@@ -412,9 +489,9 @@ export function DishCreateFlow() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleRemoveIngredient(index)}
-                        className="cursor-pointer text-destructive hover:text-destructive hover:bg-destructive/10"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   ))}
@@ -425,15 +502,15 @@ export function DishCreateFlow() {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-between gap-4 mt-8">
+        <div className="mt-8 flex items-center justify-between gap-4">
           <Button
             type="button"
             variant="outline"
             onClick={handleCancel}
             disabled={saving}
-            className="gap-2 cursor-pointer hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors"
+            className="hover:bg-destructive hover:text-destructive-foreground hover:border-destructive cursor-pointer gap-2 transition-colors"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="h-4 w-4" />
             {t('menu.menuForm.cancel')}
           </Button>
 
@@ -444,16 +521,16 @@ export function DishCreateFlow() {
                   <Button
                     type="submit"
                     disabled={!isFormValid || ingredients.length === 0 || saving}
-                    className="gap-2 cursor-pointer bg-gradient-to-br from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 disabled:cursor-not-allowed"
+                    className="from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 cursor-pointer gap-2 bg-gradient-to-br disabled:cursor-not-allowed"
                   >
                     {saving ? (
                       <>
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                         {t('menu.dishWizard.creating')}
                       </>
                     ) : (
                       <>
-                        <CheckCircle2 className="w-4 h-4" />
+                        <CheckCircle2 className="h-4 w-4" />
                         {t('menu.dishWizard.create')}
                       </>
                     )}
@@ -473,6 +550,16 @@ export function DishCreateFlow() {
           </TooltipProvider>
         </div>
       </form>
+
+      {/* Inline Ingredient Creator Dialog */}
+      <InlineIngredientCreator
+        open={showIngredientCreator}
+        onOpenChange={setShowIngredientCreator}
+        initialName={currentIngredient.productName}
+        initialQuantity={currentIngredient.quantity.toString()}
+        initialUnit={currentIngredient.unit}
+        onSuccess={handleIngredientCreated}
+      />
     </div>
   );
 }

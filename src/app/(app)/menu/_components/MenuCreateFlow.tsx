@@ -9,13 +9,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -23,13 +16,15 @@ import {
 } from '@/components/ui/tooltip';
 import { PageHeader } from '@/components/PageHeader';
 import { useLanguage } from '@/providers/LanguageProvider';
-import { ChefHat, ArrowLeft, CheckCircle2, AlertCircle, DollarSign } from 'lucide-react';
+import { ChefHat, ArrowLeft, CheckCircle2, AlertCircle, DollarSign, ArrowRight, ChevronRight, ChevronLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
 /**
- * Menu Create Flow - Full screen, user-friendly menu creation
- * Step-by-step process with clear guidance and validation feedback
+ * Menu Create Flow - Step-by-step menu creation (like reception flow)
+ * Flow: BASICS → PRICING → REVIEW → COMPLETE
  */
+
+type FlowState = 'BASICS' | 'PRICING' | 'REVIEW' | 'SAVING';
 
 type FormData = {
   name: string;
@@ -50,7 +45,7 @@ type FormErrors = {
 export function MenuCreateFlow() {
   const router = useRouter();
   const { t } = useLanguage();
-  const [saving, setSaving] = useState(false);
+  const [state, setState] = useState<FlowState>('BASICS');
   const [formData, setFormData] = useState<FormData>({
     name: '',
     description: '',
@@ -132,15 +127,45 @@ export function MenuCreateFlow() {
     return isValid;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleNextFromBasics = () => {
+    // Validate basics step
+    const nameError = validateField('name', formData.name);
+    if (nameError) {
+      setErrors({ name: nameError });
+      setTouched({ name: true });
+      toast.error('Please enter a valid menu name');
+      return;
+    }
 
+    setState('PRICING');
+    toast.success('Step 1 complete!');
+  };
+
+  const handleNextFromPricing = () => {
+    // Validate pricing step
+    const priceError = validateField('fixedPrice', formData.fixedPrice);
+    const coursesError = formData.pricingType === 'CHOICE'
+      ? validateField('numberOfCourses', formData.numberOfCourses)
+      : undefined;
+
+    if (priceError || coursesError) {
+      setErrors({ fixedPrice: priceError, numberOfCourses: coursesError });
+      setTouched({ fixedPrice: true, numberOfCourses: true });
+      toast.error('Please complete all pricing fields');
+      return;
+    }
+
+    setState('REVIEW');
+    toast.success('Step 2 complete!');
+  };
+
+  const handleSubmit = async () => {
     if (!validateForm()) {
       toast.error('Please fix the errors before continuing');
       return;
     }
 
-    setSaving(true);
+    setState('SAVING');
     try {
       const { createMenuAction } = await import('@/lib/actions/menu.actions');
 
@@ -159,12 +184,12 @@ export function MenuCreateFlow() {
         router.push('/menu');
       } else {
         toast.error(result.error || t('menu.update.error'));
+        setState('REVIEW');
       }
     } catch (error) {
       console.error('Error creating menu:', error);
       toast.error(t('menu.update.error'));
-    } finally {
-      setSaving(false);
+      setState('REVIEW');
     }
   };
 
@@ -172,22 +197,48 @@ export function MenuCreateFlow() {
     router.push('/menu');
   };
 
-  const isFormValid = !errors.name && formData.name.trim().length > 0;
+  const handleBack = () => {
+    if (state === 'PRICING') {
+      setState('BASICS');
+    } else if (state === 'REVIEW') {
+      setState('PRICING');
+    }
+  };
 
-  return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      {/* Header */}
-      <PageHeader
-        title={t('menu.menuForm.title.create')}
-        subtitle={t('menu.create.subtitle')}
-        icon={ChefHat}
-      />
+  // Render based on state
+  const renderContent = () => {
+    // BASICS Step
+    if (state === 'BASICS') {
+      const isStepValid = !errors.name && formData.name.trim().length > 0;
 
-      {/* Form */}
-      <form onSubmit={handleSubmit}>
+      return (
         <Card>
           <CardContent className="p-8">
-            <div className="space-y-8">
+            <div className="space-y-6">
+              {/* Progress indicator */}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold">
+                    1
+                  </div>
+                  <span className="font-medium text-foreground">Basic Information</span>
+                </div>
+                <ChevronRight className="w-4 h-4" />
+                <div className="flex items-center gap-2 opacity-50">
+                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center font-semibold">
+                    2
+                  </div>
+                  <span>Pricing</span>
+                </div>
+                <ChevronRight className="w-4 h-4" />
+                <div className="flex items-center gap-2 opacity-50">
+                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center font-semibold">
+                    3
+                  </div>
+                  <span>Review</span>
+                </div>
+              </div>
+
               {/* Menu Name */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -212,7 +263,6 @@ export function MenuCreateFlow() {
                       ? 'border-success focus-visible:ring-success'
                       : ''
                   }`}
-                  disabled={saving}
                 />
                 {errors.name && touched.name ? (
                   <div className="flex items-start gap-2 text-sm text-destructive">
@@ -239,148 +289,10 @@ export function MenuCreateFlow() {
                   onBlur={() => handleFieldBlur('description')}
                   rows={4}
                   className="text-base resize-none cursor-text"
-                  disabled={saving}
                 />
                 <p className="text-sm text-muted-foreground">
                   {t('menu.create.descriptionHint')}
                 </p>
-              </div>
-
-              {/* Pricing Section */}
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <DollarSign className="w-6 h-6 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold">{t('menu.pricing.title')}</h3>
-                    <p className="text-sm text-muted-foreground">{t('menu.pricing.subtitle')}</p>
-                  </div>
-                </div>
-
-                {/* Pricing Type - Modern Card Selection */}
-                <div className="space-y-3">
-                  <Label className="text-base font-semibold">
-                    {t('menu.pricing.type')} <span className="text-destructive">*</span>
-                  </Label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Prix Fixe Option */}
-                    <button
-                      type="button"
-                      onClick={() => handleFieldChange('pricingType', 'PRIX_FIXE')}
-                      disabled={saving}
-                      className={`relative p-6 border-2 rounded-xl text-left transition-all cursor-pointer ${
-                        formData.pricingType === 'PRIX_FIXE'
-                          ? 'border-primary bg-primary/5 shadow-md'
-                          : 'border-gray-200 hover:border-primary/50 hover:bg-gray-50'
-                      }`}
-                    >
-                      {formData.pricingType === 'PRIX_FIXE' && (
-                        <div className="absolute top-4 right-4">
-                          <CheckCircle2 className="w-6 h-6 text-primary" />
-                        </div>
-                      )}
-                      <div className="space-y-2">
-                        <div className="font-semibold text-lg">{t('menu.pricing.type.prixfixe')}</div>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                          {t('menu.pricing.type.prixfixe.description')}
-                        </p>
-                      </div>
-                    </button>
-
-                    {/* Choice Option */}
-                    <button
-                      type="button"
-                      onClick={() => handleFieldChange('pricingType', 'CHOICE')}
-                      disabled={saving}
-                      className={`relative p-6 border-2 rounded-xl text-left transition-all cursor-pointer ${
-                        formData.pricingType === 'CHOICE'
-                          ? 'border-primary bg-primary/5 shadow-md'
-                          : 'border-gray-200 hover:border-primary/50 hover:bg-gray-50'
-                      }`}
-                    >
-                      {formData.pricingType === 'CHOICE' && (
-                        <div className="absolute top-4 right-4">
-                          <CheckCircle2 className="w-6 h-6 text-primary" />
-                        </div>
-                      )}
-                      <div className="space-y-2">
-                        <div className="font-semibold text-lg">{t('menu.pricing.type.choice')}</div>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                          {t('menu.pricing.type.choice.description')}
-                        </p>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Pricing Details */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Fixed Price */}
-                  <div className="space-y-3">
-                    <Label htmlFor="fixedPrice" className="text-base font-semibold">
-                      {t('menu.pricing.menuPrice')} (€) <span className="text-destructive">*</span>
-                    </Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-lg">€</span>
-                      <Input
-                        id="fixedPrice"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="45.00"
-                        value={formData.fixedPrice || ''}
-                        onChange={(e) => handleFieldChange('fixedPrice', parseFloat(e.target.value) || undefined)}
-                        onBlur={() => handleFieldBlur('fixedPrice')}
-                        className={`text-base cursor-text pl-8 ${
-                          errors.fixedPrice && touched.fixedPrice
-                            ? 'border-destructive'
-                            : ''
-                        }`}
-                        disabled={saving}
-                      />
-                    </div>
-                    {errors.fixedPrice && touched.fixedPrice && (
-                      <div className="flex items-start gap-2 text-sm text-destructive">
-                        <AlertCircle className="w-4 h-4 mt-0.5" />
-                        <span>{errors.fixedPrice}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Number of Courses (for CHOICE only) */}
-                  {formData.pricingType === 'CHOICE' && (
-                    <div className="space-y-3">
-                      <Label htmlFor="numberOfCourses" className="text-base font-semibold">
-                        {t('menu.pricing.numberOfCourses')} <span className="text-destructive">*</span>
-                      </Label>
-                      <Input
-                        id="numberOfCourses"
-                        type="number"
-                        min="1"
-                        placeholder="2"
-                        value={formData.numberOfCourses || ''}
-                        onChange={(e) => handleFieldChange('numberOfCourses', parseInt(e.target.value) || undefined)}
-                        onBlur={() => handleFieldBlur('numberOfCourses')}
-                        className={`text-base cursor-text ${
-                          errors.numberOfCourses && touched.numberOfCourses
-                            ? 'border-destructive'
-                            : ''
-                        }`}
-                        disabled={saving}
-                      />
-                      {errors.numberOfCourses && touched.numberOfCourses && (
-                        <div className="flex items-start gap-2 text-sm text-destructive">
-                          <AlertCircle className="w-4 h-4 mt-0.5" />
-                          <span>{errors.numberOfCourses}</span>
-                        </div>
-                      )}
-                      <p className="text-sm text-muted-foreground">
-                        {t('menu.pricing.numberOfCourses.hint')}
-                      </p>
-                    </div>
-                  )}
-                </div>
               </div>
 
               {/* Active Status */}
@@ -399,60 +311,351 @@ export function MenuCreateFlow() {
                     id="isActive"
                     checked={formData.isActive}
                     onCheckedChange={(checked) => handleFieldChange('isActive', checked)}
-                    disabled={saving}
                     className="cursor-pointer"
                   />
                 </div>
               </div>
             </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-between gap-4 mt-6 pt-6 border-t">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCancel}
+                className="gap-2 cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Cancel
+              </Button>
+
+              <Button
+                type="button"
+                onClick={handleNextFromBasics}
+                disabled={!isStepValid}
+                className="gap-2 cursor-pointer"
+              >
+                Next: Pricing
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </div>
           </CardContent>
         </Card>
+      );
+    }
 
-        {/* Actions */}
-        <div className="flex items-center justify-between gap-4 mt-8">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleCancel}
-            disabled={saving}
-            className="gap-2 cursor-pointer hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            {t('menu.menuForm.cancel')}
-          </Button>
+    // PRICING Step
+    if (state === 'PRICING') {
+      const isPricingValid =
+        formData.fixedPrice !== undefined && formData.fixedPrice > 0 &&
+        (formData.pricingType === 'PRIX_FIXE' ||
+         (formData.numberOfCourses !== undefined && formData.numberOfCourses > 0));
 
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <Button
-                    type="submit"
-                    disabled={!isFormValid || saving}
-                    className="gap-2 cursor-pointer bg-gradient-to-br from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 disabled:cursor-not-allowed"
+      return (
+        <Card>
+          <CardContent className="p-8">
+            <div className="space-y-6">
+              {/* Progress indicator */}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
+                <div className="flex items-center gap-2 opacity-50">
+                  <div className="w-8 h-8 rounded-full bg-success text-success-foreground flex items-center justify-center font-semibold">
+                    ✓
+                  </div>
+                  <span>Basic Information</span>
+                </div>
+                <ChevronRight className="w-4 h-4" />
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold">
+                    2
+                  </div>
+                  <span className="font-medium text-foreground">Pricing</span>
+                </div>
+                <ChevronRight className="w-4 h-4" />
+                <div className="flex items-center gap-2 opacity-50">
+                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center font-semibold">
+                    3
+                  </div>
+                  <span>Review</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <DollarSign className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">{t('menu.pricing.title')}</h3>
+                  <p className="text-sm text-muted-foreground">{t('menu.pricing.subtitle')}</p>
+                </div>
+              </div>
+
+              {/* Pricing Type */}
+              <div className="space-y-3">
+                <Label className="text-base font-semibold">
+                  {t('menu.pricing.type')} <span className="text-destructive">*</span>
+                </Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => handleFieldChange('pricingType', 'PRIX_FIXE')}
+                    className={`relative p-6 border-2 rounded-xl text-left transition-all cursor-pointer ${
+                      formData.pricingType === 'PRIX_FIXE'
+                        ? 'border-primary bg-primary/5 shadow-md'
+                        : 'border-gray-200 hover:border-primary/50 hover:bg-gray-50'
+                    }`}
                   >
-                    {saving ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        {t('menu.menuForm.saving')}
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="w-4 h-4" />
-                        {t('menu.menuForm.save')}
-                      </>
+                    {formData.pricingType === 'PRIX_FIXE' && (
+                      <div className="absolute top-4 right-4">
+                        <CheckCircle2 className="w-6 h-6 text-primary" />
+                      </div>
                     )}
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              {!isFormValid && !saving && (
-                <TooltipContent>
-                  <p>{t('menu.create.disabledTooltip')}</p>
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-      </form>
+                    <div className="space-y-2">
+                      <div className="font-semibold text-lg">{t('menu.pricing.type.prixfixe')}</div>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {t('menu.pricing.type.prixfixe.description')}
+                      </p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleFieldChange('pricingType', 'CHOICE')}
+                    className={`relative p-6 border-2 rounded-xl text-left transition-all cursor-pointer ${
+                      formData.pricingType === 'CHOICE'
+                        ? 'border-primary bg-primary/5 shadow-md'
+                        : 'border-gray-200 hover:border-primary/50 hover:bg-gray-50'
+                    }`}
+                  >
+                    {formData.pricingType === 'CHOICE' && (
+                      <div className="absolute top-4 right-4">
+                        <CheckCircle2 className="w-6 h-6 text-primary" />
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      <div className="font-semibold text-lg">{t('menu.pricing.type.choice')}</div>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {t('menu.pricing.type.choice.description')}
+                      </p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Pricing Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <Label htmlFor="fixedPrice" className="text-base font-semibold">
+                    {t('menu.pricing.menuPrice')} (€) <span className="text-destructive">*</span>
+                  </Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-lg">€</span>
+                    <Input
+                      id="fixedPrice"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="45.00"
+                      value={formData.fixedPrice || ''}
+                      onChange={(e) => handleFieldChange('fixedPrice', parseFloat(e.target.value) || undefined)}
+                      onBlur={() => handleFieldBlur('fixedPrice')}
+                      className={`text-base cursor-text pl-8 ${
+                        errors.fixedPrice && touched.fixedPrice ? 'border-destructive' : ''
+                      }`}
+                    />
+                  </div>
+                  {errors.fixedPrice && touched.fixedPrice && (
+                    <div className="flex items-start gap-2 text-sm text-destructive">
+                      <AlertCircle className="w-4 h-4 mt-0.5" />
+                      <span>{errors.fixedPrice}</span>
+                    </div>
+                  )}
+                </div>
+
+                {formData.pricingType === 'CHOICE' && (
+                  <div className="space-y-3">
+                    <Label htmlFor="numberOfCourses" className="text-base font-semibold">
+                      {t('menu.pricing.numberOfCourses')} <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="numberOfCourses"
+                      type="number"
+                      min="1"
+                      placeholder="2"
+                      value={formData.numberOfCourses || ''}
+                      onChange={(e) => handleFieldChange('numberOfCourses', parseInt(e.target.value) || undefined)}
+                      onBlur={() => handleFieldBlur('numberOfCourses')}
+                      className={`text-base cursor-text ${
+                        errors.numberOfCourses && touched.numberOfCourses ? 'border-destructive' : ''
+                      }`}
+                    />
+                    {errors.numberOfCourses && touched.numberOfCourses && (
+                      <div className="flex items-start gap-2 text-sm text-destructive">
+                        <AlertCircle className="w-4 h-4 mt-0.5" />
+                        <span>{errors.numberOfCourses}</span>
+                      </div>
+                    )}
+                    <p className="text-sm text-muted-foreground">
+                      {t('menu.pricing.numberOfCourses.hint')}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-between gap-4 pt-6 border-t">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleBack}
+                  className="gap-2 cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Back
+                </Button>
+
+                <Button
+                  type="button"
+                  onClick={handleNextFromPricing}
+                  disabled={!isPricingValid}
+                  className="gap-2 cursor-pointer"
+                >
+                  Next: Review
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    // REVIEW Step
+    if (state === 'REVIEW') {
+      return (
+        <Card>
+          <CardContent className="p-8">
+            <div className="space-y-6">
+              {/* Progress indicator */}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
+                <div className="flex items-center gap-2 opacity-50">
+                  <div className="w-8 h-8 rounded-full bg-success text-success-foreground flex items-center justify-center font-semibold">
+                    ✓
+                  </div>
+                  <span>Basic Information</span>
+                </div>
+                <ChevronRight className="w-4 h-4" />
+                <div className="flex items-center gap-2 opacity-50">
+                  <div className="w-8 h-8 rounded-full bg-success text-success-foreground flex items-center justify-center font-semibold">
+                    ✓
+                  </div>
+                  <span>Pricing</span>
+                </div>
+                <ChevronRight className="w-4 h-4" />
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold">
+                    3
+                  </div>
+                  <span className="font-medium text-foreground">Review</span>
+                </div>
+              </div>
+
+              <div className="text-center space-y-2 mb-6">
+                <ChefHat className="h-16 w-16 mx-auto text-primary" />
+                <h2 className="text-2xl font-bold">Review Your Menu</h2>
+                <p className="text-muted-foreground">Please confirm the details before creating</p>
+              </div>
+
+              {/* Summary */}
+              <div className="space-y-4 bg-muted/30 rounded-lg p-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Menu Name</p>
+                    <p className="font-semibold">{formData.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Status</p>
+                    <p className="font-semibold">{formData.isActive ? 'Active' : 'Inactive'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Pricing Type</p>
+                    <p className="font-semibold">
+                      {formData.pricingType === 'PRIX_FIXE' ? t('menu.pricing.type.prixfixe') : t('menu.pricing.type.choice')}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Price</p>
+                    <p className="font-semibold">€{formData.fixedPrice?.toFixed(2)}</p>
+                  </div>
+                  {formData.pricingType === 'CHOICE' && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Number of Courses</p>
+                      <p className="font-semibold">{formData.numberOfCourses}</p>
+                    </div>
+                  )}
+                </div>
+                {formData.description && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Description</p>
+                    <p className="text-sm mt-1">{formData.description}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-between gap-4 pt-6 border-t">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleBack}
+                  className="gap-2 cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Back
+                </Button>
+
+                <Button
+                  type="button"
+                  onClick={handleSubmit}
+                  className="gap-2 cursor-pointer bg-gradient-to-br from-primary to-secondary hover:from-primary/90 hover:to-secondary/90"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  Create Menu
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    // SAVING State
+    if (state === 'SAVING') {
+      return (
+        <Card>
+          <CardContent className="p-8">
+            <div className="flex flex-col items-center justify-center min-h-[40vh] space-y-6">
+              <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+              <div className="text-center space-y-2">
+                <h2 className="text-2xl font-bold">Creating Menu...</h2>
+                <p className="text-muted-foreground">Please wait while we set up your menu</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    return null;
+  };
+
+  return (
+    <div className="space-y-6 max-w-4xl mx-auto">
+      <PageHeader
+        title={t('menu.menuForm.title.create')}
+        subtitle={t('menu.create.subtitle')}
+        icon={ChefHat}
+      />
+      {renderContent()}
     </div>
   );
 }

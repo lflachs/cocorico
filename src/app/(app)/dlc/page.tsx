@@ -112,6 +112,44 @@ export default function DlcPage() {
     }
   };
 
+  // Group DLCs by month and year
+  const groupDlcsByMonth = (dlcs: DlcItem[]) => {
+    const groups: Record<string, DlcItem[]> = {};
+
+    dlcs.forEach(dlc => {
+      const date = new Date(dlc.expirationDate);
+      const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+      if (!groups[monthYear]) {
+        groups[monthYear] = [];
+      }
+      groups[monthYear].push(dlc);
+    });
+
+    // Sort items within each month by expiration date
+    Object.keys(groups).forEach(key => {
+      groups[key].sort((a, b) =>
+        new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime()
+      );
+    });
+
+    // Sort months chronologically
+    return Object.keys(groups)
+      .sort()
+      .map(monthYear => ({
+        monthYear,
+        items: groups[monthYear],
+      }));
+  };
+
+  const getMonthLabel = (monthYear: string) => {
+    const [year, month] = monthYear.split('-');
+    const date = new Date(parseInt(year), parseInt(month) - 1);
+    return date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  };
+
+  const groupedDlcs = groupDlcsByMonth(dlcs);
+
   return (
     <div className="space-y-6">
       {/* Header with gradient background */}
@@ -177,63 +215,81 @@ export default function DlcPage() {
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
-              {dlcs.map((dlc) => (
-                <div key={dlc.id} className="border rounded-lg p-4 sm:p-6">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex gap-3 sm:gap-4 min-w-0">
-                      <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg bg-blue-50 shrink-0">
-                        <Package className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold truncate">{dlc.product.name}</h3>
-                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-600">
-                          <span className="whitespace-nowrap">
-                            {dlc.quantity} {dlc.unit}
-                          </span>
-                          <span className="hidden sm:inline">•</span>
-                          <span className="whitespace-nowrap">
-                            {t('dlc.expires')}: {new Date(dlc.expirationDate).toLocaleDateString()}
-                          </span>
-                          {dlc.batchNumber && (
-                            <>
-                              <span className="hidden sm:inline">•</span>
-                              <span className="whitespace-nowrap">{t('dlc.lot')}: {dlc.batchNumber}</span>
-                            </>
-                          )}
-                          {dlc.supplier && (
-                            <>
-                              <span className="hidden sm:inline">•</span>
-                              <span className="whitespace-nowrap">{dlc.supplier.name}</span>
-                            </>
-                          )}
+            <div className="space-y-6">
+              {groupedDlcs.map((group) => (
+                <div key={group.monthYear} className="space-y-3">
+                  {/* Month Header */}
+                  <div className="flex items-center gap-3">
+                    <Calendar className="h-5 w-5 text-primary" />
+                    <h3 className="text-lg font-semibold capitalize">
+                      {getMonthLabel(group.monthYear)}
+                    </h3>
+                    <Badge variant="outline" className="ml-auto">
+                      {group.items.length} {group.items.length === 1 ? 'produit' : 'produits'}
+                    </Badge>
+                  </div>
+
+                  {/* DLCs in this month */}
+                  <div className="space-y-3 pl-0 sm:pl-8">
+                    {group.items.map((dlc) => (
+                      <div key={dlc.id} className="border rounded-lg p-4 sm:p-6 hover:border-primary/50 transition-colors">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="flex gap-3 sm:gap-4 min-w-0">
+                            <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg bg-blue-50 shrink-0">
+                              <Package className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h3 className="font-semibold truncate">{dlc.product.name}</h3>
+                              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-600">
+                                <span className="whitespace-nowrap">
+                                  {dlc.quantity} {dlc.unit}
+                                </span>
+                                <span className="hidden sm:inline">•</span>
+                                <span className="whitespace-nowrap">
+                                  {t('dlc.expires')}: {new Date(dlc.expirationDate).toLocaleDateString()}
+                                </span>
+                                {dlc.batchNumber && (
+                                  <>
+                                    <span className="hidden sm:inline">•</span>
+                                    <span className="whitespace-nowrap">{t('dlc.lot')}: {dlc.batchNumber}</span>
+                                  </>
+                                )}
+                                {dlc.supplier && (
+                                  <>
+                                    <span className="hidden sm:inline">•</span>
+                                    <span className="whitespace-nowrap">{dlc.supplier.name}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {getStatusBadge(dlc)}
+                            {dlc.status === "ACTIVE" && (
+                              <div className="flex gap-2 flex-wrap sm:flex-nowrap">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleConsumed(dlc.id)}
+                                  className="cursor-pointer text-xs sm:text-sm"
+                                >
+                                  <span className="hidden sm:inline">{t('dlc.markConsumed')}</span>
+                                  <span className="sm:hidden">{t('dlc.consumed')}</span>
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleDiscarded(dlc.id)}
+                                  className="cursor-pointer text-xs sm:text-sm"
+                                >
+                                  {t('dlc.discard')}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {getStatusBadge(dlc)}
-                      {dlc.status === "ACTIVE" && (
-                        <div className="flex gap-2 flex-wrap sm:flex-nowrap">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleConsumed(dlc.id)}
-                            className="cursor-pointer text-xs sm:text-sm"
-                          >
-                            <span className="hidden sm:inline">{t('dlc.markConsumed')}</span>
-                            <span className="sm:hidden">{t('dlc.consumed')}</span>
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDiscarded(dlc.id)}
-                            className="cursor-pointer text-xs sm:text-sm"
-                          >
-                            {t('dlc.discard')}
-                          </Button>
-                        </div>
-                      )}
-                    </div>
+                    ))}
                   </div>
                 </div>
               ))}

@@ -17,14 +17,42 @@ import {
   Sparkles,
   Trophy,
   Star,
-  TrendingUp
+  TrendingUp,
+  AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { type Product } from '@prisma/client';
 import confetti from 'canvas-confetti';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { formatQuantity } from '@/lib/utils/number-format';
 
 type FlowState = 'START' | 'SYNCING' | 'COMPLETE';
+
+type LossReason =
+  | 'EXPIRED'
+  | 'DAMAGED'
+  | 'THEFT'
+  | 'SPILLAGE'
+  | 'QUALITY_ISSUE'
+  | 'MISSING'
+  | 'OTHER';
+
+const LOSS_REASON_LABELS: Record<LossReason, string> = {
+  EXPIRED: 'Produit expiré',
+  DAMAGED: 'Produit endommagé',
+  THEFT: 'Vol',
+  SPILLAGE: 'Renversement/Gaspillage',
+  QUALITY_ISSUE: 'Problème de qualité',
+  MISSING: 'Manquant/Non comptabilisé',
+  OTHER: 'Autre raison',
+};
 
 type InventorySyncFlowProps = {
   open: boolean;
@@ -47,6 +75,7 @@ export function InventorySyncFlow({ open, onOpenChange, products, initialConfide
   const [updatedQuantities, setUpdatedQuantities] = useState<Map<string, number>>(new Map());
   const [confirmedProducts, setConfirmedProducts] = useState<Set<string>>(new Set());
   const [stockChanges, setStockChanges] = useState<Map<string, { oldQty: number; newQty: number; product: Product }>>(new Map());
+  const [lossReason, setLossReason] = useState<LossReason | undefined>(undefined);
 
   // Calculate estimated time (30 seconds per product as rough estimate)
   const estimatedMinutes = Math.ceil((products.length * 30) / 60);
@@ -109,6 +138,13 @@ export function InventorySyncFlow({ open, onOpenChange, products, initialConfide
   const handleConfirmProduct = async () => {
     if (!currentProduct) return;
 
+    // Check if this is a loss (quantity decreased) and no reason was selected
+    const isLoss = editedQuantity < currentProduct.quantity;
+    if (isLoss && !lossReason) {
+      toast.error('Veuillez sélectionner une raison pour la perte');
+      return;
+    }
+
     // If quantity changed, update it with tracking
     if (editedQuantity !== currentProduct.quantity) {
       try {
@@ -117,6 +153,7 @@ export function InventorySyncFlow({ open, onOpenChange, products, initialConfide
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             newQuantity: editedQuantity,
+            lossReason: isLoss ? lossReason : undefined,
           }),
         });
 
@@ -162,6 +199,7 @@ export function InventorySyncFlow({ open, onOpenChange, products, initialConfide
       const nextIndex = currentIndex + 1;
       setCurrentIndex(nextIndex);
       setEditedQuantity(sortedProducts[nextIndex].quantity);
+      setLossReason(undefined); // Reset loss reason for next product
     } else {
       // All products synced
       setState('COMPLETE');
@@ -189,6 +227,7 @@ export function InventorySyncFlow({ open, onOpenChange, products, initialConfide
       const nextIndex = currentIndex + 1;
       setCurrentIndex(nextIndex);
       setEditedQuantity(sortedProducts[nextIndex].quantity);
+      setLossReason(undefined); // Reset loss reason for next product
     } else {
       setState('COMPLETE');
       const updatedCount = updatedQuantities.size;
@@ -205,6 +244,23 @@ export function InventorySyncFlow({ open, onOpenChange, products, initialConfide
       // Refresh to show updated data, but don't auto-close
       router.refresh();
     }
+  };
+
+  const handleStopInventory = () => {
+    const updatedCount = updatedQuantities.size;
+
+    // Show completion state with current progress
+    setState('COMPLETE');
+
+    // Show success message
+    toast.success('Inventaire arrêté', {
+      description: updatedCount > 0
+        ? `${updatedCount} produit(s) mis à jour sur ${confirmedProducts.size} vérifiés`
+        : `${confirmedProducts.size} produit(s) vérifiés`,
+    });
+
+    // Refresh to show updated data
+    router.refresh();
   };
 
   const handlePrevious = () => {
@@ -244,6 +300,7 @@ export function InventorySyncFlow({ open, onOpenChange, products, initialConfide
     setUpdatedQuantities(new Map());
     setConfirmedProducts(new Set());
     setStockChanges(new Map());
+    setLossReason(undefined);
   };
 
   const renderContent = () => {
@@ -353,7 +410,7 @@ export function InventorySyncFlow({ open, onOpenChange, products, initialConfide
                     Quantité actuelle
                   </label>
                   <div className="text-3xl font-mono font-bold text-muted-foreground">
-                    {currentProduct.quantity.toFixed(1)} {currentProduct.unit}
+                    {formatQuantity(currentProduct.quantity)} {currentProduct.unit}
                   </div>
                 </div>
 
@@ -388,14 +445,41 @@ export function InventorySyncFlow({ open, onOpenChange, products, initialConfide
                     <div className="text-sm text-blue-900">
                       <strong>Différence:</strong>{' '}
                       {editedQuantity > currentProduct.quantity ? '+' : ''}
-                      {(editedQuantity - currentProduct.quantity).toFixed(1)} {currentProduct.unit}
+                      {formatQuantity(editedQuantity - currentProduct.quantity)} {currentProduct.unit}
                     </div>
+                  </div>
+                )}
+
+                {/* Loss Reason Selector - Only show when quantity decreases */}
+                {editedQuantity < currentProduct.quantity && (
+                  <div className="border-t pt-4">
+                    <label className="text-sm font-medium mb-2 block flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-orange-500" />
+                      Raison de la perte *
+                    </label>
+                    <Select value={lossReason} onValueChange={(value) => setLossReason(value as LossReason)}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Sélectionnez une raison..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(LOSS_REASON_LABELS).map(([key, label]) => (
+                          <SelectItem key={key} value={key}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {!lossReason && (
+                      <p className="text-xs text-orange-600 mt-1">
+                        Vous devez sélectionner une raison pour confirmer la perte
+                      </p>
+                    )}
                   </div>
                 )}
 
                 {currentProduct.parLevel && (
                   <div className="text-sm text-muted-foreground">
-                    Niveau de stock idéal: {currentProduct.parLevel.toFixed(1)} {currentProduct.unit}
+                    Niveau de stock idéal: {formatQuantity(currentProduct.parLevel)} {currentProduct.unit}
                   </div>
                 )}
               </div>
@@ -435,17 +519,15 @@ export function InventorySyncFlow({ open, onOpenChange, products, initialConfide
                 >
                   Passer sans modifier
                 </Button>
-                {currentIndex < sortedProducts.length - 1 && (
-                  <Button
-                    variant="ghost"
-                    onClick={handleNext}
-                    className="flex-1"
-                    size="sm"
-                  >
-                    Suivant
-                    <ChevronRight className="ml-2 h-4 w-4" />
-                  </Button>
-                )}
+                <Button
+                  variant="ghost"
+                  onClick={handleStopInventory}
+                  className="flex-1 text-orange-600 hover:text-orange-700"
+                  size="sm"
+                >
+                  <X className="mr-2 h-4 w-4" />
+                  Arrêter l'inventaire
+                </Button>
               </div>
             </div>
           </div>
@@ -561,7 +643,7 @@ export function InventorySyncFlow({ open, onOpenChange, products, initialConfide
                     {largestLoss && (
                       <div className="mt-2 p-2 rounded bg-red-100 text-xs">
                         <div className="font-medium text-red-900">{largestLoss.product.name}</div>
-                        <div className="text-red-700">-{largestLoss.amount.toFixed(1)} {largestLoss.product.unit}</div>
+                        <div className="text-red-700">-{formatQuantity(largestLoss.amount)} {largestLoss.product.unit}</div>
                       </div>
                     )}
                   </div>
@@ -582,7 +664,7 @@ export function InventorySyncFlow({ open, onOpenChange, products, initialConfide
                     {largestAddition && (
                       <div className="mt-2 p-2 rounded bg-green-100 text-xs">
                         <div className="font-medium text-green-900">{largestAddition.product.name}</div>
-                        <div className="text-green-700">+{largestAddition.amount.toFixed(1)} {largestAddition.product.unit}</div>
+                        <div className="text-green-700">+{formatQuantity(largestAddition.amount)} {largestAddition.product.unit}</div>
                       </div>
                     )}
                   </div>
