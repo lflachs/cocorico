@@ -301,18 +301,18 @@ async function calculateTimePotential(startDate: Date, endDate: Date): Promise<n
 
   const daysInMonth = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
 
-  // Realistic potential if they used features more consistently:
-  // - 1 bill/day × 8min = 240min/month
-  // - 5 DLCs/week × 3min = 60min/month
-  // - Sales 3x/week × 5min = 60min/month
+  // Realistic NET potential if they used features consistently:
+  // - 1 bill/day × 8min NET = 240min/month
+  // - 5 DLCs/week × 3.5min NET = 70min/month
+  // - Sales 3x/week × 6min NET = 72min/month
   // - Weekly admin saved = 30min × 4 weeks = 120min/month
 
   const potentialBillTime = 30 * 8; // ~1 bill/day
-  const potentialDLCTime = 20 * 3; // ~5 DLCs/week
-  const potentialSalesTime = 12 * 5; // ~3 sales entries/week
+  const potentialDLCTime = 20 * 3.5; // ~5 DLCs/week
+  const potentialSalesTime = 12 * 6; // ~3 sales entries/week
   const potentialAdminTime = 120; // ~30min/week
 
-  const totalPotential = potentialBillTime + potentialDLCTime + potentialSalesTime + potentialAdminTime;
+  const totalPotential = Math.round(potentialBillTime + potentialDLCTime + potentialSalesTime + potentialAdminTime);
 
   // Return at least 4h as baseline
   return Math.max(totalPotential, 240);

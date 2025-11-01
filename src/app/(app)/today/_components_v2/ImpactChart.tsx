@@ -188,11 +188,12 @@ export function ImpactChart({
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">
                   <p className="text-xs">
-                    <strong>Comment c'est calculé :</strong><br/>
-                    • Facture scannée = 8min gagné (vs Excel)<br/>
-                    • DLC entrée = 3min gagné (vs carnet)<br/>
-                    • Vente entrée = 5min gagné (vs calcul manuel)<br/>
-                    • Admin hebdo = 30min gagné (food cost auto)<br/>
+                    <strong>Temps NET gagné</strong> (économisé - passé dans l'app) :<br/>
+                    <br/>
+                    • Facture : 10min (Excel) → 2min (scan) = <strong>8min gagné</strong><br/>
+                    • DLC : 5min (carnet) → 1.5min (app) = <strong>3.5min gagné</strong><br/>
+                    • Vente : 8min (Excel) → 2min (app) = <strong>6min gagné</strong><br/>
+                    • Admin : 45min/sem → 15min/sem = <strong>30min gagné/sem</strong><br/>
                     <br/>
                     <strong>Potentiel :</strong><br/>
                     Tu pourrais gagner {formatTime(timePotential)} en utilisant toutes les fonctionnalités !
@@ -201,7 +202,7 @@ export function ImpactChart({
                         <br/><br/>
                         <strong>Ce mois :</strong><br/>
                         {billCount > 0 && `• ${billCount} factures (${billCount * 8}min)`}<br/>
-                        {dlcCount > 0 && `• ${dlcCount} DLC (${dlcCount * 3}min)`}
+                        {dlcCount > 0 && `• ${dlcCount} DLC (${Math.round(dlcCount * 3.5)}min)`}
                       </>
                     )}
                   </p>
@@ -222,16 +223,16 @@ export function ImpactChart({
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">
                   <p className="text-xs">
-                    <strong>Potentiel :</strong><br/>
-                    Si tu utilises toutes les fonctionnalités :<br/>
-                    • 1 facture/jour = 4h/mois<br/>
-                    • 5 DLC/semaine = 1h/mois<br/>
-                    • Ventes 3×/semaine = 1h/mois<br/>
-                    • Admin auto = 2h/mois<br/>
+                    <strong>Potentiel NET</strong> (si utilisation complète) :<br/>
                     <br/>
-                    <strong>Total potentiel :</strong> ~8h/mois<br/>
+                    • 1 facture/jour × 8min = <strong>4h/mois</strong><br/>
+                    • 5 DLC/sem × 3.5min = <strong>1h10/mois</strong><br/>
+                    • Ventes 3×/sem × 6min = <strong>1h12/mois</strong><br/>
+                    • Admin auto = <strong>2h/mois</strong><br/>
                     <br/>
-                    Plus tu utilises l'app, plus tu gagnes de temps !
+                    <strong>Total potentiel :</strong> ~8h30/mois<br/>
+                    <br/>
+                    <em>Ces chiffres représentent le temps NET gagné (temps manuel - temps dans l'app)</em>
                   </p>
                 </TooltipContent>
               </Tooltip>
