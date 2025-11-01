@@ -44,9 +44,9 @@ export default async function TodayPage() {
       {/* Daily Brief - Hero insight */}
       <DailyBrief summary={insights.briefSummary} isAllGood={isAllGood} insights={insights} />
 
-      {/* Flexible Auto-Grid Layout - Adapts to number of cards */}
-      {/* Uses CSS Grid with auto-fit to distribute cards evenly */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 auto-rows-fr">
+      {/* Flexible Auto-Grid Layout - ALL cards in one grid that adapts to content */}
+      {/* 1 card = full width, 2 cards = 2 columns, 3+ cards = 3 columns on large screens */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
         {/* Priority 1: Reorder Alerts */}
         {hasReorderAlerts && <ReorderAlerts alerts={insights.reorderAlerts} />}
 
@@ -55,6 +55,9 @@ export default async function TodayPage() {
 
         {/* Menu Readiness - Show if menu exists */}
         {hasMenu && <MenuStatusCard menuStatus={insights.menuStatus} />}
+
+        {/* Quick Sales - Always show for recording sales */}
+        <QuickSales />
       </div>
 
       {/* When everything is good and there's nothing to show */}

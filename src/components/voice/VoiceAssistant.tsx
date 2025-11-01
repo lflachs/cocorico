@@ -94,8 +94,18 @@ export function VoiceAssistant({
     role: 'user' | 'assistant';
     content: string;
   }>>([]);
+  // Ref to avoid stale closures in recording callbacks
+  const conversationHistoryRef = useRef<Array<{
+    role: 'user' | 'assistant';
+    content: string;
+  }>>([]);
   const [hasStartedConsultation, setHasStartedConsultation] = useState(false);
   const [isInitialQuestion, setIsInitialQuestion] = useState(true);
+
+  // Sync ref with state to avoid stale closures
+  useEffect(() => {
+    conversationHistoryRef.current = conversationHistory;
+  }, [conversationHistory]);
 
   // Load wake word setting from localStorage (default: disabled)
   // Always start with false to match SSR, then update from localStorage on client
@@ -333,9 +343,9 @@ export function VoiceAssistant({
       source.connect(analyser);
 
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      const SILENCE_THRESHOLD = 25; // Adjust sensitivity (higher = less sensitive to background noise)
-      const SILENCE_DURATION = 2500; // Stop after 2.5 seconds of silence (balanced for natural pauses)
-      const MIN_RECORDING_TIME = 1000; // Minimum 1 second before allowing auto-stop
+      const SILENCE_THRESHOLD = 15; // Very sensitive (lower = catches even quiet sounds)
+      const SILENCE_DURATION = 800; // Stop after 0.8 seconds of silence (super fast for "Oui", "Non")
+      const MIN_RECORDING_TIME = 200; // Minimum 0.2 seconds (allows very short responses)
 
       let hasDetectedVoice = false;
       const startTime = Date.now();
@@ -1253,10 +1263,18 @@ export function VoiceAssistant({
       // Step 2: Send to conversation API
       setState("parsing");
 
+      // Use ref to get current conversation history (avoids stale closures)
       const newMessages = [
-        ...conversationHistory,
+        ...conversationHistoryRef.current,
         { role: 'user' as const, content: text }
       ];
+
+      console.log("[Consultation] Sending to conversation API:", {
+        messageCount: newMessages.length,
+        messages: newMessages,
+        hasContext: !!initialContext,
+        historyFromRef: conversationHistoryRef.current.length
+      });
 
       const conversationRes = await fetch("/api/voice/conversation", {
         method: "POST",
@@ -1281,10 +1299,15 @@ export function VoiceAssistant({
       console.log("[Consultation] Assistant response:", message);
 
       // Update conversation history
-      setConversationHistory([
+      const updatedHistory = [
         ...newMessages,
         { role: 'assistant', content: message }
-      ]);
+      ];
+      console.log("[Consultation] Updated conversation history:", {
+        messageCount: updatedHistory.length,
+        history: updatedHistory
+      });
+      setConversationHistory(updatedHistory);
 
       // Step 3: Speak the response
       await speakText(message);
@@ -1658,11 +1681,19 @@ export function VoiceAssistant({
     }, 1500);
   };
 
-  // Handle dialog close with cleanup
+  // Stop current recording without closing dialog or resetting conversation
+  const handleStopRecording = () => {
+    console.log("[Voice] Stop button clicked - stopping recording only");
+    stopRecording();
+    setState("idle");
+  };
+
+  // Handle dialog close with full cleanup
   const handleDialogClose = (open: boolean) => {
     isDialogOpenRef.current = open;
 
     if (!open) {
+      console.log("[Voice] Dialog closing - full cleanup");
       stopEverything();
       setTranscript("");
       setParsedCommand(null);
@@ -1670,6 +1701,7 @@ export function VoiceAssistant({
       setSpokenText("");
       setHasStartedConsultation(false);
       setConversationHistory([]);
+      conversationHistoryRef.current = []; // Reset ref too
       setIsInitialQuestion(true);
     }
     setIsOpen(open);
@@ -2012,9 +2044,17 @@ Tone: Professional, efficient, respectful of hierarchy. Like a good sous-chef br
 
           {/* Custom close button */}
           <button
-            onClick={() => handleDialogClose(false)}
+            onClick={() => {
+              // If in conversation mode with history, just stop recording
+              // If starting fresh or no conversation, close completely
+              if (mode === "consultation" && conversationHistory.length > 0) {
+                handleStopRecording();
+              } else {
+                handleDialogClose(false);
+              }
+            }}
             className="absolute top-4 right-4 sm:top-6 sm:right-6 z-50 p-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 backdrop-blur-md transition-all duration-300 hover:scale-110"
-            aria-label="Close"
+            aria-label={mode === "consultation" && conversationHistory.length > 0 ? "Stop" : "Close"}
           >
             <XCircle className="h-5 w-5 sm:h-6 sm:w-6 text-[#f1faee]" />
           </button>
