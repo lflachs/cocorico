@@ -12,6 +12,8 @@ export async function GET(request: NextRequest) {
       select: {
         id: true,
         name: true,
+        displayName: true,
+        aliases: true,
         unit: true,
         quantity: true,
         unitPrice: true,
@@ -38,7 +40,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, quantity, unit, unitPrice, trackable, parLevel, category } = body;
+    const { name, displayName, aliases, quantity, unit, unitPrice, trackable, parLevel, category } = body;
 
     // Validate required fields
     if (!name) {
@@ -52,6 +54,8 @@ export async function POST(request: NextRequest) {
     const product = await db.product.create({
       data: {
         name,
+        displayName: displayName || null,
+        aliases: aliases || [],
         quantity: quantity || 0,
         unit: unit || 'PC',
         unitPrice: unitPrice || null,

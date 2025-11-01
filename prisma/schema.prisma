@@ -42,7 +42,9 @@ enum UserRole {
 
 model Product {
   id         String    @id @default(cuid())
-  name       String
+  name       String    // Full/official name (e.g., "Tomates rondes bio Fournisseur X")
+  displayName String?  // Simplified searchable name (e.g., "Tomate")
+  aliases    String[]  @default([]) // Alternative names for searching (e.g., ["Tomato", "Tomates"])
   quantity   Float     @default(0)
   unit       Unit      @default(PC)
   unitPrice  Float?
@@ -73,6 +75,7 @@ model Product {
   usedInComposites     CompositeIngredient[] @relation("BaseIngredient")   // Composites that use this as ingredient
 
   @@index([name])
+  @@index([displayName])
   @@index([category])
   @@index([isComposite])
   @@map("products")
@@ -140,6 +143,7 @@ model StockMovement {
   unitPrice   Float?
   totalValue  Float?
   source      MovementSource @default(MANUAL) // Track if automated or manual
+  lossReason  LossReason?    // Reason for stock loss during inventory sync
 
   // Timestamps
   createdAt DateTime @default(now())
@@ -172,6 +176,16 @@ enum MovementSource {
   SCAN_SALES          // Automated from sales flow (receipt scan)
   RECIPE_DEDUCTION    // Automated stock deduction from recipe
   SYSTEM_ADJUSTMENT   // System-initiated adjustment
+}
+
+enum LossReason {
+  EXPIRED             // Product expired
+  DAMAGED             // Product damaged or broken
+  THEFT               // Product stolen
+  SPILLAGE            // Product spilled or wasted
+  QUALITY_ISSUE       // Quality not acceptable
+  MISSING             // Item missing/unaccounted for
+  OTHER               // Other reason
 }
 
 // ============================================================================

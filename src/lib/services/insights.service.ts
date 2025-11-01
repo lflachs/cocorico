@@ -403,8 +403,8 @@ function generateMorningBrief(insights: Omit<DailyInsights, 'briefSummary'>, lan
           : product.daysUntilExpiration === 1
           ? 'expire demain'
           : `expire dans ${product.daysUntilExpiration} jours`;
-        const value = product.unitPrice && product.quantity
-          ? ` (€${Math.round(product.unitPrice * product.quantity)})`
+        const value = product.estimatedValue > 0
+          ? ` (€${Math.round(product.estimatedValue)})`
           : '';
         brief += `   • ${product.productName} — ${when}${value}\n`;
       });
@@ -567,8 +567,8 @@ function generateMorningBrief(insights: Omit<DailyInsights, 'briefSummary'>, lan
         : product.daysUntilExpiration === 1
         ? 'expires tomorrow'
         : `expires in ${product.daysUntilExpiration} days`;
-      const value = product.unitPrice && product.quantity
-        ? ` (€${Math.round(product.unitPrice * product.quantity)})`
+      const value = product.estimatedValue > 0
+        ? ` (€${Math.round(product.estimatedValue)})`
         : '';
       brief += `   • ${product.productName} — ${when}${value}\n`;
     });

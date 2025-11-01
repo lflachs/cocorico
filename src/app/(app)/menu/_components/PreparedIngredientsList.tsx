@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Beaker, RefreshCw, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Beaker, RefreshCw, Trash2, ChevronDown, ChevronRight, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '@/providers/LanguageProvider';
 import { CreateButton } from '@/components/CreateButton';
+import { PreparedQuickCreateFlow } from './PreparedQuickCreateFlow';
+import { formatQuantity, translateUnit } from '@/lib/utils/unit-converter';
 
 /**
  * Prepared Ingredients List
@@ -44,6 +46,7 @@ export function PreparedIngredientsList() {
   const [compositeProducts, setCompositeProducts] = useState<CompositeProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set());
+  const [showQuickCreate, setShowQuickCreate] = useState(false);
 
   const loadCompositeProducts = async () => {
     setLoading(true);
@@ -116,7 +119,14 @@ export function PreparedIngredientsList() {
             <CardDescription>{t('prepared.subtitle')}</CardDescription>
           </div>
           <div className="flex gap-2">
-            <CreateButton onClick={handleCreatePrepared}>{t('prepared.create')}</CreateButton>
+            <Button
+              onClick={() => setShowQuickCreate(true)}
+              size="lg"
+              className="gap-2 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90"
+            >
+              <Zap className="w-5 h-5" />
+              Création rapide
+            </Button>
           </div>
         </div>
       </CardHeader>
@@ -162,10 +172,10 @@ export function PreparedIngredientsList() {
                         </div>
                         <div className="mt-1 text-sm text-gray-600">
                           <span className="font-medium">{t('prepared.yield')}:</span>{' '}
-                          {product.yieldQuantity} {product.unit}
+                          {product.yieldQuantity} {translateUnit(product.unit, product.yieldQuantity)}
                           {' • '}
                           <span className="font-medium">{t('prepared.stock')}:</span>{' '}
-                          {product.quantity} {product.unit}
+                          {formatQuantity(product.quantity)} {translateUnit(product.unit, product.quantity)}
                           {' • '}
                           <span className="font-medium">{t('prepared.ingredients')}:</span>{' '}
                           {product.compositeIngredients.length}
@@ -175,7 +185,7 @@ export function PreparedIngredientsList() {
                             <span className="font-medium">{t('prepared.calculatedPrice')}:</span>{' '}
                             {product.calculatedUnitPrice > 0 ? (
                               <span className="font-semibold text-green-600">
-                                €{product.calculatedUnitPrice.toFixed(2)} / {product.unit}
+                                €{product.calculatedUnitPrice.toFixed(2)} / {translateUnit(product.unit, 1)}
                               </span>
                             ) : (
                               <span className="text-xs text-orange-500">
@@ -225,6 +235,16 @@ export function PreparedIngredientsList() {
           </div>
         )}
       </CardContent>
+
+      <PreparedQuickCreateFlow
+        open={showQuickCreate}
+        onOpenChange={(open) => {
+          setShowQuickCreate(open);
+          if (!open) {
+            loadCompositeProducts();
+          }
+        }}
+      />
     </Card>
   );
 }

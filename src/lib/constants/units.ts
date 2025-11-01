@@ -8,16 +8,16 @@ export type SupportedUnit = (typeof SUPPORTED_UNITS)[number];
 
 export const UNIT_LABELS: Record<SupportedUnit, string> = {
   // Weight
-  KG: 'Kilograms',
-  G: 'Grams',
+  KG: 'Kilogrammes',
+  G: 'Grammes',
   // Volume
-  L: 'Liters',
-  ML: 'Milliliters',
-  CL: 'Centiliters',
+  L: 'Litres',
+  ML: 'Millilitres',
+  CL: 'Centilitres',
   // Count
-  PC: 'Pieces',
-  BUNCH: 'Bunch',
-  CLOVE: 'Clove',
+  PC: 'Pièces',
+  BUNCH: 'Botte',
+  CLOVE: 'Gousse',
 };
 
 export const UNIT_ABBREVIATIONS: Record<SupportedUnit, string> = {
@@ -30,6 +30,6 @@ export const UNIT_ABBREVIATIONS: Record<SupportedUnit, string> = {
   CL: 'cl',
   // Count
   PC: 'pc',
-  BUNCH: 'bunch',
-  CLOVE: 'clove',
+  BUNCH: 'botte',
+  CLOVE: 'gousse',
 };

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { confirmBill } from '@/lib/services/bill.service';
+import { confirmBill, addProductsToBill } from '@/lib/services/bill.service';
 import { db } from '@/lib/db/client';
+import { suggestDisplayName } from '@/lib/utils/ingredients';
 
 /**
  * POST /api/bills/[id]/confirm
@@ -53,15 +54,21 @@ export async function POST(
 
     // Process each product - create if needed, then confirm
     const processedProducts = [];
+    const billProductsData = [];
 
     for (const product of products) {
       let productId = product.productId;
 
       // If no productId, create a new product
       if (!productId) {
+        // Suggest a simplified display name from the full product name
+        const displayName = suggestDisplayName(product.productName);
+
         const newProduct = await db.product.create({
           data: {
             name: product.productName,
+            displayName: displayName,
+            aliases: [], // Can be populated manually later
             quantity: 0, // Will be updated by confirmBill
             unit: product.unit.toUpperCase() as 'KG' | 'L' | 'PC',
             unitPrice: product.unitPrice,
@@ -70,12 +77,22 @@ export async function POST(
           },
         });
         productId = newProduct.id;
+
+        console.log(`[API] Created product "${product.productName}" with displayName: "${displayName}"`);
       }
 
       processedProducts.push({
         productId,
         quantity: product.quantity,
         unitPrice: product.unitPrice,
+      });
+
+      // Prepare BillProduct data
+      billProductsData.push({
+        productId,
+        quantityExtracted: product.quantity,
+        unitPriceExtracted: product.unitPrice,
+        totalValueExtracted: product.quantity * product.unitPrice,
       });
     }
 
@@ -110,6 +127,9 @@ export async function POST(
         status: 'PROCESSED',
       },
     });
+
+    // Create BillProduct records to link products to this bill
+    await addProductsToBill(id, billProductsData);
 
     // Confirm bill and update stock
     await confirmBill(id, processedProducts);

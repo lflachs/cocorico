@@ -3,8 +3,17 @@
 import { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Check, Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Check, Search, AlertCircle, Plus } from 'lucide-react';
 import { searchIngredientSuggestions, getCategoryDisplayName } from '@/lib/utils/ingredients';
+import { useRouter } from 'next/navigation';
+
+type Product = {
+  id: string;
+  name: string;
+  displayName?: string;
+  aliases?: string[];
+};
 
 type IngredientAutocompleteProps = {
   value: string;
@@ -13,7 +22,9 @@ type IngredientAutocompleteProps = {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
-  existingProducts?: { id: string; name: string }[];
+  existingProducts?: Product[];
+  restrictToExisting?: boolean; // New prop to enforce existing products only
+  onCreateNew?: () => void; // Callback when user wants to create new ingredient
 };
 
 export function IngredientAutocomplete({
@@ -24,7 +35,10 @@ export function IngredientAutocomplete({
   disabled = false,
   className = '',
   existingProducts = [],
+  restrictToExisting = false, // Default to false for backwards compatibility
+  onCreateNew,
 }: IngredientAutocompleteProps) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -33,19 +47,41 @@ export function IngredientAutocomplete({
   // Get suggestions only when user is typing
   const suggestions = value.length > 0 ? searchIngredientSuggestions(value, 15) : [];
 
-  // Filter out existing products
+  // Helper function to check if a product matches the search query
+  const productMatchesQuery = (product: Product, query: string): boolean => {
+    const lowerQuery = query.toLowerCase();
+
+    // Check displayName first (preferred)
+    if (product.displayName && product.displayName.toLowerCase().includes(lowerQuery)) {
+      return true;
+    }
+
+    // Check full name
+    if (product.name.toLowerCase().includes(lowerQuery)) {
+      return true;
+    }
+
+    // Check aliases
+    if (product.aliases && product.aliases.some(alias => alias.toLowerCase().includes(lowerQuery))) {
+      return true;
+    }
+
+    return false;
+  };
+
+  // Filter out existing products from suggestions
   const existingProductNames = new Set(existingProducts.map(p => p.name.toLowerCase()));
   const filteredSuggestions = suggestions.filter(
     s => !existingProductNames.has(s.name.toLowerCase())
   );
 
-  // Also show matching existing products
-  const matchingProducts = existingProducts.filter(p =>
-    p.name.toLowerCase().includes(value.toLowerCase())
-  );
+  // Show matching existing products (search by displayName, name, or aliases)
+  const matchingProducts = existingProducts.filter(p => productMatchesQuery(p, value));
 
-  const hasResults = matchingProducts.length > 0 || filteredSuggestions.length > 0;
-  const totalResults = matchingProducts.length + filteredSuggestions.length;
+  // If restrictToExisting is true, only show existing products
+  const displaySuggestions = restrictToExisting ? [] : filteredSuggestions;
+  const hasResults = matchingProducts.length > 0 || displaySuggestions.length > 0;
+  const totalResults = matchingProducts.length + displaySuggestions.length;
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -126,8 +162,47 @@ export function IngredientAutocomplete({
         <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg animate-in fade-in-0 zoom-in-95">
           <div className="max-h-[300px] overflow-y-auto p-1">
             {!hasResults ? (
-              <div className="px-3 py-6 text-center text-sm text-muted-foreground">
-                Aucun résultat trouvé
+              <div className="px-4 py-6 text-center space-y-3">
+                <div className="flex justify-center">
+                  <div className="p-2 bg-orange-50 rounded-full">
+                    <AlertCircle className="h-5 w-5 text-orange-600" />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-foreground">Ingrédient non trouvé</p>
+                  <p className="text-xs text-muted-foreground">
+                    {restrictToExisting
+                      ? "Cet ingrédient n'existe pas dans votre stock."
+                      : "Aucun résultat trouvé"}
+                  </p>
+                </div>
+                {/* Show create button if callback provided */}
+                {onCreateNew ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setIsOpen(false);
+                      onCreateNew();
+                    }}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Créer "{value}"
+                  </Button>
+                ) : restrictToExisting ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => router.push('/stock')}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Ajouter au stock d'abord
+                  </Button>
+                ) : null}
               </div>
             ) : (
               <>
@@ -137,34 +212,45 @@ export function IngredientAutocomplete({
                     <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
                       Vos produits
                     </div>
-                    {matchingProducts.map((product, idx) => (
-                      <button
-                        key={product.id}
-                        type="button"
-                        onClick={() => handleSelect(product.name)}
-                        className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-sm cursor-pointer transition-colors ${
-                          idx === highlightedIndex
-                            ? 'bg-accent text-accent-foreground'
-                            : 'hover:bg-accent/50'
-                        }`}
-                        onMouseEnter={() => setHighlightedIndex(idx)}
-                      >
-                        <span className="font-medium">{product.name}</span>
-                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-                          Existant
-                        </Badge>
-                      </button>
-                    ))}
+                    {matchingProducts.map((product, idx) => {
+                      const displayText = product.displayName || product.name;
+                      const isUsingDisplayName = !!product.displayName;
+                      return (
+                        <button
+                          key={product.id}
+                          type="button"
+                          onClick={() => handleSelect(displayText)}
+                          className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-sm cursor-pointer transition-colors ${
+                            idx === highlightedIndex
+                              ? 'bg-accent text-accent-foreground'
+                              : 'hover:bg-accent/50'
+                          }`}
+                          onMouseEnter={() => setHighlightedIndex(idx)}
+                        >
+                          <div className="flex flex-col items-start gap-0.5">
+                            <span className="font-medium">{displayText}</span>
+                            {isUsingDisplayName && (
+                              <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                {product.name}
+                              </span>
+                            )}
+                          </div>
+                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 shrink-0">
+                            Existant
+                          </Badge>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
 
-                {/* Suggestions */}
-                {filteredSuggestions.length > 0 && (
+                {/* Suggestions - Only shown if not restricted to existing */}
+                {displaySuggestions.length > 0 && (
                   <div>
                     <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
                       Suggestions
                     </div>
-                    {filteredSuggestions.map((suggestion, idx) => {
+                    {displaySuggestions.map((suggestion, idx) => {
                       const globalIndex = matchingProducts.length + idx;
                       return (
                         <button

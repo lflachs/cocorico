@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, ChevronLeft, Package, Mail, Copy } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, Package, Mail, Copy, Clock, Sparkles } from 'lucide-react';
 
 type Product = {
   name: string;
@@ -23,8 +23,10 @@ type DisputeData = {
 type BillSummaryConfirmProps = {
   supplierName: string;
   supplierEmail?: string;
+  supplierPhone?: string;
   onSupplierChange: (value: string) => void;
   onSupplierEmailChange?: (value: string) => void;
+  onSupplierPhoneChange?: (value: string) => void;
   billDate: string;
   onBillDateChange: (value: string) => void;
   totalAmount: number;
@@ -47,8 +49,10 @@ type BillSummaryConfirmProps = {
 export function BillSummaryConfirm({
   supplierName,
   supplierEmail,
+  supplierPhone,
   onSupplierChange,
   onSupplierEmailChange,
+  onSupplierPhoneChange,
   billDate,
   onBillDateChange,
   totalAmount,
@@ -62,15 +66,54 @@ export function BillSummaryConfirm({
   onSendDisputeEmail,
   onCopyDisputeEmail,
 }: BillSummaryConfirmProps) {
+  // Calculate total from products if not provided
+  const calculatedTotal = products.reduce((sum, product) => {
+    return sum + (product.totalPrice || 0);
+  }, 0);
+
+  // Use calculated total if totalAmount is 0 or not provided
+  const displayTotal = totalAmount > 0 ? totalAmount : calculatedTotal;
+
+  // Calculate estimated time (15 seconds per product as rough estimate)
+  const estimatedSeconds = products.length * 15;
+  const estimatedMinutes = Math.ceil(estimatedSeconds / 60);
+  const timeDisplay = estimatedSeconds < 60
+    ? `~${estimatedSeconds}s`
+    : `~${estimatedMinutes}min`;
+
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-6">
       {/* Header */}
-      <div className="text-center space-y-2">
+      <div className="text-center space-y-3">
         <CheckCircle2 className="h-16 w-16 mx-auto text-green-600" />
         <h2 className="text-2xl font-bold">Confirmation de la livraison</h2>
         <p className="text-sm text-muted-foreground">
           Vérifiez les informations avant de valider
         </p>
+      </div>
+
+      {/* Quick Stats - Like sync inventory */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="p-4 rounded-lg border bg-card text-center">
+          <Package className="h-6 w-6 mx-auto mb-2 text-primary" />
+          <div className="text-2xl font-bold">{products.length}</div>
+          <div className="text-xs text-muted-foreground">produits</div>
+        </div>
+        <div className="p-4 rounded-lg border bg-card text-center">
+          <Clock className="h-6 w-6 mx-auto mb-2 text-orange-500" />
+          <div className="text-2xl font-bold">{timeDisplay}</div>
+          <div className="text-xs text-muted-foreground">de traitement</div>
+        </div>
+      </div>
+
+      {/* Tip */}
+      <div className="p-4 rounded-lg border bg-blue-50 border-blue-200">
+        <div className="flex gap-2">
+          <Sparkles className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+          <div className="text-sm text-blue-900">
+            <strong>Astuce:</strong> La validation mettra à jour automatiquement votre inventaire en temps réel.
+          </div>
+        </div>
       </div>
 
       {/* Summary Card */}
@@ -91,8 +134,8 @@ export function BillSummaryConfirm({
             />
           </div>
 
-          {/* Supplier Email - only show if disputes exist */}
-          {productsWithDisputes > 0 && onSupplierEmailChange && (
+          {/* Supplier Email */}
+          {onSupplierEmailChange && (
             <div>
               <Label htmlFor="supplier-email">Email du fournisseur</Label>
               <Input
@@ -103,9 +146,26 @@ export function BillSummaryConfirm({
                 placeholder="email@fournisseur.fr"
                 className="mt-1"
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                Nécessaire pour envoyer l'email de litige
-              </p>
+              {productsWithDisputes > 0 && (
+                <p className="text-xs text-orange-600 mt-1">
+                  ⚠️ Email requis pour envoyer le litige
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Supplier Phone */}
+          {onSupplierPhoneChange && (
+            <div>
+              <Label htmlFor="supplier-phone">Téléphone du fournisseur</Label>
+              <Input
+                id="supplier-phone"
+                type="tel"
+                value={supplierPhone || ''}
+                onChange={(e) => onSupplierPhoneChange(e.target.value)}
+                placeholder="+33 1 23 45 67 89"
+                className="mt-1"
+              />
             </div>
           )}
 
@@ -128,11 +188,16 @@ export function BillSummaryConfirm({
               id="total-amount"
               type="number"
               step="0.01"
-              value={totalAmount || ''}
+              value={displayTotal || ''}
               onChange={(e) => onTotalAmountChange(parseFloat(e.target.value) || 0)}
               placeholder="0.00"
               className="mt-1"
             />
+            {calculatedTotal > 0 && totalAmount === 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Calculé automatiquement: {calculatedTotal.toFixed(2)} €
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>

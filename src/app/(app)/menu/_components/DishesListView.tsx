@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Pencil, Trash2, RefreshCw } from 'lucide-react';
+import { Search, Pencil, Trash2, RefreshCw, Zap } from 'lucide-react';
 import { useLanguage } from '@/providers/LanguageProvider';
 import { toast } from 'sonner';
 import { DishEditModal } from './DishEditModal';
 import { CreateButton } from '@/components/CreateButton';
+import { DishQuickCreateFlow } from './DishQuickCreateFlow';
 
 /**
  * Dishes List View - Manage all dishes à la carte
@@ -43,6 +44,7 @@ export function DishesListView() {
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
+  const [showQuickCreate, setShowQuickCreate] = useState(false);
 
   const loadDishes = async () => {
     setLoading(true);
@@ -146,7 +148,14 @@ export function DishesListView() {
             />
           </div>
           <div className="flex gap-2">
-            <CreateButton onClick={handleCreateDish}>{t('menu.createDish')}</CreateButton>
+            <Button
+              onClick={() => setShowQuickCreate(true)}
+              size="lg"
+              className="gap-2 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90"
+            >
+              <Zap className="w-5 h-5" />
+              Création rapide
+            </Button>
           </div>
         </div>
 
@@ -289,6 +298,17 @@ export function DishesListView() {
           }}
         />
       )}
+
+      <DishQuickCreateFlow
+        open={showQuickCreate}
+        onOpenChange={(open) => {
+          setShowQuickCreate(open);
+          if (!open) {
+            // Reload dishes when dialog closes
+            loadDishes();
+          }
+        }}
+      />
     </>
   );
 }

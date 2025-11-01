@@ -80,7 +80,11 @@ export class OcrService {
     }
 
     // Extract total amount
-    const totalAmount = fields?.Total?.value || 0;
+    let totalAmount = fields?.Total?.value || 0;
+    // Handle totalAmount as object with amount property
+    if (typeof totalAmount === 'object' && totalAmount !== null) {
+      totalAmount = (totalAmount as any).amount || 0;
+    }
 
     // Extract line items
     const items: ExtractedLineItem[] = [];
@@ -206,12 +210,18 @@ export class OcrService {
       }
     }
 
+    // If totalAmount is 0 or not found, calculate from items
+    let finalTotalAmount = typeof totalAmount === 'number' ? totalAmount : 0;
+    if (finalTotalAmount === 0 && items.length > 0) {
+      finalTotalAmount = items.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
+    }
+
     return {
       supplierName,
       supplierEmail,
       supplierPhone,
       date,
-      totalAmount: typeof totalAmount === 'number' ? totalAmount : 0,
+      totalAmount: finalTotalAmount,
       items,
     };
   }
@@ -256,7 +266,11 @@ export class OcrService {
     }
 
     // Extract total amount
-    const totalAmount = fields?.InvoiceTotal?.value || fields?.Total?.value || 0;
+    let totalAmount = fields?.InvoiceTotal?.value || fields?.Total?.value || 0;
+    // Handle totalAmount as object with amount property
+    if (typeof totalAmount === 'object' && totalAmount !== null) {
+      totalAmount = (totalAmount as any).amount || 0;
+    }
 
     // Extract line items
     const items: ExtractedLineItem[] = [];
@@ -312,12 +326,18 @@ export class OcrService {
       }
     }
 
+    // If totalAmount is 0 or not found, calculate from items
+    let finalTotalAmount = typeof totalAmount === 'number' ? totalAmount : 0;
+    if (finalTotalAmount === 0 && items.length > 0) {
+      finalTotalAmount = items.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
+    }
+
     return {
       supplierName,
       supplierEmail,
       supplierPhone,
       date,
-      totalAmount: typeof totalAmount === 'number' ? totalAmount : 0,
+      totalAmount: finalTotalAmount,
       items,
     };
   }

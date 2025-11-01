@@ -4,7 +4,7 @@ import { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { VisuallyHidden } from '@/components/ui/visually-hidden';
 import { Button } from '@/components/ui/button';
-import { Camera, Upload, Loader2, PackageCheck, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Camera, Upload, Loader2, PackageCheck, ChevronLeft, ChevronRight, X, Clock, Sparkles } from 'lucide-react';
 import { ProductConfirmCard } from './ProductConfirmCard';
 import { DLCCaptureModal } from './DLCCaptureModal';
 import { QuickDisputeModal } from './QuickDisputeModal';
@@ -58,6 +58,7 @@ export function ReceptionFlow({ open, onOpenChange }: ReceptionFlowProps) {
   const [productDisputes, setProductDisputes] = useState<Map<number, DisputeData>>(new Map());
   const [supplierName, setSupplierName] = useState<string>('');
   const [supplierEmail, setSupplierEmail] = useState<string>('');
+  const [supplierPhone, setSupplierPhone] = useState<string>('');
   const [billDate, setBillDate] = useState<string>('');
   const [totalAmount, setTotalAmount] = useState<number>(0);
 
@@ -76,22 +77,32 @@ export function ReceptionFlow({ open, onOpenChange }: ReceptionFlowProps) {
   const handleFileUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
-    const file = files[0];
-
-    // Validate file
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
-    if (!validTypes.includes(file.type)) {
-      toast.error('Format invalide', {
-        description: 'Formats acceptés: JPG, PNG, PDF',
-      });
-      return;
+    const maxSize = 10 * 1024 * 1024;
+
+    // Validate all files first
+    const filesToProcess: File[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+
+      if (!validTypes.includes(file.type)) {
+        toast.error(`Format invalide: ${file.name}`, {
+          description: 'Formats acceptés: JPG, PNG, PDF',
+        });
+        continue;
+      }
+
+      if (file.size > maxSize) {
+        toast.error(`Fichier trop volumineux: ${file.name}`, {
+          description: 'Taille maximale: 10MB',
+        });
+        continue;
+      }
+
+      filesToProcess.push(file);
     }
 
-    const maxSize = 10 * 1024 * 1024;
-    if (file.size > maxSize) {
-      toast.error('Fichier trop volumineux', {
-        description: 'Taille maximale: 10MB',
-      });
+    if (filesToProcess.length === 0) {
       return;
     }
 
@@ -104,6 +115,7 @@ export function ReceptionFlow({ open, onOpenChange }: ReceptionFlowProps) {
     setBillId(null);
     setSupplierName('');
     setSupplierEmail('');
+    setSupplierPhone('');
     setBillDate('');
     setTotalAmount(0);
 
@@ -112,7 +124,10 @@ export function ReceptionFlow({ open, onOpenChange }: ReceptionFlowProps) {
 
     try {
       const formData = new FormData();
-      formData.append('files', file); // Note: 'files' not 'file' - matches existing API
+      // Append all valid files
+      filesToProcess.forEach(file => {
+        formData.append('files', file);
+      });
 
       const response = await fetch('/api/bills/process', {
         method: 'POST',
@@ -129,6 +144,7 @@ export function ReceptionFlow({ open, onOpenChange }: ReceptionFlowProps) {
       // Store bill metadata
       setSupplierName(result.supplier || '');
       setSupplierEmail(result.supplierEmail || '');
+      setSupplierPhone(result.supplierPhone || '');
 
       // Format date to YYYY-MM-DD for date input
       let formattedDate = '';
@@ -154,10 +170,39 @@ export function ReceptionFlow({ open, onOpenChange }: ReceptionFlowProps) {
       // Use items from the process response (already extracted by OCR)
       const extractedProducts: ExtractedProduct[] = result.items?.map((item: any) => {
         console.log('Processing item:', item);
+
+        // Normalize unit to uppercase and map to our valid units
+        let normalizedUnit = item.unit ? item.unit.toUpperCase() : '';
+
+        // Map common OCR variations to our standard units
+        const validUnits = ['KG', 'G', 'L', 'ML', 'PC', 'BOX', 'BAG', 'BUNCH', 'PACK', 'UNIT'];
+
+        // If not in valid units, try to map common variations
+        if (!validUnits.includes(normalizedUnit)) {
+          if (normalizedUnit === 'LITER' || normalizedUnit === 'LITRE') {
+            normalizedUnit = 'L';
+          } else if (normalizedUnit === 'KILO' || normalizedUnit === 'KILOGRAMME') {
+            normalizedUnit = 'KG';
+          } else if (normalizedUnit === 'GRAM' || normalizedUnit === 'GRAMME') {
+            normalizedUnit = 'G';
+          } else if (normalizedUnit === 'PIECE' || normalizedUnit === 'PIECES' || normalizedUnit === 'PCS') {
+            normalizedUnit = 'PC';
+          } else if (normalizedUnit === 'BOITE') {
+            normalizedUnit = 'BOX';
+          } else if (normalizedUnit === 'BOTTE') {
+            normalizedUnit = 'BUNCH';
+          } else if (normalizedUnit === 'UNITE' || normalizedUnit === 'UNITÉ') {
+            normalizedUnit = 'UNIT';
+          } else {
+            // If still not recognized, leave empty so user must select
+            normalizedUnit = '';
+          }
+        }
+
         return {
           name: item.name || 'Produit inconnu',
           quantity: item.quantity || 0,
-          unit: item.unit || 'PC',
+          unit: normalizedUnit,
           unitPrice: item.unitPrice,
           totalPrice: item.totalPrice,
         };
@@ -176,8 +221,12 @@ export function ReceptionFlow({ open, onOpenChange }: ReceptionFlowProps) {
 
       setProducts(extractedProducts);
       setState('REVIEW');
+
+      const fileCount = filesToProcess.length;
       toast.success(`${extractedProducts.length} produit(s) détecté(s)`, {
-        description: 'Glissez ou tapez Suivant pour confirmer',
+        description: fileCount > 1
+          ? `${fileCount} factures traitées`
+          : 'Glissez ou tapez Suivant pour confirmer',
       });
     } catch (error) {
       console.error('Upload error:', error);
@@ -392,7 +441,9 @@ export function ReceptionFlow({ open, onOpenChange }: ReceptionFlowProps) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to confirm bill');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Bill confirmation failed:', errorData);
+        throw new Error(errorData.error || errorData.details || 'Failed to confirm bill');
       }
 
       const disputeCount = Array.from(productDisputes.keys()).length;
@@ -419,7 +470,10 @@ export function ReceptionFlow({ open, onOpenChange }: ReceptionFlowProps) {
       onOpenChange(false);
     } catch (error) {
       console.error('Confirmation error:', error);
-      toast.error('Erreur lors de la confirmation');
+      const errorMessage = error instanceof Error ? error.message : 'Erreur lors de la confirmation';
+      toast.error('Erreur lors de la confirmation', {
+        description: errorMessage,
+      });
       setState('CONFIRM'); // Go back to confirm screen
     }
   };
@@ -477,19 +531,44 @@ export function ReceptionFlow({ open, onOpenChange }: ReceptionFlowProps) {
           ref={fileInputRef}
           type="file"
           accept="image/jpeg,image/jpg,image/png,application/pdf"
+          multiple
           className="hidden"
           onChange={(e) => handleFileUpload(e.target.files)}
         />
 
         <div className="text-center space-y-3">
           <PackageCheck className="h-20 w-20 mx-auto text-primary" />
-          <h2 className="text-3xl font-bold">Démarrer une réception</h2>
-          <p className="text-muted-foreground">
-            Scannez le bon de livraison pour commencer
+          <h2 className="text-3xl font-bold">Nouvelle réception</h2>
+          <p className="text-muted-foreground max-w-md">
+            Scannez un bon de livraison pour démarrer
           </p>
         </div>
 
-        <div className="w-full max-w-md space-y-3">
+        <div className="w-full max-w-md space-y-4">
+          {/* Info cards */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-4 rounded-lg border bg-card text-center">
+              <PackageCheck className="h-6 w-6 mx-auto mb-2 text-primary" />
+              <div className="text-2xl font-bold">~30s</div>
+              <div className="text-xs text-muted-foreground">par produit</div>
+            </div>
+            <div className="p-4 rounded-lg border bg-card text-center">
+              <Clock className="h-6 w-6 mx-auto mb-2 text-orange-500" />
+              <div className="text-2xl font-bold">~2-5</div>
+              <div className="text-xs text-muted-foreground">minutes</div>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-lg border bg-blue-50 border-blue-200">
+            <div className="flex gap-2">
+              <Sparkles className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+              <div className="text-sm text-blue-900">
+                <strong>Astuce:</strong> Le scan détecte automatiquement les produits,
+                quantités et prix. Vérifiez simplement chaque élément !
+              </div>
+            </div>
+          </div>
+
           <Button
             onClick={handleCameraClick}
             size="lg"
@@ -506,8 +585,11 @@ export function ReceptionFlow({ open, onOpenChange }: ReceptionFlowProps) {
             className="w-full h-16 text-lg"
           >
             <Upload className="mr-3 h-5 w-5" />
-            Télécharger un fichier
+            Télécharger fichier(s)
           </Button>
+          <p className="text-xs text-center text-muted-foreground">
+            Vous pouvez sélectionner plusieurs factures à la fois
+          </p>
         </div>
       </div>
       );
@@ -600,8 +682,10 @@ export function ReceptionFlow({ open, onOpenChange }: ReceptionFlowProps) {
         <BillSummaryConfirm
           supplierName={supplierName}
           supplierEmail={supplierEmail}
+          supplierPhone={supplierPhone}
           onSupplierChange={setSupplierName}
           onSupplierEmailChange={setSupplierEmail}
+          onSupplierPhoneChange={setSupplierPhone}
           billDate={billDate}
           onBillDateChange={setBillDate}
           totalAmount={totalAmount}

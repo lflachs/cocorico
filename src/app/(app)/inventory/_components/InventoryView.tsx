@@ -23,6 +23,7 @@ import {
   ArrowUp,
   ArrowDown,
   Clock,
+  Info,
 } from 'lucide-react';
 import { type Product } from '@prisma/client';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
@@ -31,6 +32,8 @@ import { useLanguage } from '@/providers/LanguageProvider';
 import Link from 'next/link';
 import { CreateButton } from '@/components/CreateButton';
 import { InventorySyncFlow } from './InventorySyncFlow';
+import { formatQuantity, translateUnit } from '@/lib/utils/unit-converter';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 /**
  * Comprehensive Inventory View Component
@@ -378,13 +381,21 @@ export function InventoryView({ initialProducts, menuIngredients }: InventoryVie
 
   // Calculate inventory confidence level based on how recently products were updated
   const calculateConfidenceLevel = () => {
-    if (initialProducts.length === 0) return { level: 0, label: 'Aucune donnée', color: 'gray' };
+    if (initialProducts.length === 0) return { level: 0, label: 'Aucune donnée', color: 'gray', emoji: '⚪', lastUpdate: null };
 
     const now = Date.now();
     let totalScore = 0;
+    let mostRecentUpdate: Date | null = null;
 
     initialProducts.forEach((product) => {
-      const daysSinceUpdate = Math.floor((now - new Date(product.updatedAt).getTime()) / (1000 * 60 * 60 * 24));
+      const productUpdateDate = new Date(product.updatedAt);
+
+      // Track most recent update
+      if (!mostRecentUpdate || productUpdateDate > mostRecentUpdate) {
+        mostRecentUpdate = productUpdateDate;
+      }
+
+      const daysSinceUpdate = Math.floor((now - productUpdateDate.getTime()) / (1000 * 60 * 60 * 24));
 
       // Scoring system: more recent = higher score
       let score = 0;
@@ -403,19 +414,51 @@ export function InventoryView({ initialProducts, menuIngredients }: InventoryVie
 
     // Determine confidence level
     if (avgScore >= 80) {
-      return { level: avgScore, label: 'Très élevée', color: 'green', emoji: '🟢' };
+      return { level: avgScore, label: 'Très élevée', color: 'green', emoji: '🟢', lastUpdate: mostRecentUpdate };
     } else if (avgScore >= 60) {
-      return { level: avgScore, label: 'Élevée', color: 'blue', emoji: '🔵' };
+      return { level: avgScore, label: 'Élevée', color: 'blue', emoji: '🔵', lastUpdate: mostRecentUpdate };
     } else if (avgScore >= 40) {
-      return { level: avgScore, label: 'Moyenne', color: 'yellow', emoji: '🟡' };
+      return { level: avgScore, label: 'Moyenne', color: 'yellow', emoji: '🟡', lastUpdate: mostRecentUpdate };
     } else if (avgScore >= 20) {
-      return { level: avgScore, label: 'Faible', color: 'orange', emoji: '🟠' };
+      return { level: avgScore, label: 'Faible', color: 'orange', emoji: '🟠', lastUpdate: mostRecentUpdate };
     } else {
-      return { level: avgScore, label: 'Très faible', color: 'red', emoji: '🔴' };
+      return { level: avgScore, label: 'Très faible', color: 'red', emoji: '🔴', lastUpdate: mostRecentUpdate };
     }
   };
 
   const confidence = calculateConfidenceLevel();
+
+  // Format last update date in French
+  const formatLastUpdateDate = (date: Date | null) => {
+    if (!date) return null;
+
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    // If today, show time
+    if (diffDays === 0) {
+      return `Aujourd'hui à ${date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+    }
+
+    // If yesterday
+    if (diffDays === 1) {
+      return `Hier à ${date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+    }
+
+    // If less than 7 days, show day of week
+    if (diffDays < 7) {
+      const dayName = date.toLocaleDateString('fr-FR', { weekday: 'long' });
+      return `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} à ${date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+    }
+
+    // Otherwise show full date
+    return date.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: diffDays > 365 ? 'numeric' : undefined
+    });
+  };
 
   const productsWithValue = initialProducts.filter((p) => p.unitPrice && p.unitPrice > 0);
   const avgValue =
@@ -495,16 +538,44 @@ Product: ${p.name}
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-2xl">{confidence.emoji}</span>
-                      <div>
-                        <h3 className={`font-semibold text-sm ${
-                          confidence.color === 'green' ? 'text-green-900' :
-                          confidence.color === 'blue' ? 'text-blue-900' :
-                          confidence.color === 'yellow' ? 'text-yellow-900' :
-                          confidence.color === 'orange' ? 'text-orange-900' :
-                          'text-red-900'
-                        }`}>
-                          Confiance: {confidence.label}
-                        </h3>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <h3 className={`font-semibold text-sm ${
+                            confidence.color === 'green' ? 'text-green-900' :
+                            confidence.color === 'blue' ? 'text-blue-900' :
+                            confidence.color === 'yellow' ? 'text-yellow-900' :
+                            confidence.color === 'orange' ? 'text-orange-900' :
+                            'text-red-900'
+                          }`}>
+                            Confiance: {confidence.label}
+                          </h3>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button className="inline-flex items-center">
+                                <Info className={`h-3.5 w-3.5 ${
+                                  confidence.color === 'green' ? 'text-green-700' :
+                                  confidence.color === 'blue' ? 'text-blue-700' :
+                                  confidence.color === 'yellow' ? 'text-yellow-700' :
+                                  confidence.color === 'orange' ? 'text-orange-700' :
+                                  'text-red-700'
+                                }`} />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              <p className="font-semibold mb-1">Comment est calculée la confiance ?</p>
+                              <p className="text-xs">La fiabilité dépend de la dernière vérification d'inventaire :</p>
+                              <ul className="text-xs mt-1 space-y-0.5 list-disc pl-4">
+                                <li>Aujourd'hui : 100%</li>
+                                <li>Hier : 90%</li>
+                                <li>2-3 jours : 75%</li>
+                                <li>4-7 jours : 50%</li>
+                                <li>8-14 jours : 30%</li>
+                                <li>15-30 jours : 15%</li>
+                                <li>Plus de 30 jours : 0%</li>
+                              </ul>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
                         <p className={`text-xs ${
                           confidence.color === 'green' ? 'text-green-700' :
                           confidence.color === 'blue' ? 'text-blue-700' :
@@ -514,6 +585,18 @@ Product: ${p.name}
                         }`}>
                           {Math.round(confidence.level)}% de fiabilité
                         </p>
+                        {confidence.lastUpdate && (
+                          <p className={`text-xs mt-0.5 flex items-center gap-1 ${
+                            confidence.color === 'green' ? 'text-green-600' :
+                            confidence.color === 'blue' ? 'text-blue-600' :
+                            confidence.color === 'yellow' ? 'text-yellow-600' :
+                            confidence.color === 'orange' ? 'text-orange-600' :
+                            'text-red-600'
+                          }`}>
+                            <Clock className="h-3 w-3" />
+                            <span>{formatLastUpdateDate(confidence.lastUpdate)}</span>
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -809,14 +892,14 @@ Product: ${p.name}
                                   className="w-full h-8 text-sm"
                                 />
                               ) : (
-                                <p className="font-mono font-medium text-sm truncate">{product.quantity.toFixed(1)}</p>
+                                <p className="font-mono font-medium text-sm truncate">{formatQuantity(product.quantity)}</p>
                               )}
                             </div>
 
                             {/* Unit */}
                             <div className="min-w-0 overflow-hidden">
                               <p className="text-xs text-gray-500 mb-1 truncate">{t('inventory.table.unit')}</p>
-                              <Badge variant="outline" className="text-xs px-2 py-0.5 max-w-full truncate block">{product.unit}</Badge>
+                              <Badge variant="outline" className="text-xs px-2 py-0.5 max-w-full truncate block">{translateUnit(product.unit, product.quantity)}</Badge>
                             </div>
 
                             {/* Unit Price */}
@@ -1063,14 +1146,14 @@ Product: ${p.name}
                               className="w-20 h-8 text-sm"
                             />
                           ) : (
-                            <span className="font-mono">{product.quantity.toFixed(1)}</span>
+                            <span className="font-mono">{formatQuantity(product.quantity)}</span>
                           )}
                         </td>
 
                         {/* Unit */}
                         <td className="px-3 py-2.5">
                           <Badge variant="outline" className="text-xs">
-                            {product.unit}
+                            {translateUnit(product.unit, product.quantity)}
                           </Badge>
                         </td>
 
