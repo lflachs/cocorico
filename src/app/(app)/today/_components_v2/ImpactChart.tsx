@@ -223,11 +223,13 @@ export function ImpactChart({
                 <TooltipContent className="max-w-xs">
                   <p className="text-xs">
                     <strong>Potentiel :</strong><br/>
-                    Basé sur une utilisation optimale :<br/>
-                    • 1 facture/jour (15min)<br/>
-                    • 5 DLC/semaine (25min)<br/>
-                    • Ventes quotidiennes (10min/jour)<br/>
-                    • Food cost auto (2h/mois)<br/>
+                    Si tu utilises toutes les fonctionnalités :<br/>
+                    • 1 facture/jour = 4h/mois<br/>
+                    • 5 DLC/semaine = 1h/mois<br/>
+                    • Ventes 3×/semaine = 1h/mois<br/>
+                    • Admin auto = 2h/mois<br/>
+                    <br/>
+                    <strong>Total potentiel :</strong> ~8h/mois<br/>
                     <br/>
                     Plus tu utilises l'app, plus tu gagnes de temps !
                   </p>

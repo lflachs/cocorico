@@ -99,36 +99,34 @@ async function calculateTimeSaved(startDate: Date, endDate: Date): Promise<numbe
     }),
   ]);
 
-  // REALISTIC time saved estimates (vs traditional Excel/notebook method):
+  // NET TIME SAVED (time saved from manual work MINUS time spent in app):
 
-  // 1. Bill processing: 15 min per bill
-  //    - Manual: Open Excel, type products, quantities, prices, calculate totals, update stock
-  //    - Cocorico: Scan → done
-  const billTime = billCount * 15;
+  // 1. Bill processing
+  //    - Manual method: 10min (type products, prices, update Excel/stock manually)
+  //    - Cocorico method: 2min (scan + verify)
+  //    - Net savings: 8min per bill
+  const billTime = billCount * 8;
 
-  // 2. DLC tracking: 5 min per entry
-  //    - Manual: Write in notebook, check expiry dates, cross-reference with stock, set reminders
-  //    - Cocorico: Quick entry with auto-alerts
-  const dlcTime = dlcCount * 5;
+  // 2. DLC tracking
+  //    - Manual method: 5min (write in notebook, set reminders, cross-check stock)
+  //    - Cocorico method: 1.5min (quick entry with auto-alerts)
+  //    - Net savings: 3.5min per entry
+  const dlcTime = dlcCount * 3.5;
 
-  // 3. Sales tracking: 10 min per sale entry
-  //    - Manual: Type each dish sold, calculate totals, update Excel, adjust stock manually
-  //    - Cocorico: Quick entry, auto stock deduction
-  const salesTime = saleCount * 10;
+  // 3. Sales tracking
+  //    - Manual method: 8min (calculate totals, update Excel, adjust stock)
+  //    - Cocorico method: 2min (quick entry, auto stock deduction)
+  //    - Net savings: 6min per sale
+  const salesTime = saleCount * 6;
 
-  // 4. Daily stock reconciliation: 20 min/day
-  //    - Manual: Count inventory, update Excel, cross-check with purchases/sales
-  //    - Cocorico: Real-time updates
-  const daysInPeriod = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-  const hasActivity = billCount > 0 || dlcCount > 0 || saleCount > 0;
-  const reconciliationTime = hasActivity ? daysInPeriod * 20 : 0;
+  // 4. Weekly admin time saved (only if actively using app)
+  //    - Manual: 45min/week (food cost, reports, reconciliation, stock checks)
+  //    - Cocorico: 15min/week (quick dashboard review)
+  //    - Net savings: 30min/week if using actively
+  const hasSignificantActivity = (billCount + dlcCount + saleCount) > 5;
+  const weeklyAdminTime = hasSignificantActivity ? 30 : 0;
 
-  // 5. Food cost calculation: 2h per month
-  //    - Manual: Export data, calculate in Excel, create reports
-  //    - Cocorico: Automatic dashboard
-  const foodCostTime = 120; // 2 hours per month
-
-  const totalTimeSaved = billTime + dlcTime + salesTime + reconciliationTime + foodCostTime;
+  const totalTimeSaved = Math.round(billTime + dlcTime + salesTime + weeklyAdminTime);
 
   return totalTimeSaved;
 }
@@ -303,21 +301,21 @@ async function calculateTimePotential(startDate: Date, endDate: Date): Promise<n
 
   const daysInMonth = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
 
-  // Potential if they:
-  // - Scanned 1 bill per day (15min each)
-  // - Tracked 5 DLCs per week (5min each)
-  // - Entered sales daily (10min per day)
-  // - Used food cost dashboard (save 2h/month admin)
+  // Realistic potential if they used features more consistently:
+  // - 1 bill/day × 8min = 240min/month
+  // - 5 DLCs/week × 3min = 60min/month
+  // - Sales 3x/week × 5min = 60min/month
+  // - Weekly admin saved = 30min × 4 weeks = 120min/month
 
-  const potentialBillTime = Math.min(daysInMonth, 30) * 15; // 1 bill/day
-  const potentialDLCTime = 4 * 5 * 5; // 5 DLCs/week × 4 weeks
-  const potentialSalesTime = daysInMonth * 10; // Daily sales entry
-  const potentialAdminTime = 120; // 2h/month saved
+  const potentialBillTime = 30 * 8; // ~1 bill/day
+  const potentialDLCTime = 20 * 3; // ~5 DLCs/week
+  const potentialSalesTime = 12 * 5; // ~3 sales entries/week
+  const potentialAdminTime = 120; // ~30min/week
 
   const totalPotential = potentialBillTime + potentialDLCTime + potentialSalesTime + potentialAdminTime;
 
-  // Return at least 2h as baseline
-  return Math.max(totalPotential, 120);
+  // Return at least 4h as baseline
+  return Math.max(totalPotential, 240);
 }
 
 /**
