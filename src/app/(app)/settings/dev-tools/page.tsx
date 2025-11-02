@@ -111,13 +111,14 @@ export default function DevToolsPage() {
                   <ul className="ml-4 list-disc space-y-0.5">
                     <li>2 users (admin & user)</li>
                     <li>5 suppliers</li>
-                    <li>16 base products + 2 composite products</li>
+                    <li>23 base products + 2 composite products</li>
                     <li>21 dishes from Sens Unique Restaurant</li>
                     <li>2 menus (Menu Canaille & Menu Gourmand)</li>
                     <li>5 bills with stock movements</li>
-                    <li>56 sales records over 7 days</li>
+                    <li>400+ sales records over 21 days</li>
                     <li>6 DLC records</li>
                     <li>2 disputes</li>
+                    <li>10 price history records</li>
                   </ul>
                 </div>
               </div>

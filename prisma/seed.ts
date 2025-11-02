@@ -9,16 +9,19 @@ async function main() {
   // Clean up existing data (in reverse order of dependencies)
   console.log('🧹 Cleaning up existing data...');
   await prisma.sale.deleteMany();
+  await prisma.production.deleteMany();
   await prisma.dLC.deleteMany();
   await prisma.menuDish.deleteMany();
   await prisma.menuSection.deleteMany();
   await prisma.menu.deleteMany();
   await prisma.recipeIngredient.deleteMany();
   await prisma.dish.deleteMany();
+  await prisma.dishFolder.deleteMany();
   await prisma.stockMovement.deleteMany();
   await prisma.billProduct.deleteMany();
   await prisma.disputeProduct.deleteMany();
   await prisma.dispute.deleteMany();
+  await prisma.priceHistory.deleteMany();
   await prisma.bill.deleteMany();
   await prisma.compositeIngredient.deleteMany();
   await prisma.product.deleteMany();
@@ -1926,6 +1929,133 @@ async function main() {
   console.log('✅ Created 2 disputes\n');
 
   // ============================================================================
+  // PRICE HISTORY
+  // ============================================================================
+  console.log('💰 Creating price history records...');
+
+  // Simulate realistic price changes over time for several products
+  const priceHistoryData = [
+    // Saumon - increased by 8% (20.00 -> 22.00)
+    {
+      productId: productMap['Saumon norvégien'].id,
+      oldPrice: 20.00,
+      newPrice: 22.00,
+      changePercent: 10.0,
+      quantityPurchased: 15,
+      billId: bill2.id,
+      supplierId: rungis.id,
+      changedAt: getDaysAgo(7),
+    },
+    // Filet de bœuf - increased by 12.9% (31.00 -> 35.00)
+    {
+      productId: productMap['Filet de bœuf'].id,
+      oldPrice: 31.00,
+      newPrice: 35.00,
+      changePercent: 12.9,
+      quantityPurchased: 8,
+      billId: bill2.id,
+      supplierId: rungis.id,
+      changedAt: getDaysAgo(7),
+    },
+    // Lait - slight increase 3.4% (1.16 -> 1.20)
+    {
+      productId: productMap['Lait entier'].id,
+      oldPrice: 1.16,
+      newPrice: 1.20,
+      changePercent: 3.4,
+      quantityPurchased: 30,
+      billId: bill1.id,
+      supplierId: metro.id,
+      changedAt: getDaysAgo(8),
+    },
+    // Crème fraîche - increased by 6.7% (4.20 -> 4.50)
+    {
+      productId: productMap['Crème fraîche 35%'].id,
+      oldPrice: 4.20,
+      newPrice: 4.50,
+      changePercent: 7.1,
+      quantityPurchased: 20,
+      billId: bill3.id,
+      supplierId: lactalis.id,
+      changedAt: getDaysAgo(5),
+    },
+    // Tomates - seasonal decrease -8.7% (3.80 -> 3.50)
+    {
+      productId: productMap['Tomates'].id,
+      oldPrice: 3.80,
+      newPrice: 3.50,
+      changePercent: -7.9,
+      quantityPurchased: 30,
+      billId: bill4.id,
+      supplierId: legumes.id,
+      changedAt: getDaysAgo(3),
+      reason: 'Seasonal price drop - summer harvest',
+    },
+    // Onglet de bœuf - slight increase 5.7% (26.50 -> 28.00)
+    {
+      productId: productMap['Onglet de bœuf'].id,
+      oldPrice: 26.50,
+      newPrice: 28.00,
+      changePercent: 5.7,
+      quantityPurchased: 12,
+      billId: bill2.id,
+      supplierId: rungis.id,
+      changedAt: getDaysAgo(7),
+    },
+    // Poulet fermier - increased by 4% (12.00 -> 12.50)
+    {
+      productId: productMap['Poulet fermier (entier)'].id,
+      oldPrice: 12.00,
+      newPrice: 12.50,
+      changePercent: 4.2,
+      quantityPurchased: 15,
+      billId: bill1.id,
+      supplierId: metro.id,
+      changedAt: getDaysAgo(8),
+    },
+    // Beurre - increased significantly 13.3% (7.50 -> 8.50)
+    {
+      productId: productMap['Beurre doux'].id,
+      oldPrice: 7.50,
+      newPrice: 8.50,
+      changePercent: 13.3,
+      quantityPurchased: 10,
+      billId: bill3.id,
+      supplierId: lactalis.id,
+      changedAt: getDaysAgo(5),
+      reason: 'Dairy prices surge',
+    },
+    // Pommes de terre - stable price (1.80 -> 1.80)
+    {
+      productId: productMap['Pommes de terre'].id,
+      oldPrice: 1.75,
+      newPrice: 1.80,
+      changePercent: 2.9,
+      quantityPurchased: 100,
+      billId: bill4.id,
+      supplierId: legumes.id,
+      changedAt: getDaysAgo(3),
+    },
+    // Sucre - slight decrease -3.2% (1.55 -> 1.50)
+    {
+      productId: productMap['Sucre en poudre'].id,
+      oldPrice: 1.55,
+      newPrice: 1.50,
+      changePercent: -3.2,
+      quantityPurchased: 50,
+      billId: bill5.id,
+      supplierId: epicerie.id,
+      changedAt: getDaysAgo(1),
+    },
+  ];
+
+  await prisma.priceHistory.createMany({
+    data: priceHistoryData,
+  });
+
+  console.log(`✅ Created ${priceHistoryData.length} price history records\n`);
+
+  // ============================================================================
   // SUMMARY
   // ============================================================================
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -1984,6 +2114,11 @@ async function main() {
   console.log('  ⚠️  Disputes: 2');
   console.log('     - 1 resolved (Qualité saumon)');
   console.log('     - 1 in progress (Quantité poulets)');
+  console.log('');
+  console.log(`  💰 Price History: ${priceHistoryData.length} records`);
+  console.log('     - 8 price increases (3.4% to 13.3%)');
+  console.log('     - 2 price decreases (-3.2% to -7.9%)');
+  console.log('     - Tracked across last 8 days');
   console.log('');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('🎉 Ready to test! All data is loaded.\n');
