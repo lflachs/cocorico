@@ -117,71 +117,118 @@ export async function createSale(data: CreateSaleInput): Promise<Sale> {
   const depletions: InventoryDepletion[] = [];
   const insufficientIngredients: string[] = [];
 
-  // Analyze each recipe ingredient
-  for (const recipeIng of dish.recipeIngredients) {
-    const requiredQty = recipeIng.quantityRequired * quantitySold;
-    const product = recipeIng.product;
+  /**
+   * Recursively resolve ingredient depletions
+   * Uses composite ingredients when available, falls back to raw ingredients recursively
+   */
+  async function resolveIngredient(
+    productId: string,
+    requiredQty: number,
+    unit: string
+  ): Promise<{ depletions: InventoryDepletion[]; error?: string }> {
+    // Fetch the product with its composite ingredients
+    const product = await db.product.findUnique({
+      where: { id: productId },
+      include: {
+        compositeIngredients: {
+          include: {
+            baseProduct: true,
+          },
+        },
+      },
+    });
 
-    // Check if this is a composite product
+    if (!product) {
+      return { depletions: [], error: `Product not found` };
+    }
+
+    // CASE 1: Composite product with sufficient stock - use it!
     if (product.isComposite && product.quantity >= requiredQty) {
-      // CASE 1: Composite product with sufficient stock - use it!
-      depletions.push({
-        productId: product.id,
-        productName: product.name,
-        quantity: requiredQty,
-        unit: recipeIng.unit,
-        method: 'composite',
-      });
-    } else if (product.isComposite && product.quantity < requiredQty) {
-      // CASE 2: Composite product but insufficient stock - fall back to raw ingredients
+      return {
+        depletions: [
+          {
+            productId: product.id,
+            productName: product.name,
+            quantity: requiredQty,
+            unit,
+            method: 'composite',
+          },
+        ],
+      };
+    }
+
+    // CASE 2: Composite product but insufficient stock - recursively fall back to ingredients
+    if (product.isComposite && product.quantity < requiredQty) {
       if (!product.compositeIngredients || product.compositeIngredients.length === 0) {
-        insufficientIngredients.push(
-          `${product.name} (need ${requiredQty} ${recipeIng.unit}, have ${product.quantity})`
-        );
-        continue;
+        return {
+          depletions: [],
+          error: `${product.name} (need ${requiredQty} ${unit}, have ${product.quantity})`,
+        };
       }
 
-      // Check if we have enough raw ingredients
-      let canUseRaw = true;
-      const rawDepletions: InventoryDepletion[] = [];
+      // Recursively resolve each composite ingredient
+      const recursiveDepletions: InventoryDepletion[] = [];
+      const errors: string[] = [];
 
       for (const compositeIng of product.compositeIngredients) {
-        const rawRequiredQty = compositeIng.quantity * requiredQty;
+        const ingredientRequiredQty = compositeIng.quantity * requiredQty;
 
-        if (compositeIng.baseProduct.quantity < rawRequiredQty) {
-          canUseRaw = false;
-          insufficientIngredients.push(
-            `${compositeIng.baseProduct.name} (need ${rawRequiredQty} ${compositeIng.unit}, have ${compositeIng.baseProduct.quantity})`
-          );
+        // Recursively resolve this ingredient (might be composite itself!)
+        const result = await resolveIngredient(
+          compositeIng.baseProduct.id,
+          ingredientRequiredQty,
+          compositeIng.unit
+        );
+
+        if (result.error) {
+          errors.push(result.error);
         } else {
-          rawDepletions.push({
-            productId: compositeIng.baseProduct.id,
-            productName: compositeIng.baseProduct.name,
-            quantity: rawRequiredQty,
-            unit: compositeIng.unit,
-            method: 'raw',
-          });
+          recursiveDepletions.push(...result.depletions);
         }
       }
 
-      if (canUseRaw) {
-        depletions.push(...rawDepletions);
+      if (errors.length > 0) {
+        return { depletions: [], error: errors.join(', ') };
       }
-    } else {
-      // CASE 3: Regular (non-composite) ingredient - use it directly
-      if (product.quantity < requiredQty) {
-        insufficientIngredients.push(
-          `${product.name} (need ${requiredQty} ${recipeIng.unit}, have ${product.quantity})`
-        );
-      } else {
-        depletions.push({
+
+      return { depletions: recursiveDepletions };
+    }
+
+    // CASE 3: Regular (non-composite) ingredient - use it directly
+    if (product.quantity < requiredQty) {
+      return {
+        depletions: [],
+        error: `${product.name} (need ${requiredQty} ${unit}, have ${product.quantity})`,
+      };
+    }
+
+    return {
+      depletions: [
+        {
           productId: product.id,
           productName: product.name,
           quantity: requiredQty,
-          unit: recipeIng.unit,
+          unit,
           method: 'raw',
-        });
-      }
+        },
+      ],
+    };
+  }
+
+  // Analyze each recipe ingredient
+  for (const recipeIng of dish.recipeIngredients) {
+    const requiredQty = recipeIng.quantityRequired * quantitySold;
+
+    const result = await resolveIngredient(
+      recipeIng.product.id,
+      requiredQty,
+      recipeIng.unit
+    );
+
+    if (result.error) {
+      insufficientIngredients.push(result.error);
+    } else {
+      depletions.push(...result.depletions);
     }
   }
 
