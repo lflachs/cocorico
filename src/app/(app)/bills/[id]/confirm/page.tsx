@@ -13,6 +13,7 @@ import { useLanguage } from '@/providers/LanguageProvider';
 import { toast } from 'sonner';
 import { SUPPORTED_UNITS } from '@/lib/constants/units';
 import { DisputeModal } from '../../../disputes/_components/DisputeModal';
+import { PriceChangeAlert, type PriceChangeInfo } from '../../_components/PriceChangeAlert';
 
 /**
  * Bill Confirmation Page
@@ -48,6 +49,7 @@ export default function BillConfirmPage() {
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
   const [disputeModalOpen, setDisputeModalOpen] = useState(false);
+  const [priceChanges, setPriceChanges] = useState<PriceChangeInfo[]>([]);
 
   // Editable fields
   const [supplierName, setSupplierName] = useState('');
@@ -171,8 +173,24 @@ export default function BillConfirmPage() {
         throw new Error('Failed to confirm bill');
       }
 
-      toast.success(t('bills.confirm.success'));
-      router.push('/bills');
+      const result = await response.json();
+
+      // Show price changes if any
+      if (result.priceChanges && result.priceChanges.length > 0) {
+        setPriceChanges(result.priceChanges);
+        toast.success(
+          `Bill confirmed! ${result.priceChanges.length} price change${
+            result.priceChanges.length > 1 ? 's' : ''
+          } detected.`
+        );
+      } else {
+        toast.success(t('bills.confirm.success'));
+      }
+
+      // Don't redirect immediately if there are price changes - let user review
+      if (!result.priceChanges || result.priceChanges.length === 0) {
+        router.push('/bills');
+      }
     } catch (error) {
       console.error('Error confirming bill:', error);
       toast.error(t('bills.confirm.error'));
@@ -230,6 +248,18 @@ export default function BillConfirmPage() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Price Changes Alert */}
+      {priceChanges.length > 0 && (
+        <div className="space-y-4">
+          <PriceChangeAlert priceChanges={priceChanges} />
+          <div className="flex justify-end">
+            <Button onClick={() => router.push('/bills')} variant="default">
+              Back to Bills
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* Bill Summary */}

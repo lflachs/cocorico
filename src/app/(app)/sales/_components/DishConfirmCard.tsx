@@ -14,6 +14,8 @@ type ExtractedDish = {
   quantity: number;
   price?: number;
   dishId?: string; // Added to store the matched dish ID
+  isMenuDuJour?: boolean; // Flag to indicate this is a daily menu
+  dailyMenuDishes?: DishOption[]; // Dishes from the daily menu
 };
 
 type DishOption = {
@@ -51,11 +53,51 @@ export function DishConfirmCard({
   const [open, setOpen] = useState(false);
   const [matchedDish, setMatchedDish] = useState<DishOption | null>(null);
   const [showWarning, setShowWarning] = useState(false);
+  const [isDailyMenu, setIsDailyMenu] = useState(false);
+  const [dailyMenuDishes, setDailyMenuDishes] = useState<DishOption[]>([]);
 
   // Load available dishes from database
   useEffect(() => {
     loadDishes();
+    checkIfMenuDuJour();
   }, []);
+
+  const checkIfMenuDuJour = async () => {
+    // Check if this dish is "menu du jour" variant
+    const normalized = dish.name.toLowerCase().trim();
+    if (normalized.includes('menu du jour') || normalized.includes('menu jour')) {
+      setIsDailyMenu(true);
+      // Try to fetch today's daily menu
+      try {
+        const { getTodayDailyMenuAction } = await import('@/lib/actions/menu.actions');
+        const result = await getTodayDailyMenuAction();
+
+        if (result.success && result.data) {
+          // Extract all dishes from the daily menu
+          const dishes: DishOption[] = [];
+          result.data.sections?.forEach((section: any) => {
+            section.dishes?.forEach((menuDish: any) => {
+              if (menuDish.dish) {
+                dishes.push({
+                  id: menuDish.dish.id,
+                  name: menuDish.dish.name,
+                  isActive: menuDish.dish.isActive,
+                });
+              }
+            });
+          });
+
+          setDailyMenuDishes(dishes);
+          setShowWarning(dishes.length === 0);
+        } else {
+          setShowWarning(true);
+        }
+      } catch (error) {
+        console.error('Error checking daily menu:', error);
+        setShowWarning(true);
+      }
+    }
+  };
 
   // Update editedDish when dish prop changes (navigating between dishes)
   useEffect(() => {
@@ -172,12 +214,12 @@ export function DishConfirmCard({
                     variant="outline"
                     role="combobox"
                     aria-expanded={open}
-                    className="w-full justify-between text-2xl font-bold h-14 mt-1"
+                    className="w-full justify-between min-h-14 h-auto py-3 px-4 mt-1"
                   >
-                    <span className={matchedDish ? "text-foreground" : "text-muted-foreground"}>
+                    <span className={`text-sm font-medium text-left line-clamp-2 pr-2 ${matchedDish ? "text-foreground" : "text-muted-foreground"}`}>
                       {editedDish.name || "Sélectionner un plat..."}
                     </span>
-                    <Search className="ml-2 h-5 w-5 shrink-0 opacity-50" />
+                    <Search className="h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-full p-0" align="start">
@@ -213,20 +255,56 @@ export function DishConfirmCard({
 
               {/* Match status indicator */}
               {matchedDish && (
-                <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
-                  <Check className="h-4 w-4" />
-                  <span>Plat trouvé: {matchedDish.name}</span>
+                <div className="mt-2 flex items-start gap-2 text-xs text-green-600">
+                  <Check className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  <span className="line-clamp-2">Plat trouvé: {matchedDish.name}</span>
+                </div>
+              )}
+
+              {/* Daily Menu Info */}
+              {isDailyMenu && dailyMenuDishes.length > 0 && (
+                <div className="mt-2 flex items-start gap-2 text-sm text-blue-600 bg-blue-50 border border-blue-200 rounded-md p-3">
+                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium">Menu du jour détecté!</p>
+                    <p className="text-xs mt-1">
+                      Le menu du jour contient {dailyMenuDishes.length} plat(s):
+                    </p>
+                    <ul className="text-xs mt-2 space-y-1">
+                      {dailyMenuDishes.map((d) => (
+                        <li key={d.id} className="flex items-center gap-1">
+                          <span>• {d.name}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="text-xs mt-2 font-medium">
+                      Vous pouvez sélectionner l'un de ces plats ou en choisir un autre.
+                    </p>
+                  </div>
                 </div>
               )}
 
               {/* Warning for unmatched dishes */}
-              {showWarning && !matchedDish && (
+              {showWarning && !matchedDish && !isDailyMenu && (
                 <div className="mt-2 flex items-start gap-2 text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-md p-3">
                   <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
                   <div>
                     <p className="font-medium">Plat non trouvé en base</p>
                     <p className="text-xs mt-1">
                       Sélectionnez un plat existant ou créez-le dans le menu avant d'enregistrer cette vente.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Warning for daily menu without dishes */}
+              {isDailyMenu && dailyMenuDishes.length === 0 && (
+                <div className="mt-2 flex items-start gap-2 text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-md p-3">
+                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-medium">Menu du jour non configuré</p>
+                    <p className="text-xs mt-1">
+                      Aucun menu du jour n'a été défini pour aujourd'hui. Configurez-le dans la section Menu.
                     </p>
                   </div>
                 </div>

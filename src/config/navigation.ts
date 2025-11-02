@@ -10,6 +10,7 @@ import {
   ClipboardCheck,
   Settings,
   Trash2,
+  DollarSign,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -103,6 +104,13 @@ const analyticsItems: NavigationItem[] = [
     icon: TrendingUp,
     labelKey: 'nav.foodCost',
     description: 'Ton point rentabilité',
+  },
+  {
+    id: 'price-history',
+    href: '/price-history',
+    icon: DollarSign,
+    labelKey: 'nav.priceHistory',
+    description: 'Évolution des prix',
   },
   {
     id: 'insights',

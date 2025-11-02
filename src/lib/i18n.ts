@@ -21,6 +21,7 @@ const englishTranslations = {
   'nav.sales': 'Sales',
   'nav.foodCost': 'Food Cost',
   'nav.orders': 'Orders',
+  'nav.priceHistory': 'Price History',
   'nav.insights': 'Insights',
   // Legacy navigation (kept for compatibility)
   'nav.today': 'Today',
@@ -689,6 +690,7 @@ const frenchTranslations: Record<keyof typeof englishTranslations, string> = {
   'nav.sales': 'Ventes',
   'nav.foodCost': 'Food Cost',
   'nav.orders': 'Commandes',
+  'nav.priceHistory': 'Historique des Prix',
   'nav.insights': 'Insights',
   // Legacy navigation
   'nav.today': "Aujourd'hui",

@@ -131,12 +131,13 @@ export async function POST(
     // Create BillProduct records to link products to this bill
     await addProductsToBill(id, billProductsData);
 
-    // Confirm bill and update stock
-    await confirmBill(id, processedProducts);
+    // Confirm bill and update stock - returns price changes
+    const priceChanges = await confirmBill(id, processedProducts);
 
     return NextResponse.json({
       success: true,
       message: 'Bill confirmed and inventory updated',
+      priceChanges, // Return price changes to frontend
     });
   } catch (error) {
     console.error('Error confirming bill:', error);

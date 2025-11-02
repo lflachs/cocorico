@@ -324,3 +324,191 @@ export async function getActiveMenusForDate(date: Date): Promise<MenuWithSection
     includeDishes: true,
   });
 }
+
+/**
+ * Get today's daily menu (Menu du jour)
+ */
+export async function getTodayDailyMenu(): Promise<MenuWithSections | null> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const menus = await db.menu.findMany({
+    where: {
+      menuType: 'DAILY',
+      isActive: true,
+      OR: [
+        // No date range specified
+        { AND: [{ startDate: null }, { endDate: null }] },
+        // Current date is within range
+        {
+          AND: [
+            { startDate: { lte: today } },
+            { endDate: { gte: today } },
+          ],
+        },
+        // Only start date, and it's in the past
+        {
+          AND: [
+            { startDate: { lte: today } },
+            { endDate: null },
+          ],
+        },
+        // Only end date, and it's in the future
+        {
+          AND: [
+            { startDate: null },
+            { endDate: { gte: today } },
+          ],
+        },
+      ],
+    },
+    include: {
+      sections: {
+        include: {
+          dishes: {
+            include: {
+              dish: true,
+            },
+            orderBy: { displayOrder: 'asc' },
+          },
+        },
+        orderBy: { displayOrder: 'asc' },
+      },
+    },
+    orderBy: { updatedAt: 'desc' },
+    take: 1,
+  });
+
+  return menus[0] || null;
+}
+
+/**
+ * Set today's daily menu
+ * Creates or updates the DAILY menu type with selected dishes
+ */
+export async function setTodayDailyMenu(
+  appetizerId: string,
+  mainId: string,
+  dessertId: string
+): Promise<Menu> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Check if a daily menu already exists for today
+  const existingMenu = await getTodayDailyMenu();
+
+  if (existingMenu) {
+    // Update existing menu
+    // First, delete all existing menu dishes
+    await db.menuDish.deleteMany({
+      where: {
+        menuSectionId: {
+          in: existingMenu.sections.map((s) => s.id),
+        },
+      },
+    });
+
+    // Delete existing sections
+    await db.menuSection.deleteMany({
+      where: { menuId: existingMenu.id },
+    });
+
+    // Create new sections with dishes
+    await db.menuSection.create({
+      data: {
+        menuId: existingMenu.id,
+        name: 'Entrée',
+        displayOrder: 1,
+        dishes: {
+          create: {
+            dishId: appetizerId,
+            displayOrder: 0,
+          },
+        },
+      },
+    });
+
+    await db.menuSection.create({
+      data: {
+        menuId: existingMenu.id,
+        name: 'Plat',
+        displayOrder: 2,
+        dishes: {
+          create: {
+            dishId: mainId,
+            displayOrder: 0,
+          },
+        },
+      },
+    });
+
+    await db.menuSection.create({
+      data: {
+        menuId: existingMenu.id,
+        name: 'Dessert',
+        displayOrder: 3,
+        dishes: {
+          create: {
+            dishId: dessertId,
+            displayOrder: 0,
+          },
+        },
+      },
+    });
+
+    // Update the menu's updatedAt
+    const updatedMenu = await db.menu.update({
+      where: { id: existingMenu.id },
+      data: { updatedAt: new Date() },
+    });
+
+    return updatedMenu;
+  } else {
+    // Create new daily menu
+    const menu = await db.menu.create({
+      data: {
+        name: 'Menu du jour',
+        description: 'Menu quotidien',
+        menuType: 'DAILY',
+        isActive: true,
+        pricingType: 'PRIX_FIXE',
+        sections: {
+          create: [
+            {
+              name: 'Entrée',
+              displayOrder: 1,
+              dishes: {
+                create: {
+                  dishId: appetizerId,
+                  displayOrder: 0,
+                },
+              },
+            },
+            {
+              name: 'Plat',
+              displayOrder: 2,
+              dishes: {
+                create: {
+                  dishId: mainId,
+                  displayOrder: 0,
+                },
+              },
+            },
+            {
+              name: 'Dessert',
+              displayOrder: 3,
+              dishes: {
+                create: {
+                  dishId: dessertId,
+                  displayOrder: 0,
+                },
+              },
+            },
+          ],
+        },
+      },
+    });
+
+    return menu;
+  }
+}

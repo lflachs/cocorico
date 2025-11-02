@@ -182,6 +182,52 @@ export async function getActiveMenusAction() {
 }
 
 /**
+ * Get today's daily menu (Menu du jour)
+ */
+export async function getTodayDailyMenuAction() {
+  try {
+    const menu = await menuService.getTodayDailyMenu();
+    if (!menu) {
+      return { success: false, error: 'No daily menu set for today' };
+    }
+    return { success: true, data: menu };
+  } catch (error) {
+    console.error('Error fetching daily menu:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch daily menu',
+    };
+  }
+}
+
+/**
+ * Set today's daily menu (Menu du jour)
+ * Creates or updates a DAILY menu with today's selected dishes
+ */
+export async function setTodayDailyMenuAction(input: {
+  appetizerId: string;
+  mainId: string;
+  dessertId: string;
+}) {
+  try {
+    const menu = await menuService.setTodayDailyMenu(
+      input.appetizerId,
+      input.mainId,
+      input.dessertId
+    );
+    revalidatePath('/menu');
+    revalidatePath('/prep');
+    return { success: true, data: menu };
+  } catch (error) {
+    console.error('Error setting daily menu:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to set daily menu',
+    };
+  }
+}
+
+/**
  * Import a scanned menu
  * Creates new dishes as needed and creates the menu with sections
  */

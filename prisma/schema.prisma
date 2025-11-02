@@ -76,6 +76,9 @@ model Product {
   compositeIngredients CompositeIngredient[] @relation("CompositeProduct") // Ingredients needed to make this product
   usedInComposites     CompositeIngredient[] @relation("BaseIngredient")   // Composites that use this as ingredient
 
+  // Price history
+  priceHistory         PriceHistory[]
+
   @@index([name])
   @@index([displayName])
   @@index([category])
@@ -215,6 +218,7 @@ model Supplier {
   // Relations
   bills Bill[]
   dlcs  DLC[]
+  priceHistory PriceHistory[]
 
   @@index([name])
   @@index([isActive])
@@ -243,6 +247,7 @@ model Bill {
   products       BillProduct[]
   disputes       Dispute[]
   stockMovements StockMovement[]
+  priceChanges   PriceHistory[]
 
   @@index([billDate])
   @@index([supplierId])
@@ -415,6 +420,9 @@ model Menu {
   endDate     DateTime?
   isActive    Boolean  @default(true)
 
+  // Menu type
+  menuType    MenuType @default(REGULAR) // REGULAR or DAILY (for "Menu du jour")
+
   // Pricing
   fixedPrice  Float?      // If set, menu has a fixed price
   pricingType PricingType @default(PRIX_FIXE) // Pricing model
@@ -429,6 +437,7 @@ model Menu {
   sections MenuSection[]
 
   @@index([name])
+  @@index([menuType])
   @@map("menus")
 }
 
@@ -473,6 +482,11 @@ model MenuDish {
   @@index([menuSectionId])
   @@index([dishId])
   @@map("menu_dishes")
+}
+
+enum MenuType {
+  REGULAR // Standard menu
+  DAILY   // Menu du jour - changes daily
 }
 
 enum PricingType {
@@ -573,4 +587,37 @@ enum DLCStatus {
   CONSUMED    // Product has been used
   EXPIRED     // Product has passed expiration date
   DISCARDED   // Product was thrown away
+}
+
+// ============================================================================
+// PRICE HISTORY & COST TRACKING
+// ============================================================================
+
+model PriceHistory {
+  id          String   @id @default(cuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  oldPrice    Float    // Previous unit price
+  newPrice    Float    // New unit price (weighted average after purchase)
+  changePercent Float  // Percentage change ((new-old)/old * 100)
+
+  // Purchase details
+  quantityPurchased Float? // How many units were purchased at this price
+  billId      String?      // Bill that triggered this price change
+  bill        Bill?    @relation(fields: [billId], references: [id], onDelete: SetNull)
+
+  supplierId  String?
+  supplier    Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+
+  // Manual price updates
+  reason      String?  @db.Text // Why the price changed (e.g., "Seasonal increase", "Promotion")
+  changedBy   String?  // User who made the change (for manual updates)
+
+  changedAt   DateTime @default(now())
+
+  @@index([productId])
+  @@index([changedAt])
+  @@index([billId])
+  @@map("price_history")
 }

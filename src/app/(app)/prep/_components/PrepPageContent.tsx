@@ -3,11 +3,12 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { ChefHat, Info } from 'lucide-react';
+import { ChefHat, Info, CalendarDays } from 'lucide-react';
 import { ExpiringTodayCard } from './ExpiringTodayCard';
 import { TodaysMenuCard } from './TodaysMenuCard';
 import { StockStatusCard } from './StockStatusCard';
 import { ProductionDialog } from './ProductionDialog';
+import { DailyMenuDialog } from './DailyMenuDialog';
 
 type ExpiringProduct = {
   id: string;
@@ -53,13 +54,18 @@ type PrepPageContentProps = {
 export function PrepPageContent({ expiringProducts, menuItems, lowStockItems }: PrepPageContentProps) {
   const [activeTab, setActiveTab] = useState('production');
   const [productionDialogOpen, setProductionDialogOpen] = useState(false);
+  const [dailyMenuDialogOpen, setDailyMenuDialogOpen] = useState(false);
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-      <TabsList className="grid w-full max-w-md grid-cols-2 mb-6">
+      <TabsList className="grid w-full max-w-3xl grid-cols-3 mb-6">
         <TabsTrigger value="production" className="gap-2">
           <ChefHat className="w-4 h-4" />
           Production
+        </TabsTrigger>
+        <TabsTrigger value="daily-menu" className="gap-2">
+          <CalendarDays className="w-4 h-4" />
+          Menu du jour
         </TabsTrigger>
         <TabsTrigger value="info" className="gap-2">
           <Info className="w-4 h-4" />
@@ -82,6 +88,7 @@ export function PrepPageContent({ expiringProducts, menuItems, lowStockItems }: 
             size="lg"
             className="h-16 px-8 text-lg font-semibold"
           >
+            <ChefHat className="mr-2 h-6 w-6" />
             Démarrer une production
           </Button>
         </div>
@@ -90,6 +97,33 @@ export function PrepPageContent({ expiringProducts, menuItems, lowStockItems }: 
         <ProductionDialog
           open={productionDialogOpen}
           onOpenChange={setProductionDialogOpen}
+        />
+      </TabsContent>
+
+      {/* DAILY MENU TAB - Select today's menu */}
+      <TabsContent value="daily-menu" className="space-y-6">
+        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
+          <CalendarDays className="h-20 w-20 text-primary" />
+          <div className="text-center space-y-2">
+            <h2 className="text-3xl font-bold">Menu du jour</h2>
+            <p className="text-muted-foreground">
+              Définissez le menu du jour en sélectionnant entrée, plat et dessert
+            </p>
+          </div>
+          <Button
+            onClick={() => setDailyMenuDialogOpen(true)}
+            size="lg"
+            className="h-16 px-8 text-lg font-semibold"
+          >
+            <CalendarDays className="mr-2 h-6 w-6" />
+            Configurer le menu du jour
+          </Button>
+        </div>
+
+        {/* Daily Menu Dialog */}
+        <DailyMenuDialog
+          open={dailyMenuDialogOpen}
+          onOpenChange={setDailyMenuDialogOpen}
         />
       </TabsContent>
 

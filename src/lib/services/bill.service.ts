@@ -1,5 +1,6 @@
 import { db } from '@/lib/db/client';
 import type { Bill, BillProduct } from '@prisma/client';
+import { calculateWeightedAverage, calculatePriceChange } from '@/lib/utils/price-calculations';
 
 /**
  * Bill Service
@@ -76,6 +77,18 @@ export async function addProductsToBill(
   });
 }
 
+export type PriceChangeInfo = {
+  productId: string;
+  productName: string;
+  oldPrice: number;
+  newPrice: number;
+  purchasePrice: number;
+  changePercent: number;
+  currentQuantity: number;
+  purchaseQuantity: number;
+  newTotalQuantity: number;
+};
+
 export async function confirmBill(
   billId: string,
   productMappings: Array<{
@@ -83,43 +96,106 @@ export async function confirmBill(
     quantity: number;
     unitPrice: number;
   }>
-): Promise<void> {
+): Promise<PriceChangeInfo[]> {
+  // Get bill details for price history
+  const bill = await db.bill.findUnique({
+    where: { id: billId },
+    select: { supplierId: true },
+  });
+
+  const priceChanges: PriceChangeInfo[] = [];
+
   // Start a transaction to update stock and create movements
   await db.$transaction(async (tx) => {
     for (const mapping of productMappings) {
-      // Get current product
+      // Get current product state
       const product = await tx.product.findUnique({
         where: { id: mapping.productId },
       });
 
       if (!product) continue;
 
-      const newQuantity = product.quantity + mapping.quantity;
-      const totalValue = mapping.quantity * mapping.unitPrice;
+      // Current state
+      const currentQuantity = product.quantity;
+      const currentPrice = product.unitPrice || 0;
+      const purchasePrice = mapping.unitPrice;
+      const purchaseQuantity = mapping.quantity;
 
-      // Update product quantity
+      // Calculate weighted average price
+      // Example: 2kg at €2.00 + 4kg at €2.10 = 6kg at €2.07
+      const newWeightedPrice = calculateWeightedAverage(
+        currentQuantity,
+        currentPrice,
+        purchaseQuantity,
+        purchasePrice
+      );
+
+      // Calculate new total quantity
+      const newTotalQuantity = currentQuantity + purchaseQuantity;
+
+      // Calculate price change percentage
+      const priceChangePercent = currentPrice > 0
+        ? calculatePriceChange(currentPrice, newWeightedPrice)
+        : 0;
+
+      // Create price history if price actually changed
+      const hasPriceChange = currentPrice > 0 && Math.abs(priceChangePercent) > 0.01;
+
+      if (hasPriceChange) {
+        await tx.priceHistory.create({
+          data: {
+            productId: mapping.productId,
+            oldPrice: currentPrice,
+            newPrice: newWeightedPrice,
+            changePercent: priceChangePercent,
+            quantityPurchased: purchaseQuantity,
+            billId,
+            supplierId: bill?.supplierId,
+          },
+        });
+
+        // Record price change for UI display
+        priceChanges.push({
+          productId: mapping.productId,
+          productName: product.name,
+          oldPrice: currentPrice,
+          newPrice: newWeightedPrice,
+          purchasePrice,
+          changePercent: priceChangePercent,
+          currentQuantity,
+          purchaseQuantity,
+          newTotalQuantity,
+        });
+      }
+
+      // Update product with new weighted average price and quantity
       await tx.product.update({
         where: { id: mapping.productId },
         data: {
-          quantity: newQuantity,
-          unitPrice: mapping.unitPrice,
-          totalValue: newQuantity * mapping.unitPrice,
+          quantity: newTotalQuantity,
+          unitPrice: newWeightedPrice, // Weighted average, not purchase price!
+          totalValue: newTotalQuantity * newWeightedPrice,
         },
       });
 
-      // Create stock movement (event sourcing)
+      // Create stock movement record (stores the ACTUAL purchase price)
       await tx.stockMovement.create({
         data: {
           productId: mapping.productId,
           movementType: 'IN',
-          quantity: mapping.quantity,
-          balanceAfter: newQuantity,
+          quantity: purchaseQuantity,
+          balanceAfter: newTotalQuantity,
           billId,
-          reason: 'Bill confirmation',
-          unitPrice: mapping.unitPrice,
-          totalValue,
+          reason: hasPriceChange
+            ? `Purchase - Price ${priceChangePercent > 0 ? 'increased' : 'decreased'} ${Math.abs(priceChangePercent).toFixed(1)}%`
+            : 'Purchase',
+          unitPrice: purchasePrice, // Actual purchase price from bill
+          totalValue: purchaseQuantity * purchasePrice,
+          source: 'SCAN_RECEPTION',
         },
       });
     }
   });
+
+  return priceChanges;
 }

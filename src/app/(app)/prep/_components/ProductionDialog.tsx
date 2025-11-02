@@ -12,13 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { DishAutocomplete } from '@/components/ui/dish-autocomplete';
 import { CheckCircle2, AlertTriangle, Package, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -180,22 +174,13 @@ export function ProductionDialog({ open, onOpenChange }: ProductionDialogProps) 
                 <Label htmlFor="dish" className="text-base font-semibold">
                   Plat <span className="text-destructive">*</span>
                 </Label>
-                <Select
+                <DishAutocomplete
+                  dishes={dishes}
                   value={selectedDishId}
                   onValueChange={setSelectedDishId}
+                  placeholder="Rechercher un plat..."
                   disabled={loading || producing}
-                >
-                  <SelectTrigger className="cursor-pointer">
-                    <SelectValue placeholder="Sélectionner un plat..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {dishes.map((dish) => (
-                      <SelectItem key={dish.id} value={dish.id}>
-                        {dish.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                />
                 {dishes.length === 0 && (
                   <p className="text-muted-foreground text-sm">
                     Aucun plat avec recette. Créez un plat avec des ingrédients d'abord.

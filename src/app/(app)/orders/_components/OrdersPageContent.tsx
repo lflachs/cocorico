@@ -53,6 +53,9 @@ export function OrdersPageContent({ suggestions, suppliers }: OrdersPageContentP
     const suggestion = suggestions.find((s) => s.productId === productId);
     if (!suggestion) return;
 
+    // Find supplier details
+    const supplier = suppliers.find((s) => s.id === suggestion.supplierId);
+
     const newItem: OrderItem = {
       productId: suggestion.productId,
       productName: suggestion.productName,
@@ -60,9 +63,9 @@ export function OrdersPageContent({ suggestions, suppliers }: OrdersPageContentP
       unit: suggestion.unit,
       estimatedPrice: suggestion.lastPrice,
       supplierId: suggestion.supplierId,
-      supplierName: suggestion.supplierName || 'Fournisseur inconnu',
-      supplierEmail: undefined, // Would come from supplier data
-      supplierPhone: undefined,
+      supplierName: supplier?.name || suggestion.supplierName || 'Fournisseur inconnu',
+      supplierEmail: supplier?.email,
+      supplierPhone: supplier?.phone,
     };
 
     setOrderItems([...orderItems, newItem]);
@@ -80,32 +83,112 @@ export function OrdersPageContent({ suggestions, suppliers }: OrdersPageContentP
   };
 
   const handleSendOrder = async (supplierId: string | undefined) => {
-    // TODO: Implement email sending
-    toast.success('Commande envoyée', {
-      description: 'Un email a été envoyé au fournisseur',
-    });
+    const supplierItems = orderItems.filter((item) => item.supplierId === supplierId);
+    if (supplierItems.length === 0) {
+      toast.error('Aucun article à envoyer');
+      return;
+    }
+
+    const firstItem = supplierItems[0];
+    const supplierEmail = firstItem.supplierEmail;
+
+    if (!supplierEmail) {
+      toast.error('Email du fournisseur manquant', {
+        description: 'Veuillez ajouter un email pour ce fournisseur dans les paramètres',
+      });
+      return;
+    }
+
+    const orderData = {
+      supplierName: firstItem.supplierName || 'Fournisseur',
+      supplierEmail,
+      supplierPhone: firstItem.supplierPhone,
+      items: supplierItems.map((item) => ({
+        productName: item.productName,
+        quantity: item.quantity,
+        unit: item.unit,
+        estimatedPrice: item.estimatedPrice,
+      })),
+      totalEstimatedCost: supplierItems.reduce(
+        (sum, item) => sum + (item.estimatedPrice || 0) * item.quantity,
+        0
+      ),
+      orderDate: new Date().toLocaleDateString('fr-FR'),
+      restaurantName: 'Mon Restaurant', // TODO: Get from user settings
+      restaurantEmail: undefined, // TODO: Get from user settings
+      restaurantPhone: undefined, // TODO: Get from user settings
+    };
+
+    try {
+      const loadingToast = toast.loading('Envoi de la commande...');
+
+      const response = await fetch('/api/orders/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderData,
+          supplierEmail,
+        }),
+      });
+
+      toast.dismiss(loadingToast);
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.details || 'Failed to send email');
+      }
+
+      toast.success('Commande envoyée !', {
+        description: `Email envoyé à ${supplierEmail}`,
+      });
+
+      // Remove sent items from order
+      setOrderItems(orderItems.filter((item) => item.supplierId !== supplierId));
+    } catch (error) {
+      console.error('Error sending order:', error);
+      toast.error('Erreur lors de l\'envoi', {
+        description: error instanceof Error ? error.message : 'Une erreur est survenue',
+      });
+    }
   };
 
-  const handleExportOrder = (supplierId: string | undefined) => {
-    // TODO: Implement export (PDF/CSV)
+  const handleExportOrder = async (supplierId: string | undefined) => {
     const supplierItems = orderItems.filter((item) => item.supplierId === supplierId);
-    const supplierName = supplierItems[0]?.supplierName || 'Fournisseur';
+    if (supplierItems.length === 0) {
+      toast.error('Aucun article à exporter');
+      return;
+    }
 
-    // Generate simple text format
-    let exportText = `Commande - ${supplierName}\n\n`;
-    supplierItems.forEach((item) => {
-      exportText += `${item.productName}: ${item.quantity} ${item.unit}\n`;
-    });
+    const firstItem = supplierItems[0];
+    const orderData = {
+      supplierName: firstItem.supplierName || 'Fournisseur',
+      supplierEmail: firstItem.supplierEmail,
+      supplierPhone: firstItem.supplierPhone,
+      items: supplierItems.map((item) => ({
+        productName: item.productName,
+        quantity: item.quantity,
+        unit: item.unit,
+        estimatedPrice: item.estimatedPrice,
+      })),
+      totalEstimatedCost: supplierItems.reduce(
+        (sum, item) => sum + (item.estimatedPrice || 0) * item.quantity,
+        0
+      ),
+      orderDate: new Date().toLocaleDateString('fr-FR'),
+      restaurantName: 'Mon Restaurant', // TODO: Get from user settings
+      restaurantEmail: undefined, // TODO: Get from user settings
+      restaurantPhone: undefined, // TODO: Get from user settings
+    };
 
-    // Download as text file
-    const blob = new Blob([exportText], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `commande-${supplierName.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.txt`;
-    a.click();
-
-    toast.success('Commande exportée');
+    try {
+      // Dynamically import PDF generator to avoid SSR issues
+      const { downloadOrderPDF } = await import('@/lib/utils/pdf-generator');
+      downloadOrderPDF(orderData);
+      toast.success('PDF téléchargé !');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Erreur lors de l\'export PDF');
+    }
   };
 
   const handleClearAll = () => {
