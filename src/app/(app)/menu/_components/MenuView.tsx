@@ -3,13 +3,12 @@
 import { useState } from 'react';
 import { MenuList } from './MenuList';
 import { MenuDetail } from './MenuDetail';
-import { PreparedIngredientsList } from './PreparedIngredientsList';
-import { DishesListView } from './DishesListView';
+import { RecipesListViewCookbook } from './RecipesListViewCookbook';
 import { useLanguage } from '@/providers/LanguageProvider';
 import { AnimatedTabs, AnimatedTabsContent } from '@/components/tabs';
 import { PageHeader } from '@/components/PageHeader';
 import { MissingPriceAlert } from '@/components/MissingPriceAlert';
-import { ChefHat, Beaker, UtensilsCrossed } from 'lucide-react';
+import { ChefHat, BookOpen } from 'lucide-react';
 
 /**
  * Menu View - Redesigned
@@ -51,8 +50,7 @@ export function MenuView() {
           <AnimatedTabs
             tabs={[
               { value: 'menus', label: t('recipes.tabs.menuItems'), icon: ChefHat },
-              { value: 'dishes', label: t('recipes.tabs.dishes'), icon: UtensilsCrossed },
-              { value: 'prepared', label: t('recipes.tabs.prepared'), icon: Beaker },
+              { value: 'recipes', label: t('recipes.tabs.recipes'), icon: BookOpen },
             ]}
             defaultValue={activeTab}
             onValueChange={setActiveTab}
@@ -62,12 +60,8 @@ export function MenuView() {
               <MenuList onSelectMenu={handleSelectMenu} />
             </AnimatedTabsContent>
 
-            <AnimatedTabsContent value="dishes">
-              <DishesListView />
-            </AnimatedTabsContent>
-
-            <AnimatedTabsContent value="prepared">
-              <PreparedIngredientsList />
+            <AnimatedTabsContent value="recipes">
+              <RecipesListViewCookbook />
             </AnimatedTabsContent>
           </AnimatedTabs>
         </>

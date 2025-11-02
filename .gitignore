@@ -52,3 +52,6 @@ next-env.d.ts
 
 # Demo files
 /demo-receipts
+
+*storybook.log
+storybook-static

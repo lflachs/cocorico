@@ -16,7 +16,7 @@ async function main() {
   await prisma.menu.deleteMany();
   await prisma.recipeIngredient.deleteMany();
   await prisma.dish.deleteMany();
-  await prisma.dishFolder.deleteMany();
+  await prisma.recipeCategory.deleteMany(); // Delete recipe categories
   await prisma.stockMovement.deleteMany();
   await prisma.billProduct.deleteMany();
   await prisma.disputeProduct.deleteMany();
@@ -408,6 +408,117 @@ async function main() {
   const productMap = Object.fromEntries(products.map((p) => [p.name, p]));
 
   // ============================================================================
+  // RECIPE CATEGORIES
+  // ============================================================================
+  console.log('📚 Creating recipe categories...');
+
+  // Main DISH categories
+  const entreesFroidesCat = await prisma.recipeCategory.create({
+    data: {
+      name: 'Entrées Froides',
+      icon: '🥗',
+      color: '#32CD32',
+      order: 1,
+      categoryType: 'DISH',
+      isPredefined: true,
+    },
+  });
+
+  const entreesChaudesCat = await prisma.recipeCategory.create({
+    data: {
+      name: 'Entrées Chaudes',
+      icon: '🍲',
+      color: '#FF8C00',
+      order: 2,
+      categoryType: 'DISH',
+      isPredefined: true,
+    },
+  });
+
+  const poissonsCat = await prisma.recipeCategory.create({
+    data: {
+      name: 'Poissons',
+      icon: '🐟',
+      color: '#4682B4',
+      order: 3,
+      categoryType: 'DISH',
+      isPredefined: true,
+    },
+  });
+
+  const viandesCat = await prisma.recipeCategory.create({
+    data: {
+      name: 'Viandes',
+      icon: '🥩',
+      color: '#8B0000',
+      order: 4,
+      categoryType: 'DISH',
+      isPredefined: true,
+    },
+  });
+
+  const dessertsCat = await prisma.recipeCategory.create({
+    data: {
+      name: 'Desserts',
+      icon: '🍰',
+      color: '#FF69B4',
+      order: 5,
+      categoryType: 'DISH',
+      isPredefined: true,
+    },
+  });
+
+  // Dessert sub-categories
+  const patisserieCat = await prisma.recipeCategory.create({
+    data: {
+      name: 'Pâtisserie',
+      icon: '📄',
+      color: '#FFB6C1',
+      order: 1,
+      parentId: dessertsCat.id,
+      categoryType: 'DISH',
+      isPredefined: true,
+    },
+  });
+
+  const dessertsAssietteCat = await prisma.recipeCategory.create({
+    data: {
+      name: 'Desserts à l\'Assiette',
+      icon: '🍽️',
+      color: '#DDA0DD',
+      order: 2,
+      parentId: dessertsCat.id,
+      categoryType: 'DISH',
+      isPredefined: true,
+    },
+  });
+
+  // PREPARED_INGREDIENT categories
+  const basesCremesCat = await prisma.recipeCategory.create({
+    data: {
+      name: 'Bases & Crèmes',
+      icon: '🥛',
+      color: '#F5F5DC',
+      order: 1,
+      categoryType: 'PREPARED_INGREDIENT',
+      isPredefined: true,
+    },
+  });
+
+  const saucesCat = await prisma.recipeCategory.create({
+    data: {
+      name: 'Sauces',
+      icon: '🥫',
+      color: '#DC143C',
+      order: 2,
+      categoryType: 'PREPARED_INGREDIENT',
+      isPredefined: true,
+    },
+  });
+
+  console.log('✅ Created 9 recipe categories\n');
+
+  // ============================================================================
   // COMPOSITE PRODUCTS (Prepared Ingredients)
   // ============================================================================
   console.log('🧪 Creating composite products...');
@@ -421,7 +532,8 @@ async function main() {
       unitPrice: null,
       trackable: true,
       parLevel: 3,
-      category: 'Préparations',
+      category: 'Bases & Crèmes',
+      categoryId: basesCremesCat.id,
       isComposite: true,
       yieldQuantity: 1, // 1L per batch
     },
@@ -465,7 +577,8 @@ async function main() {
       unitPrice: null,
       trackable: true,
       parLevel: 5,
-      category: 'Préparations',
+      category: 'Sauces',
+      categoryId: saucesCat.id,
       isComposite: true,
       yieldQuantity: 1,
     },
@@ -508,6 +621,7 @@ async function main() {
       description: 'Croquant de chair de crabe, thon et haddock fumé, hareng mariné et douceur de choux fleurs aux betteraves multicolores',
       sellingPrice: 16.00,
       isActive: true,
+      categoryId: entreesFroidesCat.id,
       recipeIngredients: {
         create: [
           {
@@ -536,6 +650,7 @@ async function main() {
       description: 'Vitello tonnato à ma façon, aromates de saison au jambon cru et caviar aux aubergines confites',
       sellingPrice: 17.00,
       isActive: true,
+      categoryId: entreesFroidesCat.id,
       recipeIngredients: {
         create: [
           {
@@ -569,6 +684,7 @@ async function main() {
       description: 'Douceurs asperges vertes, crème de burrata fumée, confit et bonbons de tomates cerises confits',
       sellingPrice: 17.00,
       isActive: true,
+      categoryId: entreesFroidesCat.id,
       recipeIngredients: {
         create: [
           {
@@ -607,6 +723,7 @@ async function main() {
       description: 'Comme « un opéra », artichauts poivrades et craquants, caramel acidulé à la sauge',
       sellingPrice: 21.00,
       isActive: true,
+      categoryId: entreesChaudesCat.id,
       recipeIngredients: {
         create: [
           {
@@ -640,6 +757,7 @@ async function main() {
       description: 'Gâteau de pommes de terre croquillant aux aromates maison, pulpe de persil plat et jus onctueux au vin rouge',
       sellingPrice: 19.00,
       isActive: true,
+      categoryId: entreesChaudesCat.id,
       recipeIngredients: {
         create: [
           {
@@ -668,6 +786,7 @@ async function main() {
       description: 'Fine mousseline de petits pois frais, piquilllo farci au citron caviar, salicornes/poutargue et perles de harengs',
       sellingPrice: 20.00,
       isActive: true,
+      categoryId: entreesFroidesCat.id,
       recipeIngredients: {
         create: [
           {
@@ -702,6 +821,7 @@ async function main() {
       description: 'Poêlé à l\'huile olive, condiment chimichurri au blanc de seiche, frégola sarda et petits légumes printaniers',
       sellingPrice: 30.00,
       isActive: true,
+      categoryId: poissonsCat.id,
       recipeIngredients: {
         create: [
           {
@@ -735,6 +855,7 @@ async function main() {
       description: 'Marinées et grillées au thym frais, siphon à la tomate et mousseline de pommes de terre à l\'huile olive, primeurs de légumes verts',
       sellingPrice: 37.00,
       isActive: true,
+      categoryId: poissonsCat.id,
       recipeIngredients: {
         create: [
           {
@@ -768,6 +889,7 @@ async function main() {
       description: 'Rôti au beurre frais, rissolée de pommes grenailles et légumes du moment, béarnaise maison',
       sellingPrice: 32.00,
       isActive: true,
+      categoryId: viandesCat.id,
       recipeIngredients: {
         create: [
           {
@@ -801,6 +923,7 @@ async function main() {
       description: 'Confite et pressée, crumble à la tomate/miel/épices, primeurs de pois gourmand et éryngii, jus court au thym frais',
       sellingPrice: 32.00,
       isActive: true,
+      categoryId: viandesCat.id,
       recipeIngredients: {
         create: [
           {
@@ -824,6 +947,7 @@ async function main() {
       description: 'Rôti au thym frais, grosses asperges blanches rôties et primeurs de petits légumes, jus court',
       sellingPrice: 36.00,
       isActive: true,
+      categoryId: viandesCat.id,
       recipeIngredients: {
         create: [
           {
@@ -847,6 +971,7 @@ async function main() {
       description: 'À l\'ancienne, morilles et orges perlés, sauce gourmande émulsionnée',
       sellingPrice: 37.00,
       isActive: true,
+      categoryId: viandesCat.id,
       recipeIngredients: {
         create: [
           {
@@ -870,6 +995,7 @@ async function main() {
       description: 'Lasagnes « ouvertes », bolognaise de petits légumes printaniers, condiments de pignons et citron confit aux herbes fraîches',
       sellingPrice: 24.00,
       isActive: true,
+      categoryId: entreesFroidesCat.id, // Vegetarian option
       recipeIngredients: {
         create: [
           {
@@ -923,6 +1049,7 @@ async function main() {
       description: 'Rôti au savoir, ail et thym frais, pommes grenailles et légumes de saison, béarnaise et jus court',
       sellingPrice: 92.00,
       isActive: true,
+      categoryId: viandesCat.id,
       recipeIngredients: {
         create: [
           {
@@ -962,6 +1089,7 @@ async function main() {
       description: 'Marbré confit et chocolat dulcey, jus et sorbet à la groseille, gros sablé breton',
       sellingPrice: 14.00,
       isActive: true,
+      categoryId: dessertsAssietteCat.id,
       recipeIngredients: {
         create: [
           {
@@ -990,6 +1118,7 @@ async function main() {
       description: 'Jus et tartare, sablé croustillant et crème chiboust caramélisée aux oranges sanguines',
       sellingPrice: 14.00,
       isActive: true,
+      categoryId: dessertsAssietteCat.id,
       recipeIngredients: {
         create: [
           {
@@ -1018,6 +1147,7 @@ async function main() {
       description: 'Pâte caramélisée, à la vanille « bourbon» et caramel au beurre salé',
       sellingPrice: 14.00,
       isActive: true,
+      categoryId: patisserieCat.id,
       recipeIngredients: {
         create: [
           {
@@ -1046,6 +1176,7 @@ async function main() {
       description: 'Confit agrumes au poivre de Timut, crémeux et perles de yuzu',
       sellingPrice: 15.00,
       isActive: true,
+      categoryId: patisserieCat.id,
       recipeIngredients: {
         create: [
           {
@@ -1079,6 +1210,7 @@ async function main() {
       description: 'Trois inspirations du moment de notre pâtissier',
       sellingPrice: 15.00,
       isActive: true,
+      categoryId: dessertsAssietteCat.id,
       recipeIngredients: {
         create: [
           {
@@ -1102,6 +1234,7 @@ async function main() {
       description: 'Biscuit Marigny moelleux, ganache et crémeux au chocolat 70%, sorbet framboise et opaline croustillante',
       sellingPrice: 17.00,
       isActive: true,
+      categoryId: dessertsAssietteCat.id,
       recipeIngredients: {
         create: [
           {
@@ -1135,6 +1268,7 @@ async function main() {
       description: 'Composition de trois fromages à sélectionner, chutney à la figue et quelques pousses',
       sellingPrice: 15.00,
       isActive: true,
+      categoryId: dessertsCat.id, // Parent category for cheese plate
       recipeIngredients: {
         create: [],
       },
@@ -2080,15 +2214,29 @@ async function main() {
   console.log('     - Légumes: 4 (Pommes de terre, Carottes, Oignons, Tomates)');
   console.log('     - Herbes: 2 (Persil, Thym)');
   console.log('');
-  console.log('  🧪 Composite Products: 2');
-  console.log('     - Crème pâtissière');
-  console.log('     - Sauce béchamel');
+  console.log('  📚 Recipe Categories: 9');
+  console.log('     - DISH categories: 7');
+  console.log('       • Entrées Froides 🥗');
+  console.log('       • Entrées Chaudes 🍲');
+  console.log('       • Poissons 🐟');
+  console.log('       • Viandes 🥩');
+  console.log('       • Desserts 🍰');
+  console.log('         ├─ Pâtisserie');
+  console.log('         └─ Desserts à l\'Assiette');
+  console.log('     - PREPARED_INGREDIENT categories: 2');
+  console.log('       • Bases & Crèmes 🥛');
+  console.log('       • Sauces 🥫');
   console.log('');
-  console.log('  🍽️  Dishes: 21 (from Sens Unique Restaurant)');
-  console.log('     - 6 Entrées (La mer, Carpaccio veau, Tarte végétarienne, etc.)');
-  console.log('     - 8 Plats (Daurade, Gambas, Onglet de bœuf, etc.)');
-  console.log('     - 7 Desserts (Rhubarbe, Mille-feuille, Chocolat Xoco, etc.)');
-  console.log('     - ✅ Fixed ingredient inconsistencies');
+  console.log('  🧪 Composite Products: 2 (categorized)');
+  console.log('     - Crème pâtissière (Bases & Crèmes)');
+  console.log('     - Sauce béchamel (Sauces)');
+  console.log('');
+  console.log('  🍽️  Dishes: 21 (from Sens Unique Restaurant - all categorized)');
+  console.log('     - 4 Entrées Froides');
+  console.log('     - 2 Entrées Chaudes');
+  console.log('     - 2 Poissons');
+  console.log('     - 6 Viandes');
+  console.log('     - 7 Desserts (2 Pâtisserie, 4 Desserts à l\'Assiette, 1 Fromages)');
   console.log('');
   console.log('  📋 Menus: 2');
   console.log('     - Menu Canaille (49€) - 3 courses');

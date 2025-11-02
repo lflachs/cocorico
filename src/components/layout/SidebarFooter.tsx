@@ -6,7 +6,11 @@ import { Globe, Settings } from 'lucide-react';
 import { useLanguage } from '@/providers/LanguageProvider';
 import { PermissionManager } from '@/components/PermissionManager';
 
-export function SidebarFooter() {
+interface SidebarFooterProps {
+  isCollapsed: boolean;
+}
+
+export function SidebarFooter({ isCollapsed }: SidebarFooterProps) {
   const { language, setLanguage, t } = useLanguage();
   const [showSettings, setShowSettings] = useState(false);
 
@@ -16,16 +20,19 @@ export function SidebarFooter() {
 
   return (
     <>
-      <div className="space-y-4 border-t border-sidebar-border p-6">
+      <div className={`space-y-4 border-t border-sidebar-border ${isCollapsed ? 'p-2' : 'p-6'}`}>
         {/* Settings Button */}
         <Button
           variant="outline"
           size="sm"
           onClick={() => setShowSettings(true)}
-          className="w-full cursor-pointer justify-start gap-3 border-sidebar-border bg-transparent text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
+          className={`w-full cursor-pointer border-sidebar-border bg-transparent text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground ${
+            isCollapsed ? 'justify-center px-0' : 'justify-start gap-3'
+          }`}
+          title={isCollapsed ? t('permissions.settings') : undefined}
         >
           <Settings className="h-4 w-4" />
-          <span>{t('permissions.settings')}</span>
+          {!isCollapsed && <span>{t('permissions.settings')}</span>}
         </Button>
 
         {/* Language Switcher */}
@@ -33,13 +40,18 @@ export function SidebarFooter() {
           variant="outline"
           size="sm"
           onClick={toggleLanguage}
-          className="w-full cursor-pointer justify-start gap-3 border-sidebar-border bg-transparent text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
+          className={`w-full cursor-pointer border-sidebar-border bg-transparent text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground ${
+            isCollapsed ? 'justify-center px-0' : 'justify-start gap-3'
+          }`}
+          title={isCollapsed ? (language === 'en' ? 'Français' : 'English') : undefined}
         >
           <Globe className="h-4 w-4" />
-          <span>{language === 'en' ? 'Français' : 'English'}</span>
+          {!isCollapsed && <span>{language === 'en' ? 'Français' : 'English'}</span>}
         </Button>
 
-        <div className="text-center text-xs text-sidebar-foreground/60">© 2025 Cocorico</div>
+        {!isCollapsed && (
+          <div className="text-center text-xs text-sidebar-foreground/60">© 2025 Cocorico</div>
+        )}
       </div>
 
       {/* Controlled Permission Manager */}

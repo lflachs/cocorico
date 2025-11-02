@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useState, lazy, Suspense } from 'react';
+import { type ReactNode, useState, useEffect, lazy, Suspense } from 'react';
 import { LanguageProvider } from '@/providers/LanguageProvider';
 import { Toaster } from '@/components/ui/sonner';
 import { MobileMenuToggle } from '@/components/layout/MobileMenuToggle';
@@ -19,15 +19,35 @@ const VoiceAssistant = lazy(() => import('@/components/voice/VoiceAssistant').th
 
 function AppContent({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const router = useRouter();
+
+  // Load collapsed state from localStorage
+  useEffect(() => {
+    const savedState = localStorage.getItem('sidebar-collapsed');
+    if (savedState !== null) {
+      setIsCollapsed(savedState === 'true');
+    }
+  }, []);
 
   const toggleSidebar = () => setIsOpen(!isOpen);
   const closeSidebar = () => setIsOpen(false);
 
+  const toggleCollapsed = () => {
+    const newState = !isCollapsed;
+    setIsCollapsed(newState);
+    localStorage.setItem('sidebar-collapsed', String(newState));
+  };
+
   return (
     <div className="bg-layout-background flex h-screen overflow-hidden">
       <MobileMenuToggle isOpen={isOpen} onToggle={toggleSidebar} />
-      <Sidebar isOpen={isOpen} onNavigate={closeSidebar} />
+      <Sidebar
+        isOpen={isOpen}
+        isCollapsed={isCollapsed}
+        onNavigate={closeSidebar}
+        onToggleCollapsed={toggleCollapsed}
+      />
 
       <div className="flex min-h-0 flex-1 flex-col lg:ml-0">
         <MobileHeader />

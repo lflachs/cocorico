@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 /**
  * POST /api/inventory/import-excel
@@ -18,21 +18,26 @@ export async function POST(request: NextRequest) {
 
     // Convert file to buffer
     const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
 
-    // Parse Excel/CSV file
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    // Parse Excel/CSV file using ExcelJS
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(arrayBuffer);
 
     // Get first sheet
-    const firstSheetName = workbook.SheetNames[0];
-    if (!firstSheetName) {
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet) {
       return NextResponse.json({ error: 'No sheets found in file' }, { status: 400 });
     }
 
-    const worksheet = workbook.Sheets[firstSheetName];
-
     // Convert to raw array format to detect headers
-    const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: '', header: 1 }) as any[][];
+    const rawRows: any[][] = [];
+    worksheet.eachRow((row, rowNumber) => {
+      const rowValues: any[] = [];
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        rowValues.push(cell.value ?? '');
+      });
+      rawRows.push(rowValues);
+    });
 
     if (!rawRows || rawRows.length === 0) {
       return NextResponse.json({ error: 'No data found in file' }, { status: 400 });

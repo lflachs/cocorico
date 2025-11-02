@@ -60,6 +60,10 @@ model Product {
   isComposite Boolean @default(false) // If true, this product is made from other products
   yieldQuantity Float? // How much this recipe produces (e.g., 1 L of crème pâtissière)
 
+  // Category organization (for prepared ingredients)
+  categoryId String?
+  preparedCategory RecipeCategory? @relation("PreparedProductCategory", fields: [categoryId], references: [id], onDelete: SetNull)
+
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -82,6 +86,7 @@ model Product {
   @@index([name])
   @@index([displayName])
   @@index([category])
+  @@index([categoryId])
   @@index([isComposite])
   @@map("products")
 }
@@ -350,6 +355,43 @@ model DisputeProduct {
 // MENU & RECIPES
 // ============================================================================
 
+// New hierarchical category system for organizing recipes
+model RecipeCategory {
+  id        String   @id @default(cuid())
+  name      String
+  icon      String?  // Emoji or icon identifier
+  color     String?  // Hex color for visual organization
+  order     Int      @default(0) // Display order within same level
+
+  // Hierarchical structure
+  parentId  String?
+  parent    RecipeCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children  RecipeCategory[] @relation("CategoryHierarchy")
+
+  // Category type
+  categoryType CategoryType @default(DISH) // DISH or PREPARED_INGREDIENT
+  isPredefined Boolean      @default(false) // System-defined vs user-created
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  dishes            Dish[]
+  preparedProducts  Product[] @relation("PreparedProductCategory") // For composite products
+
+  @@index([order])
+  @@index([parentId])
+  @@index([categoryType])
+  @@map("recipe_categories")
+}
+
+enum CategoryType {
+  DISH                // For recipes/dishes
+  PREPARED_INGREDIENT // For prepared/composite ingredients
+}
+
+// Legacy folder system (kept for backward compatibility during migration)
 model DishFolder {
   id        String   @id @default(cuid())
   name      String
@@ -374,7 +416,11 @@ model Dish {
   // Pricing
   sellingPrice Float? // Price sold to customers
 
-  // Folder organization
+  // Category organization (new)
+  categoryId String?
+  category   RecipeCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  // Folder organization (legacy - will be removed after migration)
   folderId String?
   folder   DishFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
@@ -389,6 +435,7 @@ model Dish {
   menuDishes        MenuDish[]
 
   @@index([name])
+  @@index([categoryId])
   @@index([folderId])
   @@map("dishes")
 }
