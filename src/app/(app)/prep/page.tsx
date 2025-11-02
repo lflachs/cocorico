@@ -24,7 +24,7 @@ export default async function PrepPage() {
   const threeDaysFromNow = addDays(today, 3);
 
   // Fetch all data in parallel
-  const [rawExpiringProducts, rawMenuItems, rawLowStockItems] = await Promise.all([
+  const [rawExpiringProducts, rawMenuItems, rawLowStockItems, rawProductions] = await Promise.all([
     // 1. Expiring products (next 3 days for better visibility)
     db.dLC.findMany({
       where: {
@@ -68,6 +68,22 @@ export default async function PrepPage() {
       orderBy: {
         name: 'asc',
       },
+    }),
+
+    // 4. Recent productions (last 20)
+    db.production.findMany({
+      include: {
+        dish: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        productionDate: 'desc',
+      },
+      take: 20,
     }),
   ]);
 
@@ -129,6 +145,16 @@ export default async function PrepPage() {
     })
     .filter((item) => item.status !== 'GOOD'); // Only show LOW and CRITICAL
 
+  // Transform productions
+  const recentProductions = rawProductions.map((production) => ({
+    id: production.id,
+    dishId: production.dishId,
+    dishName: production.dish?.name || 'Unknown',
+    quantityProduced: production.quantityProduced,
+    productionDate: production.productionDate,
+    notes: production.notes,
+  }));
+
   return (
     <div className="w-full space-y-4 sm:space-y-6">
       <PageHeader
@@ -141,6 +167,7 @@ export default async function PrepPage() {
         expiringProducts={expiringProducts}
         menuItems={menuItems}
         lowStockItems={lowStockItems}
+        recentProductions={recentProductions}
       />
     </div>
   );

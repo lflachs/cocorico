@@ -9,6 +9,7 @@ import { ExpiringTodayCard } from './ExpiringTodayCard';
 import { TodaysMenuCard } from './TodaysMenuCard';
 import { StockStatusCard } from './StockStatusCard';
 import { DailyMenuDialog } from './DailyMenuDialog';
+import { ProductionHistoryCard } from './ProductionHistoryCard';
 
 type ExpiringProduct = {
   id: string;
@@ -38,10 +39,20 @@ type StockItem = {
   status: 'GOOD' | 'LOW' | 'CRITICAL';
 };
 
+type ProductionHistoryItem = {
+  id: string;
+  dishId: string;
+  dishName: string;
+  quantityProduced: number;
+  productionDate: Date;
+  notes?: string | null;
+};
+
 type PrepPageContentProps = {
   expiringProducts: ExpiringProduct[];
   menuItems: MenuItem[];
   lowStockItems: StockItem[];
+  recentProductions: ProductionHistoryItem[];
 };
 
 /**
@@ -51,7 +62,7 @@ type PrepPageContentProps = {
  * - Production: Batch prepare dishes
  * - Info: What needs attention (expiring, menu, stock)
  */
-export function PrepPageContent({ expiringProducts, menuItems, lowStockItems }: PrepPageContentProps) {
+export function PrepPageContent({ expiringProducts, menuItems, lowStockItems, recentProductions }: PrepPageContentProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('production');
   const [dailyMenuDialogOpen, setDailyMenuDialogOpen] = useState(false);
@@ -75,7 +86,7 @@ export function PrepPageContent({ expiringProducts, menuItems, lowStockItems }: 
 
       {/* PRODUCTION TAB - Big button to start production */}
       <TabsContent value="production" className="space-y-6">
-        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
+        <div className="flex flex-col items-center justify-center py-12 space-y-6">
           <ChefHat className="h-20 w-20 text-primary" />
           <div className="text-center space-y-2">
             <h2 className="text-3xl font-bold">Production de plats</h2>
@@ -92,6 +103,9 @@ export function PrepPageContent({ expiringProducts, menuItems, lowStockItems }: 
             Démarrer une production
           </Button>
         </div>
+
+        {/* Production History */}
+        <ProductionHistoryCard productions={recentProductions} />
       </TabsContent>
 
       {/* DAILY MENU TAB - Select today's menu */}
