@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { ChefHat, Info, CalendarDays } from 'lucide-react';
 import { ExpiringTodayCard } from './ExpiringTodayCard';
 import { TodaysMenuCard } from './TodaysMenuCard';
 import { StockStatusCard } from './StockStatusCard';
-import { ProductionDialog } from './ProductionDialog';
 import { DailyMenuDialog } from './DailyMenuDialog';
 
 type ExpiringProduct = {
@@ -52,8 +52,8 @@ type PrepPageContentProps = {
  * - Info: What needs attention (expiring, menu, stock)
  */
 export function PrepPageContent({ expiringProducts, menuItems, lowStockItems }: PrepPageContentProps) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('production');
-  const [productionDialogOpen, setProductionDialogOpen] = useState(false);
   const [dailyMenuDialogOpen, setDailyMenuDialogOpen] = useState(false);
 
   return (
@@ -84,7 +84,7 @@ export function PrepPageContent({ expiringProducts, menuItems, lowStockItems }: 
             </p>
           </div>
           <Button
-            onClick={() => setProductionDialogOpen(true)}
+            onClick={() => router.push('/prep/production')}
             size="lg"
             className="h-16 px-8 text-lg font-semibold"
           >
@@ -92,12 +92,6 @@ export function PrepPageContent({ expiringProducts, menuItems, lowStockItems }: 
             Démarrer une production
           </Button>
         </div>
-
-        {/* Production Dialog */}
-        <ProductionDialog
-          open={productionDialogOpen}
-          onOpenChange={setProductionDialogOpen}
-        />
       </TabsContent>
 
       {/* DAILY MENU TAB - Select today's menu */}

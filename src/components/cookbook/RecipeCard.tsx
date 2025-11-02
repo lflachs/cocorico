@@ -52,6 +52,17 @@ export function RecipeCard({
   const formattedMargin =
     margin !== undefined ? `${margin > 0 ? "+" : ""}${margin.toFixed(1)}%` : "-";
 
+  const handleCardClick = () => {
+    // If onSelect is provided, toggle selection
+    if (onSelect) {
+      onSelect(!selected);
+    }
+    // If onClick is provided, call it
+    if (onClick) {
+      onClick();
+    }
+  };
+
   return (
     <Card
       className={cn(
@@ -60,11 +71,11 @@ export function RecipeCard({
         "border-2",
         selected ? "border-primary ring-2 ring-primary/20" : "border-border",
         !isActive && "opacity-60",
-        onClick && "cursor-pointer"
+        (onClick || onSelect) && "cursor-pointer"
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onClick={onClick}
+      onClick={handleCardClick}
     >
       {/* Selection checkbox (top-left corner) */}
       {onSelect && (

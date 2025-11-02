@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { Search, Zap, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,6 +83,7 @@ type CompositeProduct = {
 };
 
 export function RecipesListViewCookbook() {
+  const router = useRouter();
   const [dishes, setDishes] = useState<Dish[]>([]);
   const [compositeProducts, setCompositeProducts] = useState<CompositeProduct[]>([]);
   const [categories, setCategories] = useState<RecipeCategory[]>([]);
@@ -348,19 +350,12 @@ export function RecipesListViewCookbook() {
 
             <div className="flex gap-2">
               <Button
-                variant="outline"
                 size="sm"
-                onClick={() => setShowPreparedCreate(true)}
+                onClick={() => router.push("/menu/nouvelle-recette")}
+                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
               >
                 <Zap className="h-4 w-4 mr-2" />
-                Nouvelle préparation
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => setShowDishCreate(true)}
-              >
-                <Zap className="h-4 w-4 mr-2" />
-                Nouvelle recette
+                Créer une recette
               </Button>
             </div>
           </div>
@@ -368,21 +363,12 @@ export function RecipesListViewCookbook() {
           {/* Mobile: Actions row */}
           <div className="flex items-center gap-2 mb-4 lg:hidden">
             <Button
-              variant="outline"
               size="sm"
-              onClick={() => setShowPreparedCreate(true)}
-              className="flex-1"
+              onClick={() => router.push("/menu/nouvelle-recette")}
+              className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
             >
               <Zap className="h-4 w-4 mr-2" />
-              Préparation
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => setShowDishCreate(true)}
-              className="flex-1"
-            >
-              <Zap className="h-4 w-4 mr-2" />
-              Recette
+              Créer une recette
             </Button>
           </div>
 
@@ -428,16 +414,14 @@ export function RecipesListViewCookbook() {
                   : "Aucune recette créée"}
               </p>
               {!searchQuery && (
-                <div className="flex gap-2">
-                  <Button onClick={() => setShowDishCreate(true)} size="sm">
-                    <Zap className="h-4 w-4 mr-2" />
-                    Créer une recette
-                  </Button>
-                  <Button onClick={() => setShowPreparedCreate(true)} size="sm" variant="outline">
-                    <Zap className="h-4 w-4 mr-2" />
-                    Créer une préparation
-                  </Button>
-                </div>
+                <Button
+                  onClick={() => router.push("/menu/nouvelle-recette")}
+                  size="sm"
+                  className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                >
+                  <Zap className="h-4 w-4 mr-2" />
+                  Créer une recette
+                </Button>
               )}
             </div>
           ) : (

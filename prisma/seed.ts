@@ -607,7 +607,364 @@ async function main() {
     ],
   });
 
-  console.log('✅ Created 2 composite products with ingredients\n');
+  // Marinade pour viande rouge
+  const marinade = await prisma.product.create({
+    data: {
+      name: 'Marinade pour viande rouge',
+      quantity: 2,
+      unit: Unit.L,
+      unitPrice: null,
+      trackable: true,
+      parLevel: 1,
+      category: 'Sauces',
+      categoryId: saucesCat.id,
+      isComposite: true,
+      yieldQuantity: 1, // 1L per batch
+    },
+  });
+
+  await prisma.compositeIngredient.createMany({
+    data: [
+      {
+        compositeProductId: marinade.id,
+        baseProductId: productMap['Thym frais'].id,
+        quantity: 2,
+        unit: Unit.BUNCH,
+      },
+      {
+        compositeProductId: marinade.id,
+        baseProductId: productMap['Persil frais'].id,
+        quantity: 1,
+        unit: Unit.BUNCH,
+      },
+      {
+        compositeProductId: marinade.id,
+        baseProductId: productMap['Sel fin'].id,
+        quantity: 0.02,
+        unit: Unit.KG,
+      },
+    ],
+  });
+
+  // Sauce béarnaise
+  const bearnaise = await prisma.product.create({
+    data: {
+      name: 'Sauce béarnaise',
+      quantity: 1.5,
+      unit: Unit.L,
+      unitPrice: null,
+      trackable: true,
+      parLevel: 1,
+      category: 'Sauces',
+      categoryId: saucesCat.id,
+      isComposite: true,
+      yieldQuantity: 1,
+    },
+  });
+
+  await prisma.compositeIngredient.createMany({
+    data: [
+      {
+        compositeProductId: bearnaise.id,
+        baseProductId: productMap['Œufs frais'].id,
+        quantity: 6,
+        unit: Unit.PC,
+      },
+      {
+        compositeProductId: bearnaise.id,
+        baseProductId: productMap['Beurre doux'].id,
+        quantity: 0.25,
+        unit: Unit.KG,
+      },
+      {
+        compositeProductId: bearnaise.id,
+        baseProductId: productMap['Persil frais'].id,
+        quantity: 1,
+        unit: Unit.BUNCH,
+      },
+    ],
+  });
+
+  // Pommes grenailles préparées
+  const pommesGrenailles = await prisma.product.create({
+    data: {
+      name: 'Pommes grenailles préparées',
+      quantity: 10,
+      unit: Unit.KG,
+      unitPrice: null,
+      trackable: true,
+      parLevel: 5,
+      category: 'Bases & Crèmes',
+      categoryId: basesCremesCat.id,
+      isComposite: true,
+      yieldQuantity: 5, // 5kg per batch
+    },
+  });
+
+  await prisma.compositeIngredient.createMany({
+    data: [
+      {
+        compositeProductId: pommesGrenailles.id,
+        baseProductId: productMap['Pommes de terre'].id,
+        quantity: 5,
+        unit: Unit.KG,
+      },
+      {
+        compositeProductId: pommesGrenailles.id,
+        baseProductId: productMap['Thym frais'].id,
+        quantity: 1,
+        unit: Unit.BUNCH,
+      },
+      {
+        compositeProductId: pommesGrenailles.id,
+        baseProductId: productMap['Beurre doux'].id,
+        quantity: 0.1,
+        unit: Unit.KG,
+      },
+      {
+        compositeProductId: pommesGrenailles.id,
+        baseProductId: productMap['Sel fin'].id,
+        quantity: 0.025,
+        unit: Unit.KG,
+      },
+    ],
+  });
+
+  // Mousseline de pommes de terre
+  const mousseline = await prisma.product.create({
+    data: {
+      name: 'Mousseline de pommes de terre',
+      quantity: 8,
+      unit: Unit.KG,
+      unitPrice: null,
+      trackable: true,
+      parLevel: 4,
+      category: 'Bases & Crèmes',
+      categoryId: basesCremesCat.id,
+      isComposite: true,
+      yieldQuantity: 3,
+    },
+  });
+
+  await prisma.compositeIngredient.createMany({
+    data: [
+      {
+        compositeProductId: mousseline.id,
+        baseProductId: productMap['Pommes de terre'].id,
+        quantity: 3,
+        unit: Unit.KG,
+      },
+      {
+        compositeProductId: mousseline.id,
+        baseProductId: productMap['Crème fraîche 35%'].id,
+        quantity: 0.3,
+        unit: Unit.L,
+      },
+      {
+        compositeProductId: mousseline.id,
+        baseProductId: productMap['Beurre doux'].id,
+        quantity: 0.15,
+        unit: Unit.KG,
+      },
+      {
+        compositeProductId: mousseline.id,
+        baseProductId: productMap['Lait entier'].id,
+        quantity: 0.2,
+        unit: Unit.L,
+      },
+    ],
+  });
+
+  // Siphon à la tomate
+  const siphonTomate = await prisma.product.create({
+    data: {
+      name: 'Siphon à la tomate',
+      quantity: 2,
+      unit: Unit.L,
+      unitPrice: null,
+      trackable: true,
+      parLevel: 1,
+      category: 'Sauces',
+      categoryId: saucesCat.id,
+      isComposite: true,
+      yieldQuantity: 1,
+    },
+  });
+
+  await prisma.compositeIngredient.createMany({
+    data: [
+      {
+        compositeProductId: siphonTomate.id,
+        baseProductId: productMap['Tomates'].id,
+        quantity: 1,
+        unit: Unit.KG,
+      },
+      {
+        compositeProductId: siphonTomate.id,
+        baseProductId: productMap['Crème fraîche 35%'].id,
+        quantity: 0.2,
+        unit: Unit.L,
+      },
+      {
+        compositeProductId: siphonTomate.id,
+        baseProductId: productMap['Beurre doux'].id,
+        quantity: 0.05,
+        unit: Unit.KG,
+      },
+    ],
+  });
+
+  // Bœuf mariné (uses raw beef + marinade)
+  const boeufMarine = await prisma.product.create({
+    data: {
+      name: 'Bœuf mariné',
+      quantity: 8,
+      unit: Unit.KG,
+      unitPrice: null,
+      trackable: true,
+      parLevel: 4,
+      category: 'Bases & Crèmes',
+      categoryId: basesCremesCat.id,
+      isComposite: true,
+      yieldQuantity: 2, // 2kg per batch
+    },
+  });
+
+  await prisma.compositeIngredient.createMany({
+    data: [
+      {
+        compositeProductId: boeufMarine.id,
+        baseProductId: productMap['Filet de bœuf'].id,
+        quantity: 2,
+        unit: Unit.KG,
+      },
+      {
+        compositeProductId: boeufMarine.id,
+        baseProductId: marinade.id,
+        quantity: 0.1,
+        unit: Unit.L,
+      },
+      {
+        compositeProductId: boeufMarine.id,
+        baseProductId: productMap['Thym frais'].id,
+        quantity: 0.5,
+        unit: Unit.BUNCH,
+      },
+    ],
+  });
+
+  // Onglet de bœuf mariné
+  const ongletMarine = await prisma.product.create({
+    data: {
+      name: 'Onglet de bœuf mariné',
+      quantity: 6,
+      unit: Unit.KG,
+      unitPrice: null,
+      trackable: true,
+      parLevel: 3,
+      category: 'Bases & Crèmes',
+      categoryId: basesCremesCat.id,
+      isComposite: true,
+      yieldQuantity: 2,
+    },
+  });
+
+  await prisma.compositeIngredient.createMany({
+    data: [
+      {
+        compositeProductId: ongletMarine.id,
+        baseProductId: productMap['Onglet de bœuf'].id,
+        quantity: 2,
+        unit: Unit.KG,
+      },
+      {
+        compositeProductId: ongletMarine.id,
+        baseProductId: marinade.id,
+        quantity: 0.08,
+        unit: Unit.L,
+      },
+    ],
+  });
+
+  // Gambas marinées
+  const gambasMarine = await prisma.product.create({
+    data: {
+      name: 'Gambas marinées au thym',
+      quantity: 3,
+      unit: Unit.KG,
+      unitPrice: null,
+      trackable: true,
+      parLevel: 2,
+      category: 'Bases & Crèmes',
+      categoryId: basesCremesCat.id,
+      isComposite: true,
+      yieldQuantity: 1,
+    },
+  });
+
+  await prisma.compositeIngredient.createMany({
+    data: [
+      {
+        compositeProductId: gambasMarine.id,
+        baseProductId: productMap['Gambas (grosses crevettes)'].id,
+        quantity: 1,
+        unit: Unit.KG,
+      },
+      {
+        compositeProductId: gambasMarine.id,
+        baseProductId: productMap['Thym frais'].id,
+        quantity: 1,
+        unit: Unit.BUNCH,
+      },
+      {
+        compositeProductId: gambasMarine.id,
+        baseProductId: productMap['Sel fin'].id,
+        quantity: 0.01,
+        unit: Unit.KG,
+      },
+    ],
+  });
+
+  // Veau mariné
+  const veauMarine = await prisma.product.create({
+    data: {
+      name: 'Veau mariné au thym',
+      quantity: 4,
+      unit: Unit.KG,
+      unitPrice: null,
+      trackable: true,
+      parLevel: 2,
+      category: 'Bases & Crèmes',
+      categoryId: basesCremesCat.id,
+      isComposite: true,
+      yieldQuantity: 1.5,
+    },
+  });
+
+  await prisma.compositeIngredient.createMany({
+    data: [
+      {
+        compositeProductId: veauMarine.id,
+        baseProductId: productMap['Quasi de veau'].id,
+        quantity: 1.5,
+        unit: Unit.KG,
+      },
+      {
+        compositeProductId: veauMarine.id,
+        baseProductId: productMap['Thym frais'].id,
+        quantity: 1,
+        unit: Unit.BUNCH,
+      },
+      {
+        compositeProductId: veauMarine.id,
+        baseProductId: marinade.id,
+        quantity: 0.05,
+        unit: Unit.L,
+      },
+    ],
+  });
+
+  console.log('✅ Created 11 composite products with ingredients\n');
 
   // ============================================================================
   // DISHES & RECIPES (from Sens Unique Restaurant)
@@ -859,24 +1216,24 @@ async function main() {
       recipeIngredients: {
         create: [
           {
-            productId: productMap['Gambas (grosses crevettes)'].id,
+            productId: gambasMarine.id, // Using prepared marinated gambas
             quantityRequired: 0.2,
             unit: 'KG',
           },
           {
-            productId: productMap['Tomates'].id,
+            productId: siphonTomate.id, // Using prepared tomato siphon
             quantityRequired: 0.1,
+            unit: 'L',
+          },
+          {
+            productId: mousseline.id, // Using prepared potato mousseline
+            quantityRequired: 0.15,
             unit: 'KG',
           },
           {
-            productId: productMap['Pommes de terre'].id,
-            quantityRequired: 0.2,
+            productId: productMap['Carottes'].id, // Fresh vegetables
+            quantityRequired: 0.05,
             unit: 'KG',
-          },
-          {
-            productId: productMap['Thym frais'].id,
-            quantityRequired: 0.5,
-            unit: 'BUNCH',
           },
         ],
       },
@@ -893,24 +1250,24 @@ async function main() {
       recipeIngredients: {
         create: [
           {
-            productId: productMap['Onglet de bœuf'].id,
+            productId: ongletMarine.id, // Using prepared marinated onglet
             quantityRequired: 0.25,
             unit: 'KG',
           },
           {
-            productId: productMap['Beurre doux'].id,
-            quantityRequired: 0.03,
-            unit: 'KG',
-          },
-          {
-            productId: productMap['Pommes de terre'].id,
+            productId: pommesGrenailles.id, // Using prepared potatoes
             quantityRequired: 0.25,
             unit: 'KG',
           },
           {
-            productId: productMap['Œufs frais'].id,
-            quantityRequired: 1,
-            unit: 'PC',
+            productId: bearnaise.id, // Using prepared béarnaise sauce
+            quantityRequired: 0.1,
+            unit: 'L',
+          },
+          {
+            productId: productMap['Carottes'].id, // Fresh vegetables
+            quantityRequired: 0.08,
+            unit: 'KG',
           },
         ],
       },
@@ -951,14 +1308,19 @@ async function main() {
       recipeIngredients: {
         create: [
           {
-            productId: productMap['Quasi de veau'].id,
+            productId: veauMarine.id, // Using prepared marinated veal
             quantityRequired: 0.28,
             unit: 'KG',
           },
           {
-            productId: productMap['Thym frais'].id,
-            quantityRequired: 0.5,
-            unit: 'BUNCH',
+            productId: productMap['Carottes'].id, // Fresh vegetables
+            quantityRequired: 0.1,
+            unit: 'KG',
+          },
+          {
+            productId: productMap['Oignons'].id,
+            quantityRequired: 0.05,
+            unit: 'KG',
           },
         ],
       },
@@ -1053,29 +1415,24 @@ async function main() {
       recipeIngredients: {
         create: [
           {
-            productId: productMap['Filet de bœuf'].id,
+            productId: boeufMarine.id, // Using prepared marinated beef
             quantityRequired: 1.0,
             unit: 'KG',
           },
           {
-            productId: productMap['Pommes de terre'].id,
+            productId: pommesGrenailles.id, // Using prepared potatoes with herbs
             quantityRequired: 0.4,
             unit: 'KG',
           },
           {
-            productId: productMap['Thym frais'].id,
-            quantityRequired: 1,
-            unit: 'BUNCH',
+            productId: bearnaise.id, // Using prepared béarnaise sauce
+            quantityRequired: 0.15,
+            unit: 'L',
           },
           {
-            productId: productMap['Beurre doux'].id,
-            quantityRequired: 0.05,
+            productId: productMap['Carottes'].id, // Fresh vegetables
+            quantityRequired: 0.1,
             unit: 'KG',
-          },
-          {
-            productId: productMap['Œufs frais'].id,
-            quantityRequired: 2,
-            unit: 'PC',
           },
         ],
       },
@@ -2227,9 +2584,20 @@ async function main() {
   console.log('       • Bases & Crèmes 🥛');
   console.log('       • Sauces 🥫');
   console.log('');
-  console.log('  🧪 Composite Products: 2 (categorized)');
-  console.log('     - Crème pâtissière (Bases & Crèmes)');
-  console.log('     - Sauce béchamel (Sauces)');
+  console.log('  🧪 Composite Products: 11 (categorized)');
+  console.log('     Bases & Crèmes:');
+  console.log('       - Crème pâtissière');
+  console.log('       - Pommes grenailles préparées');
+  console.log('       - Mousseline de pommes de terre');
+  console.log('       - Bœuf mariné');
+  console.log('       - Onglet de bœuf mariné');
+  console.log('       - Gambas marinées au thym');
+  console.log('       - Veau mariné au thym');
+  console.log('     Sauces:');
+  console.log('       - Sauce béchamel');
+  console.log('       - Marinade pour viande rouge');
+  console.log('       - Sauce béarnaise');
+  console.log('       - Siphon à la tomate');
   console.log('');
   console.log('  🍽️  Dishes: 21 (from Sens Unique Restaurant - all categorized)');
   console.log('     - 4 Entrées Froides');

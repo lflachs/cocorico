@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import * as productionService from '@/lib/services/production.service';
+import { prisma } from '@/lib/db';
 
 export type CreateProductionInput = {
   dishId: string;
@@ -135,6 +136,195 @@ export async function deleteProductionAction(id: string) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to delete production',
+    };
+  }
+}
+
+type DependencyItem = {
+  id: string;
+  name: string;
+  type: 'dish' | 'composite';
+  quantityNeeded: number;
+  unit: string;
+  currentStock: number;
+  hasStock: boolean;
+  dependencies: DependencyItem[];
+};
+
+/**
+ * Analyze dependencies for selected items and check stock availability
+ */
+export async function analyzeDependenciesAction(itemIds: string[]) {
+  try {
+    const dependencies: DependencyItem[] = [];
+
+    // Fetch all items (both dishes and composite products)
+    const [dishes, products] = await Promise.all([
+      prisma.dish.findMany({
+        where: { id: { in: itemIds } },
+        include: {
+          recipeIngredients: {
+            include: {
+              product: {
+                include: {
+                  compositeIngredients: {
+                    include: {
+                      baseProduct: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+      prisma.product.findMany({
+        where: {
+          id: { in: itemIds },
+          isComposite: true,
+        },
+        include: {
+          compositeIngredients: {
+            include: {
+              baseProduct: {
+                include: {
+                  compositeIngredients: {
+                    include: {
+                      baseProduct: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+    ]);
+
+    // Helper function to recursively analyze a product's dependencies
+    const analyzeDependencies = async (
+      productId: string,
+      quantityNeeded: number,
+      visitedIds: Set<string> = new Set()
+    ): Promise<DependencyItem[]> => {
+      // Prevent circular dependencies
+      if (visitedIds.has(productId)) {
+        return [];
+      }
+      visitedIds.add(productId);
+
+      const product = await prisma.product.findUnique({
+        where: { id: productId },
+        include: {
+          compositeIngredients: {
+            include: {
+              baseProduct: {
+                include: {
+                  compositeIngredients: {
+                    include: {
+                      baseProduct: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!product || !product.isComposite || !product.compositeIngredients) {
+        return [];
+      }
+
+      const subDependencies: DependencyItem[] = [];
+
+      for (const ingredient of product.compositeIngredients) {
+        const baseProduct = ingredient.baseProduct;
+        const hasStock = baseProduct.quantity >= ingredient.quantity * quantityNeeded;
+
+        const subDeps = baseProduct.isComposite
+          ? await analyzeDependencies(baseProduct.id, ingredient.quantity * quantityNeeded, new Set(visitedIds))
+          : [];
+
+        subDependencies.push({
+          id: baseProduct.id,
+          name: baseProduct.name,
+          type: baseProduct.isComposite ? 'composite' : 'dish',
+          quantityNeeded: ingredient.quantity * quantityNeeded,
+          unit: ingredient.unit,
+          currentStock: baseProduct.quantity,
+          hasStock,
+          dependencies: subDeps,
+        });
+      }
+
+      return subDependencies;
+    };
+
+    // Process dishes
+    for (const dish of dishes) {
+      const dishDeps: DependencyItem[] = [];
+
+      if (dish.recipeIngredients) {
+        for (const ingredient of dish.recipeIngredients) {
+          const product = ingredient.product;
+
+          // Only analyze composite products
+          if (product.isComposite) {
+            const hasStock = product.quantity >= ingredient.quantityRequired;
+            const subDeps = await analyzeDependencies(product.id, ingredient.quantityRequired);
+
+            dishDeps.push({
+              id: product.id,
+              name: product.name,
+              type: 'composite',
+              quantityNeeded: ingredient.quantityRequired,
+              unit: ingredient.unit,
+              currentStock: product.quantity,
+              hasStock,
+              dependencies: subDeps,
+            });
+          }
+        }
+      }
+
+      // Only add to dependencies if there are composite ingredients
+      if (dishDeps.length > 0) {
+        dependencies.push({
+          id: dish.id,
+          name: dish.name,
+          type: 'dish',
+          quantityNeeded: 1,
+          unit: 'portion',
+          currentStock: 0,
+          hasStock: true,
+          dependencies: dishDeps,
+        });
+      }
+    }
+
+    // Process composite products
+    for (const product of products) {
+      const subDeps = await analyzeDependencies(product.id, 1);
+
+      dependencies.push({
+        id: product.id,
+        name: product.name,
+        type: 'composite',
+        quantityNeeded: 1,
+        unit: product.unit,
+        currentStock: product.quantity,
+        hasStock: product.quantity >= 1,
+        dependencies: subDeps,
+      });
+    }
+
+    return { success: true, data: dependencies };
+  } catch (error) {
+    console.error('Error analyzing dependencies:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to analyze dependencies',
     };
   }
 }
