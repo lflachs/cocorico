@@ -6,6 +6,17 @@ import type { Production } from '@prisma/client';
  * Handles production/preparation of dishes in batches
  */
 
+export type CompositeIngredient = {
+  id: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  available: number;
+  sufficient?: boolean;
+  isComposite?: boolean;
+  compositeIngredients?: CompositeIngredient[];
+};
+
 export type ProductionIngredient = {
   productId: string;
   productName: string;
@@ -14,13 +25,7 @@ export type ProductionIngredient = {
   availableQuantity: number;
   sufficient: boolean;
   isComposite?: boolean;
-  compositeIngredients?: {
-    id: string;
-    name: string;
-    quantity: number;
-    unit: string;
-    available: number;
-  }[];
+  compositeIngredients?: CompositeIngredient[];
 };
 
 export type ProductionPreview = {
@@ -33,12 +38,111 @@ export type ProductionPreview = {
 };
 
 /**
+ * Helper function to calculate ingredients for a composite product
+ */
+async function calculateCompositeProductIngredients(
+  compositeProduct: any,
+  quantity: number
+): Promise<ProductionPreview> {
+  const ingredients: ProductionIngredient[] = [];
+  const missingIngredients: string[] = [];
+
+  // Recursive function to fetch composite ingredients
+  const fetchCompositeIngredients = async (productId: string, scaleFactor: number): Promise<any[]> => {
+    const product = await db.product.findUnique({
+      where: { id: productId },
+      include: {
+        compositeIngredients: {
+          include: {
+            baseProduct: {
+              select: {
+                id: true,
+                name: true,
+                unit: true,
+                quantity: true,
+                isComposite: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!product?.compositeIngredients) {
+      return [];
+    }
+
+    const subIngredients = [];
+    for (const ci of product.compositeIngredients) {
+      const scaledQuantity = ci.quantity * scaleFactor;
+      const sufficient = ci.baseProduct.quantity >= scaledQuantity;
+
+      // Recursively fetch sub-ingredients if this is also composite
+      let nestedCompositeIngredients = undefined;
+      if (ci.baseProduct.isComposite) {
+        nestedCompositeIngredients = await fetchCompositeIngredients(ci.baseProduct.id, scaledQuantity);
+      }
+
+      subIngredients.push({
+        id: ci.baseProduct.id,
+        name: ci.baseProduct.name,
+        quantity: scaledQuantity,
+        unit: ci.unit,
+        available: ci.baseProduct.quantity,
+        sufficient,
+        isComposite: ci.baseProduct.isComposite,
+        compositeIngredients: nestedCompositeIngredients,
+      });
+    }
+
+    return subIngredients;
+  };
+
+  // Process composite ingredients
+  for (const compositeIngredient of compositeProduct.compositeIngredients) {
+    const scaledQuantity = compositeIngredient.quantity * quantity;
+    const sufficient = compositeIngredient.baseProduct.quantity >= scaledQuantity;
+
+    // If base product is composite, recursively fetch its sub-ingredients
+    let compositeIngredients = undefined;
+    if (compositeIngredient.baseProduct.isComposite) {
+      compositeIngredients = await fetchCompositeIngredients(compositeIngredient.baseProduct.id, scaledQuantity);
+    }
+
+    ingredients.push({
+      productId: compositeIngredient.baseProduct.id,
+      productName: compositeIngredient.baseProduct.name,
+      quantityRequired: scaledQuantity,
+      unit: compositeIngredient.unit,
+      availableQuantity: compositeIngredient.baseProduct.quantity,
+      sufficient,
+      isComposite: compositeIngredient.baseProduct.isComposite,
+      compositeIngredients,
+    });
+
+    if (!sufficient) {
+      missingIngredients.push(compositeIngredient.baseProduct.name);
+    }
+  }
+
+  return {
+    dishId: compositeProduct.id,
+    dishName: compositeProduct.name,
+    quantityToProduce: quantity,
+    ingredients,
+    canProduce: missingIngredients.length === 0,
+    missingIngredients,
+  };
+}
+
+/**
  * Calculate scaled ingredients needed for production
  */
 export async function calculateProductionIngredients(
   dishId: string,
   quantity: number
 ): Promise<ProductionPreview> {
+  // First, try to find as a dish
   const dish = await db.dish.findUnique({
     where: { id: dishId },
     include: {
@@ -58,8 +162,37 @@ export async function calculateProductionIngredients(
     },
   });
 
+  // If not a dish, try as a composite product
   if (!dish) {
-    throw new Error('Dish not found');
+    const compositeProduct = await db.product.findUnique({
+      where: { id: dishId },
+      include: {
+        compositeIngredients: {
+          include: {
+            baseProduct: {
+              select: {
+                id: true,
+                name: true,
+                unit: true,
+                quantity: true,
+                isComposite: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!compositeProduct || !compositeProduct.isComposite) {
+      throw new Error('Dish or composite product not found');
+    }
+
+    if (!compositeProduct.compositeIngredients || compositeProduct.compositeIngredients.length === 0) {
+      throw new Error('Composite product has no ingredients');
+    }
+
+    // Handle composite product
+    return await calculateCompositeProductIngredients(compositeProduct, quantity);
   }
 
   if (!dish.recipeIngredients || dish.recipeIngredients.length === 0) {
@@ -69,40 +202,65 @@ export async function calculateProductionIngredients(
   const ingredients: ProductionIngredient[] = [];
   const missingIngredients: string[] = [];
 
-  for (const recipeIngredient of dish.recipeIngredients) {
-    const scaledQuantity = recipeIngredient.quantityRequired * quantity;
-    const sufficient = recipeIngredient.product.quantity >= scaledQuantity;
-
-    // If product is composite, fetch its sub-ingredients
-    let compositeIngredients = undefined;
-    if (recipeIngredient.product.isComposite) {
-      const compositeProduct = await db.product.findUnique({
-        where: { id: recipeIngredient.product.id },
-        include: {
-          compositeIngredients: {
-            include: {
-              baseProduct: {
-                select: {
-                  id: true,
-                  name: true,
-                  unit: true,
-                  quantity: true,
-                },
+  // Recursive function to fetch composite ingredients
+  const fetchCompositeIngredients = async (productId: string, scaleFactor: number): Promise<any[]> => {
+    const compositeProduct = await db.product.findUnique({
+      where: { id: productId },
+      include: {
+        compositeIngredients: {
+          include: {
+            baseProduct: {
+              select: {
+                id: true,
+                name: true,
+                unit: true,
+                quantity: true,
+                isComposite: true,
               },
             },
           },
         },
-      });
+      },
+    });
 
-      if (compositeProduct?.compositeIngredients) {
-        compositeIngredients = compositeProduct.compositeIngredients.map((ci) => ({
-          id: ci.baseProduct.id,
-          name: ci.baseProduct.name,
-          quantity: ci.quantity * scaledQuantity, // Scale by the required amount
-          unit: ci.unit,
-          available: ci.baseProduct.quantity,
-        }));
+    if (!compositeProduct?.compositeIngredients) {
+      return [];
+    }
+
+    const subIngredients = [];
+    for (const ci of compositeProduct.compositeIngredients) {
+      const scaledQuantity = ci.quantity * scaleFactor;
+      const sufficient = ci.baseProduct.quantity >= scaledQuantity;
+
+      // Recursively fetch sub-ingredients if this is also composite
+      let nestedCompositeIngredients = undefined;
+      if (ci.baseProduct.isComposite) {
+        nestedCompositeIngredients = await fetchCompositeIngredients(ci.baseProduct.id, scaledQuantity);
       }
+
+      subIngredients.push({
+        id: ci.baseProduct.id,
+        name: ci.baseProduct.name,
+        quantity: scaledQuantity,
+        unit: ci.unit,
+        available: ci.baseProduct.quantity,
+        sufficient,
+        isComposite: ci.baseProduct.isComposite,
+        compositeIngredients: nestedCompositeIngredients,
+      });
+    }
+
+    return subIngredients;
+  };
+
+  for (const recipeIngredient of dish.recipeIngredients) {
+    const scaledQuantity = recipeIngredient.quantityRequired * quantity;
+    const sufficient = recipeIngredient.product.quantity >= scaledQuantity;
+
+    // If product is composite, recursively fetch its sub-ingredients
+    let compositeIngredients = undefined;
+    if (recipeIngredient.product.isComposite) {
+      compositeIngredients = await fetchCompositeIngredients(recipeIngredient.product.id, scaledQuantity);
     }
 
     ingredients.push({
@@ -149,15 +307,22 @@ export async function createProduction(
     );
   }
 
-  // Get dish details for product creation
+  // Check if it's a dish or composite product
   const dish = await db.dish.findUnique({
     where: { id: dishId },
     select: { name: true },
   });
 
-  if (!dish) {
-    throw new Error('Dish not found');
+  const compositeProduct = !dish ? await db.product.findUnique({
+    where: { id: dishId },
+    select: { id: true, name: true, quantity: true, unit: true, isComposite: true },
+  }) : null;
+
+  if (!dish && !compositeProduct) {
+    throw new Error('Dish or composite product not found');
   }
+
+  const itemName = dish?.name || compositeProduct?.name || 'Unknown';
 
   // Create production record and stock movements in a transaction
   const production = await db.$transaction(async (tx) => {
@@ -207,51 +372,79 @@ export async function createProduction(
       });
     }
 
-    // 2. Add finished dish to inventory (IN movement)
-    // Find or create a Product for this dish
-    let dishProduct = await tx.product.findFirst({
-      where: {
-        name: dish.name,
-        // Mark as prepared/composite product
-        category: 'Prepared Dish',
-      },
-    });
+    // 2. Add finished product to inventory (IN movement)
+    let finishedProduct;
 
-    if (!dishProduct) {
-      // Create new product for this dish
-      dishProduct = await tx.product.create({
+    if (compositeProduct) {
+      // For composite products, add to existing product quantity
+      finishedProduct = compositeProduct;
+      const newBalance = compositeProduct.quantity + quantity;
+
+      await tx.product.update({
+        where: { id: compositeProduct.id },
+        data: { quantity: newBalance },
+      });
+
+      // Create stock movement (IN) for finished composite product
+      await tx.stockMovement.create({
         data: {
-          name: dish.name,
-          quantity: 0,
-          unit: 'PC', // Pieces/portions
+          productId: compositeProduct.id,
+          movementType: 'IN',
+          quantity: quantity,
+          balanceAfter: newBalance,
+          productionId: prod.id,
+          userId,
+          reason: `Production completed: ${quantity}x ${compositeProduct.name}`,
+          description: `Composite product prepared and added to inventory`,
+          source: 'PRODUCTION',
+        },
+      });
+    } else {
+      // For dishes, find or create a Product for this dish
+      let dishProduct = await tx.product.findFirst({
+        where: {
+          name: itemName,
+          // Mark as prepared/composite product
           category: 'Prepared Dish',
-          trackable: true,
+        },
+      });
+
+      if (!dishProduct) {
+        // Create new product for this dish
+        dishProduct = await tx.product.create({
+          data: {
+            name: itemName,
+            quantity: 0,
+            unit: 'PC', // Pieces/portions
+            category: 'Prepared Dish',
+            trackable: true,
+          },
+        });
+      }
+
+      const newDishBalance = dishProduct.quantity + quantity;
+
+      // Update dish product quantity
+      await tx.product.update({
+        where: { id: dishProduct.id },
+        data: { quantity: newDishBalance },
+      });
+
+      // Create stock movement (IN) for finished dish
+      await tx.stockMovement.create({
+        data: {
+          productId: dishProduct.id,
+          movementType: 'IN',
+          quantity: quantity,
+          balanceAfter: newDishBalance,
+          productionId: prod.id,
+          userId,
+          reason: `Production completed: ${quantity}x ${itemName}`,
+          description: `Finished dish added to inventory`,
+          source: 'PRODUCTION',
         },
       });
     }
-
-    const newDishBalance = dishProduct.quantity + quantity;
-
-    // Update dish product quantity
-    await tx.product.update({
-      where: { id: dishProduct.id },
-      data: { quantity: newDishBalance },
-    });
-
-    // Create stock movement (IN) for finished dish
-    await tx.stockMovement.create({
-      data: {
-        productId: dishProduct.id,
-        movementType: 'IN',
-        quantity: quantity,
-        balanceAfter: newDishBalance,
-        productionId: prod.id,
-        userId,
-        reason: `Production completed: ${quantity}x ${dish.name}`,
-        description: `Finished dish added to inventory`,
-        source: 'PRODUCTION',
-      },
-    });
 
     return prod;
   });

@@ -140,9 +140,32 @@ export function BatchProductionPageContent() {
     setCurrentIndex(0);
   };
 
-  const handleProcessCurrent = async (quantity: number, notes?: string) => {
+  const handleProcessCurrent = async (quantity: number, notes?: string, preparationIds?: string[]) => {
     const current = productionQueue[currentIndex];
     if (!current) return;
+
+    // If there are preparations to add, insert them before the current item
+    if (preparationIds && preparationIds.length > 0) {
+      const preparationsToInsert = preparationIds.map((prepId) => {
+        const item = items.find((i) => i.id === prepId);
+        return {
+          dishId: prepId,
+          dishName: item?.name || 'Unknown',
+          quantity: 1,
+        };
+      });
+
+      const updatedQueue = [
+        ...productionQueue.slice(0, currentIndex),
+        ...preparationsToInsert,
+        { ...current, quantity, notes },
+        ...productionQueue.slice(currentIndex + 1),
+      ];
+
+      setProductionQueue(updatedQueue);
+      // Don't increment currentIndex since we're now processing the first prep
+      return;
+    }
 
     // Update the quantity in the queue
     const updatedQueue = [...productionQueue];
@@ -203,6 +226,29 @@ export function BatchProductionPageContent() {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
     }
+  };
+
+  const handleAddPreparationNow = (preparationId: string) => {
+    // Find the preparation item
+    const item = items.find((i) => i.id === preparationId);
+    if (!item) return;
+
+    // Create the preparation item
+    const preparationItem: ProductionItem = {
+      dishId: preparationId,
+      dishName: item.name,
+      quantity: 1,
+    };
+
+    // Insert the preparation at the current index, pushing the current dish back
+    const updatedQueue = [
+      ...productionQueue.slice(0, currentIndex),
+      preparationItem,
+      ...productionQueue.slice(currentIndex),
+    ];
+
+    setProductionQueue(updatedQueue);
+    // Current index stays the same, so we'll process the preparation next
   };
 
   const handleFinish = () => {
@@ -280,6 +326,7 @@ export function BatchProductionPageContent() {
             onProcess={handleProcessCurrent}
             onSkip={handleSkipCurrent}
             onBack={currentIndex === 0 ? handleBackToSelection : handleBackStep}
+            onAddPreparationNow={handleAddPreparationNow}
           />
         )}
 

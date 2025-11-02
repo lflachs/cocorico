@@ -72,7 +72,7 @@ export async function getSaleById(id: string): Promise<SaleWithDetails | null> {
 
 /**
  * Create a new sale and deplete inventory
- * Smart detection: tries prepared dish first, falls back to raw ingredients
+ * Smart detection: uses composite ingredients when available, falls back to raw ingredients
  */
 export async function createSale(data: CreateSaleInput): Promise<Sale> {
   const { dishId, quantitySold, saleDate, notes, userId } = data;
@@ -83,7 +83,15 @@ export async function createSale(data: CreateSaleInput): Promise<Sale> {
     include: {
       recipeIngredients: {
         include: {
-          product: true,
+          product: {
+            include: {
+              compositeIngredients: {
+                include: {
+                  baseProduct: true,
+                },
+              },
+            },
+          },
         },
       },
     },
@@ -97,105 +105,129 @@ export async function createSale(data: CreateSaleInput): Promise<Sale> {
     throw new Error('Cannot record sale for inactive dish');
   }
 
-  // SMART DETECTION: Check if prepared dish exists in inventory
-  const preparedDish = await db.product.findFirst({
-    where: {
-      name: dish.name,
-      category: 'Prepared Dish',
-    },
-  });
+  // SMART FALLBACK SYSTEM: For each ingredient, decide whether to use composite or raw ingredients
+  type InventoryDepletion = {
+    productId: string;
+    productName: string;
+    quantity: number;
+    unit: string;
+    method: 'composite' | 'raw'; // Track which method was used
+  };
 
-  let usesPreparedStock = false;
-  if (preparedDish && preparedDish.quantity >= quantitySold) {
-    // We have enough prepared dishes in stock - use those!
-    usesPreparedStock = true;
+  const depletions: InventoryDepletion[] = [];
+  const insufficientIngredients: string[] = [];
+
+  // Analyze each recipe ingredient
+  for (const recipeIng of dish.recipeIngredients) {
+    const requiredQty = recipeIng.quantityRequired * quantitySold;
+    const product = recipeIng.product;
+
+    // Check if this is a composite product
+    if (product.isComposite && product.quantity >= requiredQty) {
+      // CASE 1: Composite product with sufficient stock - use it!
+      depletions.push({
+        productId: product.id,
+        productName: product.name,
+        quantity: requiredQty,
+        unit: recipeIng.unit,
+        method: 'composite',
+      });
+    } else if (product.isComposite && product.quantity < requiredQty) {
+      // CASE 2: Composite product but insufficient stock - fall back to raw ingredients
+      if (!product.compositeIngredients || product.compositeIngredients.length === 0) {
+        insufficientIngredients.push(
+          `${product.name} (need ${requiredQty} ${recipeIng.unit}, have ${product.quantity})`
+        );
+        continue;
+      }
+
+      // Check if we have enough raw ingredients
+      let canUseRaw = true;
+      const rawDepletions: InventoryDepletion[] = [];
+
+      for (const compositeIng of product.compositeIngredients) {
+        const rawRequiredQty = compositeIng.quantity * requiredQty;
+
+        if (compositeIng.baseProduct.quantity < rawRequiredQty) {
+          canUseRaw = false;
+          insufficientIngredients.push(
+            `${compositeIng.baseProduct.name} (need ${rawRequiredQty} ${compositeIng.unit}, have ${compositeIng.baseProduct.quantity})`
+          );
+        } else {
+          rawDepletions.push({
+            productId: compositeIng.baseProduct.id,
+            productName: compositeIng.baseProduct.name,
+            quantity: rawRequiredQty,
+            unit: compositeIng.unit,
+            method: 'raw',
+          });
+        }
+      }
+
+      if (canUseRaw) {
+        depletions.push(...rawDepletions);
+      }
+    } else {
+      // CASE 3: Regular (non-composite) ingredient - use it directly
+      if (product.quantity < requiredQty) {
+        insufficientIngredients.push(
+          `${product.name} (need ${requiredQty} ${recipeIng.unit}, have ${product.quantity})`
+        );
+      } else {
+        depletions.push({
+          productId: product.id,
+          productName: product.name,
+          quantity: requiredQty,
+          unit: recipeIng.unit,
+          method: 'raw',
+        });
+      }
+    }
   }
 
   // Validation: Check if we have enough inventory
-  if (usesPreparedStock) {
-    // Simple check for prepared dish
-    if (preparedDish!.quantity < quantitySold) {
-      throw new Error(
-        `Insufficient prepared dishes in stock (need ${quantitySold}, have ${preparedDish!.quantity})`
-      );
-    }
-  } else {
-    // Check raw ingredients
-    const insufficientIngredients: string[] = [];
-    for (const ingredient of dish.recipeIngredients) {
-      const requiredQuantity = ingredient.quantityRequired * quantitySold;
-      if (ingredient.product.quantity < requiredQuantity) {
-        insufficientIngredients.push(
-          `${ingredient.product.name} (need ${requiredQuantity} ${ingredient.unit}, have ${ingredient.product.quantity} ${ingredient.product.unit})`
-        );
-      }
-    }
-
-    if (insufficientIngredients.length > 0) {
-      throw new Error(
-        `Insufficient inventory for: ${insufficientIngredients.join(', ')}`
-      );
-    }
+  if (insufficientIngredients.length > 0) {
+    throw new Error(
+      `Insufficient inventory for: ${insufficientIngredients.join(', ')}`
+    );
   }
 
   // Use a transaction to ensure atomicity
   const sale = await db.$transaction(async (tx) => {
-    if (usesPreparedStock) {
-      // Deduct from prepared dish inventory
-      const newBalance = preparedDish!.quantity - quantitySold;
+    // Deplete inventory based on the smart fallback system
+    for (const depletion of depletions) {
+      const currentProduct = await tx.product.findUnique({
+        where: { id: depletion.productId },
+        select: { quantity: true },
+      });
+
+      if (!currentProduct) {
+        throw new Error(`Product ${depletion.productName} not found`);
+      }
+
+      const newBalance = currentProduct.quantity - depletion.quantity;
 
       await tx.product.update({
-        where: { id: preparedDish!.id },
+        where: { id: depletion.productId },
         data: { quantity: newBalance },
       });
 
       // Create stock movement for traceability
       await tx.stockMovement.create({
         data: {
-          productId: preparedDish!.id,
+          productId: depletion.productId,
           movementType: 'OUT',
-          quantity: quantitySold,
+          quantity: depletion.quantity,
           balanceAfter: newBalance,
           userId,
           reason: `Sale: ${quantitySold}x ${dish.name}`,
-          description: 'Sold from prepared inventory',
+          description:
+            depletion.method === 'composite'
+              ? `Prepared ${depletion.productName} used`
+              : `Raw ingredient used (à la minute)`,
           source: 'SCAN_SALES',
         },
       });
-    } else {
-      // Deduct from raw ingredient inventory
-      for (const ingredient of dish.recipeIngredients) {
-        const depletionAmount = ingredient.quantityRequired * quantitySold;
-        const currentProduct = await tx.product.findUnique({
-          where: { id: ingredient.productId },
-          select: { quantity: true },
-        });
-
-        if (!currentProduct) {
-          throw new Error(`Product ${ingredient.product.name} not found`);
-        }
-
-        const newBalance = currentProduct.quantity - depletionAmount;
-
-        await tx.product.update({
-          where: { id: ingredient.productId },
-          data: { quantity: newBalance },
-        });
-
-        // Create stock movement for traceability
-        await tx.stockMovement.create({
-          data: {
-            productId: ingredient.productId,
-            movementType: 'OUT',
-            quantity: depletionAmount,
-            balanceAfter: newBalance,
-            userId,
-            reason: `Sale: ${quantitySold}x ${dish.name}`,
-            description: `Raw ingredient used for sale (à la minute)`,
-            source: 'SCAN_SALES',
-          },
-        });
-      }
     }
 
     // Create the sale record

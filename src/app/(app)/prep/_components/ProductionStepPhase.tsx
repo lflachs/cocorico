@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import {
   ChevronLeft,
@@ -23,6 +22,17 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
+type CompositeIngredient = {
+  id: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  available: number;
+  sufficient?: boolean;
+  isComposite?: boolean;
+  compositeIngredients?: CompositeIngredient[];
+};
+
 type ProductionIngredient = {
   productId: string;
   productName: string;
@@ -31,13 +41,7 @@ type ProductionIngredient = {
   availableQuantity: number;
   sufficient: boolean;
   isComposite?: boolean;
-  compositeIngredients?: {
-    id: string;
-    name: string;
-    quantity: number;
-    unit: string;
-    available: number;
-  }[];
+  compositeIngredients?: CompositeIngredient[];
 };
 
 type ProductionPreview = {
@@ -54,10 +58,116 @@ type ProductionStepPhaseProps = {
   dishName: string;
   currentIndex: number;
   totalCount: number;
-  onProcess: (quantity: number, notes?: string) => Promise<void>;
+  onProcess: (quantity: number, notes?: string, preparationIds?: string[]) => Promise<void>;
   onSkip: () => void;
   onBack: () => void;
+  onAddPreparationNow?: (preparationId: string) => void; // New: immediately add prep to queue
 };
+
+// Recursive component for sub-ingredients
+function SubIngredientItem({
+  ingredient,
+  expandedIds,
+  onToggleExpand,
+  onPrepareNow,
+  level = 0,
+}: {
+  ingredient: CompositeIngredient;
+  expandedIds: Set<string>;
+  onToggleExpand: (id: string) => void;
+  onPrepareNow: (id: string) => void;
+  level?: number;
+}) {
+  const isExpanded = expandedIds.has(ingredient.id);
+  const hasSubIngredients = ingredient.isComposite && ingredient.compositeIngredients && ingredient.compositeIngredients.length > 0;
+  const isMissing = ingredient.sufficient === false;
+
+  return (
+    <div>
+      <div className={cn(
+        "flex items-start gap-2 text-sm p-2 rounded-md transition-colors",
+        isMissing ? "bg-orange-50 border border-orange-200" : "bg-white"
+      )}>
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          {hasSubIngredients && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onToggleExpand(ingredient.id)}
+              className="h-6 w-6 p-0 shrink-0"
+            >
+              {isExpanded ? (
+                <ChevronUp className="h-3 w-3" />
+              ) : (
+                <ChevronDown className="h-3 w-3" />
+              )}
+            </Button>
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <span className={cn(
+                "text-muted-foreground truncate",
+                hasSubIngredients && "font-medium"
+              )}>
+                {ingredient.name}
+              </span>
+              {ingredient.isComposite && (
+                <Badge variant="outline" className="text-[10px] py-0 px-1 h-4 shrink-0">
+                  <Package className="h-2 w-2 mr-0.5" />
+                  Prep
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-3 text-xs">
+              <span className="font-medium text-foreground">
+                {ingredient.quantity.toFixed(2)} {ingredient.unit}
+              </span>
+              <span className={cn(
+                isMissing ? "text-orange-600 font-medium" : "text-muted-foreground"
+              )}>
+                (stock: {ingredient.available.toFixed(2)} {ingredient.unit})
+              </span>
+            </div>
+
+            {/* Button to prepare nested composite ingredient - always show for composite */}
+            {ingredient.isComposite && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onPrepareNow(ingredient.id)}
+                className={cn(
+                  "mt-2 w-full text-xs h-7",
+                  isMissing
+                    ? "border-orange-400 text-orange-700 hover:bg-orange-50"
+                    : "border-gray-300"
+                )}
+              >
+                <Package className="h-3 w-3 mr-1" />
+                {isMissing ? 'Préparer maintenant' : 'Préparer aussi'}
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Nested sub-ingredients */}
+      {hasSubIngredients && isExpanded && (
+        <div className="ml-4 mt-2 pl-3 border-l-2 border-orange-100 space-y-2">
+          {ingredient.compositeIngredients!.map((subIng) => (
+            <SubIngredientItem
+              key={subIng.id}
+              ingredient={subIng}
+              expandedIds={expandedIds}
+              onToggleExpand={onToggleExpand}
+              onPrepareNow={onPrepareNow}
+              level={level + 1}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function ProductionStepPhase({
   dishId,
@@ -67,6 +177,7 @@ export function ProductionStepPhase({
   onProcess,
   onSkip,
   onBack,
+  onAddPreparationNow,
 }: ProductionStepPhaseProps) {
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState('');
@@ -74,7 +185,14 @@ export function ProductionStepPhase({
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [expandedIngredients, setExpandedIngredients] = useState<Set<string>>(new Set());
-  const [preparationsToAdd, setPreparationsToAdd] = useState<Set<string>>(new Set());
+
+  // Reset state when dish changes
+  useEffect(() => {
+    setQuantity(1);
+    setNotes('');
+    setPreview(null);
+    setExpandedIngredients(new Set());
+  }, [dishId]);
 
   // Load preview when dish or quantity changes
   useEffect(() => {
@@ -94,15 +212,24 @@ export function ProductionStepPhase({
       if (result.success && result.data) {
         setPreview(result.data);
 
-        // Auto-expand and auto-select missing composite ingredients
-        const missingComposites = result.data.ingredients.filter(
-          (ing: ProductionIngredient) => ing.isComposite && !ing.sufficient
-        );
+        // Auto-expand any composite ingredients to show toggles
+        const allExpandedIds = new Set<string>();
 
-        if (missingComposites.length > 0) {
-          setExpandedIngredients(new Set(missingComposites.map((ing: ProductionIngredient) => ing.productId)));
-          setPreparationsToAdd(new Set(missingComposites.map((ing: ProductionIngredient) => ing.productId)));
-        }
+        const expandComposites = (ingredients: any[]) => {
+          for (const ing of ingredients) {
+            if (ing.isComposite) {
+              allExpandedIds.add(ing.productId || ing.id);
+
+              // Recursively expand
+              if (ing.compositeIngredients && ing.compositeIngredients.length > 0) {
+                expandComposites(ing.compositeIngredients);
+              }
+            }
+          }
+        };
+
+        expandComposites(result.data.ingredients);
+        setExpandedIngredients(allExpandedIds);
       } else {
         toast.error(result.error || 'Erreur lors du calcul des ingrédients');
       }
@@ -126,16 +253,11 @@ export function ProductionStepPhase({
     });
   };
 
-  const togglePreparationToAdd = (productId: string) => {
-    setPreparationsToAdd(prev => {
-      const next = new Set(prev);
-      if (next.has(productId)) {
-        next.delete(productId);
-      } else {
-        next.add(productId);
-      }
-      return next;
-    });
+  const handlePrepareNow = (preparationId: string) => {
+    // Immediately switch to preparing this item
+    if (onAddPreparationNow) {
+      onAddPreparationNow(preparationId);
+    }
   };
 
   const handleQuantityChange = (newQuantity: number) => {
@@ -291,7 +413,6 @@ export function ProductionStepPhase({
             <div className="space-y-3">
               {preview.ingredients.map((ingredient) => {
                 const isExpanded = expandedIngredients.has(ingredient.productId);
-                const willPrepare = preparationsToAdd.has(ingredient.productId);
 
                 return (
                   <div key={ingredient.productId}>
@@ -346,21 +467,24 @@ export function ProductionStepPhase({
                             </div>
                           </div>
 
-                          {/* Toggle to prepare composite ingredient */}
-                          {ingredient.isComposite && !ingredient.sufficient && (
-                            <div className="mt-3 flex items-center gap-3 p-3 bg-white rounded-md border border-orange-200">
-                              <Switch
-                                checked={willPrepare}
-                                onCheckedChange={() => togglePreparationToAdd(ingredient.productId)}
-                                id={`prepare-${ingredient.productId}`}
-                              />
-                              <Label
-                                htmlFor={`prepare-${ingredient.productId}`}
-                                className="text-sm font-medium cursor-pointer flex-1"
-                              >
-                                Préparer {ingredient.productName} d'abord
-                              </Label>
-                            </div>
+                          {/* Button to prepare composite ingredient immediately */}
+                          {ingredient.isComposite && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePrepareNow(ingredient.productId)}
+                              className={cn(
+                                "mt-3 w-full",
+                                ingredient.sufficient
+                                  ? "border-gray-300"
+                                  : "border-orange-400 text-orange-700 hover:bg-orange-50 font-medium"
+                              )}
+                            >
+                              <Package className="h-4 w-4 mr-2" />
+                              {ingredient.sufficient
+                                ? `Préparer ${ingredient.productName} maintenant`
+                                : `Préparer ${ingredient.productName} d'abord`}
+                            </Button>
                           )}
                         </div>
 
@@ -390,27 +514,20 @@ export function ProductionStepPhase({
                         </div>
                       </div>
 
-                      {/* Sub-ingredients (composite breakdown) */}
+                      {/* Sub-ingredients (composite breakdown) - recursive */}
                       {ingredient.isComposite && isExpanded && ingredient.compositeIngredients && (
                         <div className="mt-3 ml-5 pl-4 border-l-2 border-orange-200 space-y-2">
                           <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">
                             Ingrédients de base
                           </p>
                           {ingredient.compositeIngredients.map((subIng) => (
-                            <div
+                            <SubIngredientItem
                               key={subIng.id}
-                              className="flex items-center justify-between text-sm p-2 bg-white rounded-md"
-                            >
-                              <span className="text-muted-foreground">{subIng.name}</span>
-                              <div className="flex items-center gap-3">
-                                <span className="font-medium">
-                                  {subIng.quantity.toFixed(2)} {subIng.unit}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  (stock: {subIng.available.toFixed(2)} {subIng.unit})
-                                </span>
-                              </div>
-                            </div>
+                              ingredient={subIng}
+                              expandedIds={expandedIngredients}
+                              onToggleExpand={toggleIngredientExpanded}
+                              onPrepareNow={handlePrepareNow}
+                            />
                           ))}
                         </div>
                       )}
@@ -418,18 +535,6 @@ export function ProductionStepPhase({
                   </div>
                 );
               })}
-
-              {/* Summary of preparations to add */}
-              {preparationsToAdd.size > 0 && (
-                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-sm font-medium text-blue-900 mb-2">
-                    📋 {preparationsToAdd.size} préparation{preparationsToAdd.size > 1 ? 's' : ''} sera ajoutée à la file
-                  </p>
-                  <p className="text-xs text-blue-700">
-                    Ces préparations seront produites avant ce plat.
-                  </p>
-                </div>
-              )}
             </div>
           ) : (
             <div className="flex items-center justify-center h-64">
