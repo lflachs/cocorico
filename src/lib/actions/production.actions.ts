@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import * as productionService from '@/lib/services/production.service';
-import { prisma } from '@/lib/db';
+import { db } from '@/lib/db/client';
 
 export type CreateProductionInput = {
   dishId: string;
@@ -160,7 +160,7 @@ export async function analyzeDependenciesAction(itemIds: string[]) {
 
     // Fetch all items (both dishes and composite products)
     const [dishes, products] = await Promise.all([
-      prisma.dish.findMany({
+      db.dish.findMany({
         where: { id: { in: itemIds } },
         include: {
           recipeIngredients: {
@@ -178,7 +178,7 @@ export async function analyzeDependenciesAction(itemIds: string[]) {
           },
         },
       }),
-      prisma.product.findMany({
+      db.product.findMany({
         where: {
           id: { in: itemIds },
           isComposite: true,
@@ -213,7 +213,7 @@ export async function analyzeDependenciesAction(itemIds: string[]) {
       }
       visitedIds.add(productId);
 
-      const product = await prisma.product.findUnique({
+      const product = await db.product.findUnique({
         where: { id: productId },
         include: {
           compositeIngredients: {

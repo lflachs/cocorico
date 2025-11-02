@@ -13,6 +13,14 @@ export type ProductionIngredient = {
   unit: string;
   availableQuantity: number;
   sufficient: boolean;
+  isComposite?: boolean;
+  compositeIngredients?: {
+    id: string;
+    name: string;
+    quantity: number;
+    unit: string;
+    available: number;
+  }[];
 };
 
 export type ProductionPreview = {
@@ -42,6 +50,7 @@ export async function calculateProductionIngredients(
               name: true,
               unit: true,
               quantity: true,
+              isComposite: true,
             },
           },
         },
@@ -64,6 +73,38 @@ export async function calculateProductionIngredients(
     const scaledQuantity = recipeIngredient.quantityRequired * quantity;
     const sufficient = recipeIngredient.product.quantity >= scaledQuantity;
 
+    // If product is composite, fetch its sub-ingredients
+    let compositeIngredients = undefined;
+    if (recipeIngredient.product.isComposite) {
+      const compositeProduct = await db.product.findUnique({
+        where: { id: recipeIngredient.product.id },
+        include: {
+          compositeIngredients: {
+            include: {
+              baseProduct: {
+                select: {
+                  id: true,
+                  name: true,
+                  unit: true,
+                  quantity: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (compositeProduct?.compositeIngredients) {
+        compositeIngredients = compositeProduct.compositeIngredients.map((ci) => ({
+          id: ci.baseProduct.id,
+          name: ci.baseProduct.name,
+          quantity: ci.quantity * scaledQuantity, // Scale by the required amount
+          unit: ci.unit,
+          available: ci.baseProduct.quantity,
+        }));
+      }
+    }
+
     ingredients.push({
       productId: recipeIngredient.product.id,
       productName: recipeIngredient.product.name,
@@ -71,6 +112,8 @@ export async function calculateProductionIngredients(
       unit: recipeIngredient.unit,
       availableQuantity: recipeIngredient.product.quantity,
       sufficient,
+      isComposite: recipeIngredient.product.isComposite,
+      compositeIngredients,
     });
 
     if (!sufficient) {

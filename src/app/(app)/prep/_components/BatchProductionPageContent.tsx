@@ -31,6 +31,29 @@ type Dish = {
   }[];
 };
 
+type PreparedIngredient = {
+  id: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  yieldQuantity: number | null;
+  categoryId?: string | null;
+  compositeIngredients: {
+    id: string;
+    baseProductId: string;
+    quantity: number;
+    unit: string;
+    baseProduct: {
+      id: string;
+      name: string;
+      unit: string;
+      unitPrice?: number | null;
+    };
+  }[];
+};
+
+type RecipeItem = Dish | PreparedIngredient;
+
 type ProductionItem = {
   dishId: string;
   dishName: string;
@@ -51,44 +74,59 @@ type Phase = 'selection' | 'step-by-step' | 'summary';
 export function BatchProductionPageContent() {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>('selection');
-  const [dishes, setDishes] = useState<Dish[]>([]);
-  const [selectedDishIds, setSelectedDishIds] = useState<string[]>([]);
+  const [items, setItems] = useState<RecipeItem[]>([]);
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [productionQueue, setProductionQueue] = useState<ProductionItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [completedProductions, setCompletedProductions] = useState<CompletedProduction[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Load dishes on mount
+  // Load items (dishes and composite products) on mount
   useEffect(() => {
-    loadDishes();
+    loadItems();
   }, []);
 
-  const loadDishes = async () => {
+  const loadItems = async () => {
     setLoading(true);
     try {
-      const { getDishesAction } = await import('@/lib/actions/dish.actions');
-      const result = await getDishesAction({ isActive: true, includeRecipe: true });
-      if (result.success && result.data) {
-        // Filter dishes that have recipes
-        const dishesWithRecipes = result.data.filter(
+      const [dishResult, productResult] = await Promise.all([
+        import('@/lib/actions/dish.actions').then(m => m.getDishesAction({ isActive: true, includeRecipe: true })),
+        import('@/lib/actions/product.actions').then(m => m.getCompositeProductsForProductionAction()),
+      ]);
+
+      const allItems: RecipeItem[] = [];
+
+      // Add dishes with recipes
+      if (dishResult.success && dishResult.data) {
+        const dishesWithRecipes = dishResult.data.filter(
           (dish) => dish.recipeIngredients && dish.recipeIngredients.length > 0
         ) as Dish[];
-        setDishes(dishesWithRecipes);
+        allItems.push(...dishesWithRecipes);
       }
+
+      // Add composite products (already filtered for isComposite)
+      if (productResult.success && productResult.data) {
+        const compositeProducts = productResult.data.filter(
+          (product: any) => product.compositeIngredients && product.compositeIngredients.length > 0
+        ) as PreparedIngredient[];
+        allItems.push(...compositeProducts);
+      }
+
+      setItems(allItems);
     } catch (error) {
-      console.error('Error loading dishes:', error);
+      console.error('Error loading items:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const handleContinueFromSelection = (selectedIds: string[]) => {
-    // Create production queue from selected dishes
-    const queue = selectedIds.map((dishId) => {
-      const dish = dishes.find((d) => d.id === dishId);
+    // Create production queue from selected items
+    const queue = selectedIds.map((itemId) => {
+      const item = items.find((i) => i.id === itemId);
       return {
-        dishId,
-        dishName: dish?.name || 'Unknown',
+        dishId: itemId,
+        dishName: item?.name || 'Unknown',
         quantity: 1, // Default quantity
       };
     });
@@ -212,9 +250,9 @@ export function BatchProductionPageContent() {
             </div>
           </div>
 
-          {phase === 'selection' && selectedDishIds.length > 0 && (
+          {phase === 'selection' && selectedItemIds.length > 0 && (
             <div className="text-sm text-muted-foreground">
-              <strong>{selectedDishIds.length}</strong> sélectionné{selectedDishIds.length !== 1 ? 's' : ''}
+              <strong>{selectedItemIds.length}</strong> sélectionné{selectedItemIds.length !== 1 ? 's' : ''}
             </div>
           )}
         </div>
@@ -224,10 +262,10 @@ export function BatchProductionPageContent() {
       <div className="flex-1 overflow-hidden">
         {phase === 'selection' && (
           <ProductionSelectionPhase
-            items={dishes}
+            items={items}
             loading={loading}
-            selectedItemIds={selectedDishIds}
-            onSelectedItemIdsChange={setSelectedDishIds}
+            selectedItemIds={selectedItemIds}
+            onSelectedItemIdsChange={setSelectedItemIds}
             onContinue={handleContinueFromSelection}
             onCancel={handleCancel}
           />

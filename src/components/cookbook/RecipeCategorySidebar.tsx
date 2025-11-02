@@ -11,7 +11,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 
-export type CategoryType = "DISH" | "PREPARED_INGREDIENT";
+export type CategoryType = "DISH" | "PREPARED_INGREDIENT" | "BOTH";
 
 export interface RecipeCategory {
   id: string;
@@ -68,14 +68,18 @@ export function RecipeCategorySidebar({
     const count =
       categoryType === "DISH"
         ? (cat._count?.dishes ?? 0)
-        : (cat._count?.preparedProducts ?? 0);
+        : categoryType === "PREPARED_INGREDIENT"
+        ? (cat._count?.preparedProducts ?? 0)
+        : (cat._count?.dishes ?? 0) + (cat._count?.preparedProducts ?? 0);
     const childrenCount =
       cat.children?.reduce(
         (childSum, child) =>
           childSum +
           (categoryType === "DISH"
             ? (child._count?.dishes ?? 0)
-            : (child._count?.preparedProducts ?? 0)),
+            : categoryType === "PREPARED_INGREDIENT"
+            ? (child._count?.preparedProducts ?? 0)
+            : (child._count?.dishes ?? 0) + (child._count?.preparedProducts ?? 0)),
         0
       ) ?? 0;
     return sum + count + childrenCount;
@@ -93,7 +97,9 @@ export function RecipeCategorySidebar({
     const itemCount =
       categoryType === "DISH"
         ? (category._count?.dishes ?? 0)
-        : (category._count?.preparedProducts ?? 0);
+        : categoryType === "PREPARED_INGREDIENT"
+        ? (category._count?.preparedProducts ?? 0)
+        : (category._count?.dishes ?? 0) + (category._count?.preparedProducts ?? 0);
 
     const content = (
       <button

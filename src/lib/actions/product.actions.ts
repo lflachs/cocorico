@@ -72,6 +72,35 @@ export async function getProductsAction(): Promise<ActionResult<Product[]>> {
 }
 
 /**
+ * Get composite products with full details for production
+ */
+export async function getCompositeProductsForProductionAction(): Promise<ActionResult<any[]>> {
+  try {
+    const { db } = await import('@/lib/db/client');
+    const products = await db.product.findMany({
+      where: {
+        isComposite: true,
+      },
+      include: {
+        compositeIngredients: {
+          include: {
+            baseProduct: true,
+          },
+        },
+        preparedCategory: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+    return { success: true, data: products };
+  } catch (error) {
+    if (error instanceof Error) {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: 'Failed to fetch composite products' };
+  }
+}
+
+/**
  * Create product without redirecting
  * Used when creating products as part of another flow (like adding dishes)
  */

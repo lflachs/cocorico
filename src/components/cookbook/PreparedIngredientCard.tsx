@@ -5,7 +5,7 @@ import { Trash2, Beaker } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { formatQuantity } from "@/lib/utils/unit-converter";
+import { formatQuantity, translateUnit } from "@/lib/utils/unit-converter";
 
 interface PreparedIngredientCardProps {
   id: string;
@@ -40,7 +40,7 @@ export function PreparedIngredientCard({
     : "-";
 
   const yieldInfo = yieldQuantity
-    ? `Rendement: ${formatQuantity(yieldQuantity, unit)}`
+    ? `Rendement: ${formatQuantity(yieldQuantity)} ${translateUnit(unit, yieldQuantity)}`
     : null;
 
   return (
@@ -85,7 +85,7 @@ export function PreparedIngredientCard({
         <div className="flex items-center gap-2 flex-wrap">
           <span className="inline-flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30 px-2 py-1 rounded">
             <Beaker className="h-3 w-3" />
-            <span className="font-medium">{formatQuantity(quantity, unit)}</span>
+            <span className="font-medium">{formatQuantity(quantity)} {translateUnit(unit, quantity)}</span>
           </span>
           <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
             <span className="font-medium">{ingredientCount}</span>
