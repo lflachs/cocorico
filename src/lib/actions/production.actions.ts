@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import * as productionService from '@/lib/services/production.service';
 import { db } from '@/lib/db/client';
+import { getByproductSuggestions } from '@/lib/services/byproduct-suggestion.service';
 
 export type ByproductInput = {
   name: string;
@@ -42,6 +43,44 @@ export async function calculateProductionIngredientsAction(
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to calculate ingredients',
+    };
+  }
+}
+
+/**
+ * Get AI-powered byproduct suggestions for a production
+ */
+export async function getByproductSuggestionsAction(
+  dishId: string,
+  quantity: number
+) {
+  try {
+    if (quantity <= 0) {
+      return {
+        success: false,
+        error: 'Quantity must be greater than 0',
+      };
+    }
+
+    // First get the ingredients for this production
+    const preview = await productionService.calculateProductionIngredients(dishId, quantity);
+
+    // Then get suggestions based on those ingredients
+    const suggestions = await getByproductSuggestions(
+      preview.ingredients.map((ing) => ({
+        productId: ing.productId,
+        productName: ing.productName,
+        quantity: ing.quantityRequired,
+        unit: ing.unit,
+      }))
+    );
+
+    return { success: true, data: suggestions };
+  } catch (error) {
+    console.error('Error getting byproduct suggestions:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to get suggestions',
     };
   }
 }

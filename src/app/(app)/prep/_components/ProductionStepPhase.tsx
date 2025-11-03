@@ -23,6 +23,8 @@ import {
   Soup,
   Recycle,
   X,
+  Sparkles,
+  Lightbulb,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -47,6 +49,13 @@ type ProductionIngredient = {
   sufficient: boolean;
   isComposite?: boolean;
   compositeIngredients?: CompositeIngredient[];
+};
+
+type ByproductSuggestion = {
+  name: string;
+  description: string;
+  byproductType: ByproductType;
+  usageIdeas: string[];
 };
 
 type ProductionPreview = {
@@ -207,6 +216,9 @@ export function ProductionStepPhase({
   const [expandedIngredients, setExpandedIngredients] = useState<Set<string>>(new Set());
   const [byproducts, setByproducts] = useState<Byproduct[]>([]);
   const [byproductsExpanded, setByproductsExpanded] = useState(false);
+  const [expandedSuggestionIndex, setExpandedSuggestionIndex] = useState<number | null>(null);
+  const [suggestions, setSuggestions] = useState<ByproductSuggestion[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
   // Reset state when dish changes
   useEffect(() => {
@@ -216,6 +228,9 @@ export function ProductionStepPhase({
     setExpandedIngredients(new Set());
     setByproducts([]);
     setByproductsExpanded(false);
+    setExpandedSuggestionIndex(null);
+    setSuggestions([]);
+    setLoadingSuggestions(false);
   }, [dishId]);
 
   // Load preview when dish or quantity changes
@@ -290,6 +305,26 @@ export function ProductionStepPhase({
     }
   };
 
+  const loadSuggestions = async () => {
+    setLoadingSuggestions(true);
+    try {
+      const { getByproductSuggestionsAction } = await import('@/lib/actions/production.actions');
+      const result = await getByproductSuggestionsAction(dishId, quantity);
+
+      if (result.success && result.data) {
+        setSuggestions(result.data);
+        toast.success(`${result.data.length} suggestions générées`);
+      } else {
+        toast.error(result.error || 'Erreur lors de la génération des suggestions');
+      }
+    } catch (error) {
+      console.error('Error loading suggestions:', error);
+      toast.error('Erreur lors de la génération des suggestions');
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
   const addByproduct = () => {
     const newByproduct: Byproduct = {
       id: `temp-${Date.now()}`,
@@ -299,6 +334,19 @@ export function ProductionStepPhase({
       byproductType: 'WASTE',
     };
     setByproducts([...byproducts, newByproduct]);
+  };
+
+  const addSuggestionAsByproduct = (suggestion: ByproductSuggestion) => {
+    const newByproduct: Byproduct = {
+      id: `temp-${Date.now()}`,
+      name: suggestion.name,
+      quantity: 0,
+      unit: 'KG',
+      byproductType: suggestion.byproductType,
+    };
+    setByproducts([...byproducts, newByproduct]);
+    setByproductsExpanded(true);
+    toast.success(`"${suggestion.name}" ajouté aux sous-produits`);
   };
 
   const updateByproduct = (id: string, updates: Partial<Byproduct>) => {
@@ -364,7 +412,7 @@ export function ProductionStepPhase({
   return (
     <div className="flex h-full flex-col lg:flex-row">
       {/* Left Column - Dish Info & Quantity */}
-      <div className="flex-shrink-0 space-y-6 border-b p-6 lg:w-1/3 lg:border-r lg:border-b-0">
+      <div className="flex-shrink-0 space-y-6 border-b p-6 lg:w-1/3 lg:border-r lg:border-b-0 lg:overflow-y-auto">
         {/* Progress indicator */}
         <div className="text-muted-foreground flex items-center justify-between text-sm">
           <span>
@@ -467,6 +515,109 @@ export function ProductionStepPhase({
               <p className="text-muted-foreground text-sm">
                 Épluchures, parures, os... Suivez vos sous-produits pour compost ou stock.
               </p>
+
+              {/* AI Byproduct Suggestions */}
+              {suggestions.length === 0 ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={loadSuggestions}
+                  disabled={loading || processing || loadingSuggestions}
+                  className="w-full border-purple-300 bg-gradient-to-r from-purple-50 to-indigo-50 text-purple-700 hover:from-purple-100 hover:to-indigo-100"
+                >
+                  {loadingSuggestions ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Génération en cours...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Obtenir des suggestions zéro déchet
+                    </>
+                  )}
+                </Button>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-purple-600" />
+                    <Label className="text-sm font-semibold text-purple-700">
+                      Suggestions Zéro Déchet
+                    </Label>
+                    <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+                      {suggestions.length}
+                    </Badge>
+                  </div>
+                  <div className="space-y-1.5">
+                    {suggestions.map((suggestion, index) => {
+                      const isExpanded = expandedSuggestionIndex === index;
+                      return (
+                        <div
+                          key={index}
+                          className="rounded-lg border border-purple-200 bg-purple-50/50 transition-all hover:bg-purple-50"
+                        >
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedSuggestionIndex(isExpanded ? null : index)
+                            }
+                            className="flex w-full items-center gap-2 p-2 text-left"
+                            disabled={loading || processing}
+                          >
+                            <div className="flex-shrink-0">
+                              {getByproductIcon(suggestion.byproductType)}
+                            </div>
+                            <span className="min-w-0 flex-1 truncate text-sm font-medium text-purple-900">
+                              {suggestion.name}
+                            </span>
+                            {isExpanded ? (
+                              <ChevronUp className="h-4 w-4 flex-shrink-0 text-purple-600" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4 flex-shrink-0 text-purple-600" />
+                            )}
+                          </button>
+
+                          {isExpanded && (
+                            <div className="space-y-2 border-t border-purple-200 p-2">
+                              <p className="text-xs text-purple-800">{suggestion.description}</p>
+                              {suggestion.usageIdeas && suggestion.usageIdeas.length > 0 && (
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-1 text-[10px] font-medium text-purple-700">
+                                    <Lightbulb className="h-2.5 w-2.5" />
+                                    <span>Idées d'utilisation:</span>
+                                  </div>
+                                  <ul className="ml-3 space-y-0.5 text-[10px] text-purple-700">
+                                    {suggestion.usageIdeas.map((idea, ideaIndex) => (
+                                      <li key={ideaIndex} className="list-disc">
+                                        {idea}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  addSuggestionAsByproduct(suggestion);
+                                }}
+                                disabled={loading || processing}
+                                className="h-7 w-full border-purple-300 bg-white text-xs text-purple-700 hover:bg-purple-100"
+                              >
+                                <Plus className="mr-1 h-3 w-3" />
+                                Ajouter comme sous-produit
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {byproducts.length === 0 ? (
                 <Button

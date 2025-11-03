@@ -58,6 +58,9 @@ export function SplashScreen() {
                   src="/animations/rooster.lottie"
                   loop
                   autoplay
+                  onLoadError={(error) => {
+                    console.warn('Animation loading error:', error);
+                  }}
                 />
               </div>
             </motion.div>

@@ -87,7 +87,7 @@ export async function getCompositeProductsForProductionAction(): Promise<ActionR
             baseProduct: true,
           },
         },
-        preparedCategory: true,
+        productCategory: true,
       },
       orderBy: { name: 'asc' },
     });
@@ -97,6 +97,39 @@ export async function getCompositeProductsForProductionAction(): Promise<ActionR
       return { success: false, error: error.message };
     }
     return { success: false, error: 'Failed to fetch composite products' };
+  }
+}
+
+/**
+ * Get a single product by ID with full details for production
+ */
+export async function getProductByIdAction(productId: string): Promise<ActionResult<any>> {
+  try {
+    const { db } = await import('@/lib/db/client');
+    const product = await db.product.findUnique({
+      where: {
+        id: productId,
+      },
+      include: {
+        compositeIngredients: {
+          include: {
+            baseProduct: true,
+          },
+        },
+        productCategory: true,
+      },
+    });
+
+    if (!product) {
+      return { success: false, error: 'Product not found' };
+    }
+
+    return { success: true, data: product };
+  } catch (error) {
+    if (error instanceof Error) {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: 'Failed to fetch product' };
   }
 }
 

@@ -229,10 +229,29 @@ export function BatchProductionPageContent() {
     }
   };
 
-  const handleAddPreparationNow = (preparationId: string) => {
-    // Find the preparation item
-    const item = items.find((i) => i.id === preparationId);
-    if (!item) return;
+  const handleAddPreparationNow = async (preparationId: string) => {
+    // Find the preparation item in loaded items
+    let item = items.find((i) => i.id === preparationId);
+
+    // If not found, try to fetch it dynamically
+    if (!item) {
+      try {
+        const { getProductByIdAction } = await import('@/lib/actions/product.actions');
+        const result = await getProductByIdAction(preparationId);
+
+        if (result.success && result.data) {
+          item = result.data as PreparedIngredient;
+          // Add it to the items cache for future use
+          setItems((prev) => [...prev, item as RecipeItem]);
+        } else {
+          console.error('Failed to fetch product:', result.error);
+          return;
+        }
+      } catch (error) {
+        console.error('Error fetching product:', error);
+        return;
+      }
+    }
 
     // Create the preparation item
     const preparationItem: ProductionItem = {
@@ -320,6 +339,7 @@ export function BatchProductionPageContent() {
 
         {phase === 'step-by-step' && productionQueue[currentIndex] && (
           <ProductionStepPhase
+            key={productionQueue[currentIndex].dishId}
             dishId={productionQueue[currentIndex].dishId}
             dishName={productionQueue[currentIndex].dishName}
             currentIndex={currentIndex}

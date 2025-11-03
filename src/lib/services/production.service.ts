@@ -338,7 +338,8 @@ export async function createProduction(
     // Create production record
     const prod = await tx.production.create({
       data: {
-        dishId,
+        dishId: dish ? dishId : null,
+        productId: compositeProduct ? dishId : null,
         quantityProduced: quantity,
         userId,
         notes,
