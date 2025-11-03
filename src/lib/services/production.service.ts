@@ -292,11 +292,20 @@ export async function calculateProductionIngredients(
 /**
  * Create a production record and update stock
  */
+export type ByproductInput = {
+  name: string;
+  quantity: number;
+  unit: string;
+  byproductType: 'COMPOST' | 'STOCK' | 'WASTE' | 'REUSE';
+  notes?: string;
+};
+
 export async function createProduction(
   dishId: string,
   quantity: number,
   userId?: string,
-  notes?: string
+  notes?: string,
+  byproducts?: ByproductInput[]
 ): Promise<Production> {
   // First, validate we can produce
   const preview = await calculateProductionIngredients(dishId, quantity);
@@ -444,6 +453,22 @@ export async function createProduction(
           source: 'PRODUCTION',
         },
       });
+    }
+
+    // 3. Create byproduct records if any
+    if (byproducts && byproducts.length > 0) {
+      for (const byproduct of byproducts) {
+        await tx.byproduct.create({
+          data: {
+            productionId: prod.id,
+            name: byproduct.name,
+            quantity: byproduct.quantity,
+            unit: byproduct.unit as any, // Cast to Unit enum
+            byproductType: byproduct.byproductType,
+            notes: byproduct.notes,
+          },
+        });
+      }
     }
 
     return prod;

@@ -909,7 +909,7 @@ const frenchTranslations: Record<keyof typeof englishTranslations, string> = {
   'inventory.table.product': 'Produit',
   'inventory.table.quantity': 'Quantité',
   'inventory.table.unit': 'Unité',
-  'inventory.table.parLevel': 'Niveau de Réapprovisionnement',
+  'inventory.table.parLevel': 'Seuil mini',
   'inventory.table.status': 'Statut',
   'inventory.table.unitPrice': 'Prix Unitaire',
   'inventory.table.totalValue': 'Valeur Totale',

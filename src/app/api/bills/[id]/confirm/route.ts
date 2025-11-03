@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { confirmBill, addProductsToBill } from '@/lib/services/bill.service';
 import { db } from '@/lib/db/client';
 import { suggestDisplayName } from '@/lib/utils/ingredients';
+import { suggestProductCategory } from '@/lib/services/category-ai.service';
 
 /**
  * POST /api/bills/[id]/confirm
@@ -64,6 +65,9 @@ export async function POST(
         // Suggest a simplified display name from the full product name
         const displayName = suggestDisplayName(product.productName);
 
+        // Use AI to suggest a category for this product
+        const suggestedCategoryId = await suggestProductCategory(product.productName);
+
         const newProduct = await db.product.create({
           data: {
             name: product.productName,
@@ -74,11 +78,12 @@ export async function POST(
             unitPrice: product.unitPrice,
             totalValue: 0,
             trackable: true,
+            categoryId: suggestedCategoryId, // AI-suggested category
           },
         });
         productId = newProduct.id;
 
-        console.log(`[API] Created product "${product.productName}" with displayName: "${displayName}"`);
+        console.log(`[API] Created product "${product.productName}" with displayName: "${displayName}" and categoryId: "${suggestedCategoryId}"`);
       }
 
       processedProducts.push({

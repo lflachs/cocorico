@@ -9,6 +9,7 @@ import { Package, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { QuantityInput } from '@/components/ui/quantity-input';
 import { UnitSelector } from '@/components/ui/unit-selector';
+import { CategorySelector } from '@/components/inventory/CategorySelector';
 
 /**
  * Inline Ingredient Creator
@@ -39,6 +40,7 @@ export function InlineIngredientCreator({
     unit: initialUnit,
     unitPrice: '',
     initialQuantity: parseFloat(initialQuantity) || 0,
+    categoryId: null as string | null,
   });
 
   // Update initial values when dialog opens
@@ -49,6 +51,7 @@ export function InlineIngredientCreator({
         unit: initialUnit,
         unitPrice: '',
         initialQuantity: parseFloat(initialQuantity) || 0,
+        categoryId: null,
       });
     }
   });
@@ -74,6 +77,9 @@ export function InlineIngredientCreator({
       productFormData.append('unit', formData.unit);
       productFormData.append('unitPrice', formData.unitPrice);
       productFormData.append('trackable', 'true');
+      if (formData.categoryId) {
+        productFormData.append('categoryId', formData.categoryId);
+      }
 
       const { createProductWithoutRedirectAction } = await import('@/lib/actions/product.actions');
       const result = await createProductWithoutRedirectAction(productFormData);
@@ -93,7 +99,8 @@ export function InlineIngredientCreator({
           name: '',
           unit: 'KG',
           unitPrice: '',
-          initialQuantity: '0',
+          initialQuantity: 0,
+          categoryId: null,
         });
       } else {
         toast.error(result.error || 'Erreur lors de la création');
@@ -113,6 +120,7 @@ export function InlineIngredientCreator({
       unit: 'KG',
       unitPrice: '',
       initialQuantity: 0,
+      categoryId: null,
     });
   };
 
@@ -189,6 +197,15 @@ export function InlineIngredientCreator({
             value={formData.initialQuantity}
             onChange={(value) => setFormData({ ...formData, initialQuantity: value })}
             label="Quantité initiale (optionnel)"
+          />
+
+          {/* Category Selector */}
+          <CategorySelector
+            value={formData.categoryId}
+            onChange={(categoryId) => setFormData({ ...formData, categoryId })}
+            label="Catégorie (optionnel)"
+            placeholder="Choisir une catégorie..."
+            categoryType="INVENTORY"
           />
 
           {/* Actions */}

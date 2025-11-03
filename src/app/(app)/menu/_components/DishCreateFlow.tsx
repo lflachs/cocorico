@@ -17,6 +17,7 @@ import { IngredientAutocomplete } from '@/components/ui/ingredient-autocomplete'
 import { InlineIngredientCreator } from './InlineIngredientCreator';
 import { QuantityInput } from '@/components/ui/quantity-input';
 import { UnitSelector } from '@/components/ui/unit-selector';
+import { RecipeCategorySelect } from '@/components/cookbook/RecipeCategorySelect';
 
 /**
  * Dish Create Flow - Full screen, user-friendly dish creation
@@ -28,6 +29,7 @@ type FormData = {
   description: string;
   sellingPrice: string;
   isActive: boolean;
+  categoryId?: string;
 };
 
 type Product = {
@@ -58,6 +60,7 @@ export function DishCreateFlow() {
     description: '',
     sellingPrice: '',
     isActive: true,
+    categoryId: undefined,
   });
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [currentIngredient, setCurrentIngredient] = useState<Ingredient>({
@@ -229,6 +232,7 @@ export function DishCreateFlow() {
         description: formData.description.trim() || undefined,
         sellingPrice: formData.sellingPrice ? parseFloat(formData.sellingPrice) : undefined,
         isActive: formData.isActive,
+        categoryId: formData.categoryId,
         recipeIngredients: ingredientData,
       });
 
@@ -356,6 +360,17 @@ export function DishCreateFlow() {
                     </p>
                   )}
                 </div>
+
+                {/* Chapter Selection */}
+                <RecipeCategorySelect
+                  value={formData.categoryId}
+                  onChange={(value) => handleFieldChange('categoryId', value)}
+                  categoryType="DISH"
+                  label="Chapitre"
+                  placeholder="Sélectionnez un chapitre (optionnel)"
+                  disabled={saving}
+                  className="space-y-3"
+                />
 
                 {/* Active Status */}
                 <div className="space-y-3">

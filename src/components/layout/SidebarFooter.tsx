@@ -27,12 +27,12 @@ export function SidebarFooter({ isCollapsed }: SidebarFooterProps) {
           size="sm"
           onClick={() => setShowSettings(true)}
           className={`w-full cursor-pointer border-sidebar-border bg-transparent text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground ${
-            isCollapsed ? 'justify-center px-0' : 'justify-start gap-3'
-          }`}
+            isCollapsed ? 'lg:justify-center lg:px-0' : 'justify-start gap-3'
+          } justify-start gap-3`}
           title={isCollapsed ? t('permissions.settings') : undefined}
         >
           <Settings className="h-4 w-4" />
-          {!isCollapsed && <span>{t('permissions.settings')}</span>}
+          <span className={isCollapsed ? 'lg:hidden' : ''}>{t('permissions.settings')}</span>
         </Button>
 
         {/* Language Switcher */}
@@ -41,17 +41,17 @@ export function SidebarFooter({ isCollapsed }: SidebarFooterProps) {
           size="sm"
           onClick={toggleLanguage}
           className={`w-full cursor-pointer border-sidebar-border bg-transparent text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground ${
-            isCollapsed ? 'justify-center px-0' : 'justify-start gap-3'
-          }`}
+            isCollapsed ? 'lg:justify-center lg:px-0' : 'justify-start gap-3'
+          } justify-start gap-3`}
           title={isCollapsed ? (language === 'en' ? 'Français' : 'English') : undefined}
         >
           <Globe className="h-4 w-4" />
-          {!isCollapsed && <span>{language === 'en' ? 'Français' : 'English'}</span>}
+          <span className={isCollapsed ? 'lg:hidden' : ''}>{language === 'en' ? 'Français' : 'English'}</span>
         </Button>
 
-        {!isCollapsed && (
-          <div className="text-center text-xs text-sidebar-foreground/60">© 2025 Cocorico</div>
-        )}
+        <div className={`text-center text-xs text-sidebar-foreground/60 ${isCollapsed ? 'lg:hidden' : ''}`}>
+          © 2025 Cocorico
+        </div>
       </div>
 
       {/* Controlled Permission Manager */}

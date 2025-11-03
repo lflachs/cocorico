@@ -60,9 +60,9 @@ model Product {
   isComposite Boolean @default(false) // If true, this product is made from other products
   yieldQuantity Float? // How much this recipe produces (e.g., 1 L of crème pâtissière)
 
-  // Category organization (for prepared ingredients)
+  // Category organization (for all products)
   categoryId String?
-  preparedCategory RecipeCategory? @relation("PreparedProductCategory", fields: [categoryId], references: [id], onDelete: SetNull)
+  productCategory RecipeCategory? @relation("ProductCategory", fields: [categoryId], references: [id], onDelete: SetNull)
 
   // Timestamps
   createdAt DateTime @default(now())
@@ -75,6 +75,7 @@ model Product {
   recipeIngredients RecipeIngredient[]
   disputeProducts   DisputeProduct[]
   dlcs              DLC[]
+  byproducts        Byproduct[]
 
   // Composite product relations
   compositeIngredients CompositeIngredient[] @relation("CompositeProduct") // Ingredients needed to make this product
@@ -378,7 +379,7 @@ model RecipeCategory {
 
   // Relations
   dishes            Dish[]
-  preparedProducts  Product[] @relation("PreparedProductCategory") // For composite products
+  products          Product[] @relation("ProductCategory") // For all products (inventory, prepared, etc.)
 
   @@index([order])
   @@index([parentId])
@@ -389,6 +390,7 @@ model RecipeCategory {
 enum CategoryType {
   DISH                // For recipes/dishes
   PREPARED_INGREDIENT // For prepared/composite ingredients
+  INVENTORY           // For regular inventory products
 }
 
 // Legacy folder system (kept for backward compatibility during migration)
@@ -586,11 +588,45 @@ model Production {
   dish           Dish            @relation(fields: [dishId], references: [id], onDelete: Restrict)
   user           User?           @relation(fields: [userId], references: [id])
   stockMovements StockMovement[]
+  byproducts     Byproduct[]
 
   @@index([dishId])
   @@index([productionDate])
   @@index([userId])
   @@map("productions")
+}
+
+// Byproducts generated during production (e.g., vegetable peelings, bones)
+model Byproduct {
+  id           String        @id @default(cuid())
+  productionId String
+  name         String        // e.g., "Épluchures de carotte"
+  quantity     Float
+  unit         Unit
+  byproductType ByproductType @default(WASTE)
+
+  // Optional: Link to product if the byproduct becomes stock
+  productId    String?
+  product      Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  notes        String?       @db.Text
+
+  // Timestamps
+  createdAt    DateTime      @default(now())
+
+  // Relations
+  production   Production    @relation(fields: [productionId], references: [id], onDelete: Cascade)
+
+  @@index([productionId])
+  @@index([byproductType])
+  @@map("byproducts")
+}
+
+enum ByproductType {
+  COMPOST     // Vegetable peelings, organic waste for composting
+  STOCK       // Bones, scraps for making stock/broth
+  WASTE       // Non-recoverable waste
+  REUSE       // Other reusable byproducts
 }
 
 // ============================================================================

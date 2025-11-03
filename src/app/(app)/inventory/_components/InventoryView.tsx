@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import {
   RefreshCw,
   Download,
@@ -24,6 +25,7 @@ import {
   ArrowDown,
   Clock,
   Info,
+  Menu,
 } from 'lucide-react';
 import { type Product } from '@prisma/client';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
@@ -35,10 +37,11 @@ import { InventorySyncFlow } from './InventorySyncFlow';
 import { StockMovementsList } from './StockMovementsList';
 import { formatQuantity, translateUnit } from '@/lib/utils/unit-converter';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { InventoryCategorySidebar, type InventoryCategory } from '@/components/inventory/InventoryCategorySidebar';
 
 /**
  * Comprehensive Inventory View Component
- * Features: Search, inline editing, stock status, export, responsive table
+ * Features: Search, inline editing, stock status, export, responsive table, category filtering
  */
 
 type InventoryViewProps = {
@@ -49,9 +52,10 @@ type InventoryViewProps = {
     currentStock: number;
     usedInDishes: string[];
   }>;
+  categories: InventoryCategory[];
 };
 
-export function InventoryView({ initialProducts, menuIngredients }: InventoryViewProps) {
+export function InventoryView({ initialProducts, menuIngredients, categories }: InventoryViewProps) {
   const { t } = useLanguage();
   const router = useRouter();
   const pathname = usePathname();
@@ -63,6 +67,8 @@ export function InventoryView({ initialProducts, menuIngredients }: InventoryVie
   const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'critical'>(
     (searchParams.get('filter') as 'all' | 'low' | 'critical') || 'all'
   );
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sortColumn, setSortColumn] = useState<'name' | 'quantity' | 'unit' | 'parLevel' | 'unitPrice' | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
@@ -109,6 +115,11 @@ export function InventoryView({ initialProducts, menuIngredients }: InventoryVie
       filtered = filtered.filter((product) =>
         product.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
+    }
+
+    // Apply category filter
+    if (selectedCategoryId) {
+      filtered = filtered.filter((product) => product.categoryId === selectedCategoryId);
     }
 
     // Apply stock status filter
@@ -164,7 +175,7 @@ export function InventoryView({ initialProducts, menuIngredients }: InventoryVie
     setFilteredProducts(filtered);
     // Clear selection when filters change
     setSelectedProducts(new Set());
-  }, [searchQuery, stockFilter, sortColumn, sortDirection, initialProducts]);
+  }, [searchQuery, selectedCategoryId, stockFilter, sortColumn, sortDirection, initialProducts]);
 
   // Render sortable column header
   const SortableHeader = ({
@@ -699,7 +710,35 @@ Product: ${p.name}
           </Card>
         </TabsContent>
 
-        <TabsContent value="inventory" className="space-y-6 overflow-hidden">
+        <TabsContent value="inventory" className="overflow-hidden">
+          <div className="flex gap-4 h-full">
+            {/* Desktop Sidebar */}
+            <div className="hidden lg:block lg:w-56 flex-shrink-0">
+              <InventoryCategorySidebar
+                categories={categories}
+                selectedCategoryId={selectedCategoryId}
+                onCategorySelect={setSelectedCategoryId}
+                showManageButton={false}
+              />
+            </div>
+
+            {/* Mobile Sidebar */}
+            <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+              <SheetContent side="left" className="p-0 w-64">
+                <InventoryCategorySidebar
+                  categories={categories}
+                  selectedCategoryId={selectedCategoryId}
+                  onCategorySelect={(categoryId) => {
+                    setSelectedCategoryId(categoryId);
+                    setSidebarOpen(false);
+                  }}
+                  showManageButton={false}
+                />
+              </SheetContent>
+            </Sheet>
+
+            {/* Main Content */}
+            <div className="flex-1 space-y-4 min-w-0 overflow-hidden">
           {/* Stock Valuation Summary */}
           <Card className="overflow-hidden">
           <CardHeader className="pb-3">
@@ -740,6 +779,14 @@ Product: ${p.name}
           <CardHeader>
             <CardTitle className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between overflow-hidden">
               <span className="flex items-center gap-2 min-w-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSidebarOpen(true)}
+                  className="lg:hidden h-8 w-8 p-0 shrink-0"
+                >
+                  <Menu className="h-4 w-4" />
+                </Button>
                 <Package className="h-5 w-5 shrink-0" />
                 <span className="truncate">{t('inventory.title')}</span>
               </span>
@@ -1298,6 +1345,8 @@ Product: ${p.name}
             )}
           </CardContent>
         </Card>
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="movements" className="space-y-6 overflow-hidden">
@@ -1311,7 +1360,7 @@ Product: ${p.name}
                 Tous les mouvements de stock (entrées, sorties, ajustements)
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="max-h-[60vh] overflow-y-auto">
               <StockMovementsList />
             </CardContent>
           </Card>

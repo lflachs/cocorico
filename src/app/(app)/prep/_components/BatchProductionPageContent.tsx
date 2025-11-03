@@ -140,7 +140,7 @@ export function BatchProductionPageContent() {
     setCurrentIndex(0);
   };
 
-  const handleProcessCurrent = async (quantity: number, notes?: string, preparationIds?: string[]) => {
+  const handleProcessCurrent = async (quantity: number, notes?: string, preparationIds?: string[], byproducts?: any[]) => {
     const current = productionQueue[currentIndex];
     if (!current) return;
 
@@ -179,6 +179,7 @@ export function BatchProductionPageContent() {
         dishId: current.dishId,
         quantity,
         notes,
+        byproducts,
       });
 
       const completed: CompletedProduction = {
@@ -273,7 +274,7 @@ export function BatchProductionPageContent() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col h-screen bg-background -mx-4 -mt-8 -mb-20">
       {/* Header */}
       <div className="flex-shrink-0 border-b bg-background">
         <div className="flex items-center justify-between px-4 md:px-6 py-4">

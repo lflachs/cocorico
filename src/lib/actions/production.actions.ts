@@ -4,11 +4,20 @@ import { revalidatePath } from 'next/cache';
 import * as productionService from '@/lib/services/production.service';
 import { db } from '@/lib/db/client';
 
+export type ByproductInput = {
+  name: string;
+  quantity: number;
+  unit: string;
+  byproductType: 'COMPOST' | 'STOCK' | 'WASTE' | 'REUSE';
+  notes?: string;
+};
+
 export type CreateProductionInput = {
   dishId: string;
   quantity: number;
   userId?: string;
   notes?: string;
+  byproducts?: ByproductInput[];
 };
 
 /**
@@ -53,7 +62,8 @@ export async function createProductionAction(input: CreateProductionInput) {
       input.dishId,
       input.quantity,
       input.userId,
-      input.notes
+      input.notes,
+      input.byproducts
     );
 
     revalidatePath('/menu');

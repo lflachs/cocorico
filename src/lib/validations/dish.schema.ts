@@ -30,6 +30,7 @@ export const createDishSchema = z.object({
   description: z.string().optional(),
   sellingPrice: z.number().positive('Selling price must be positive').optional(),
   isActive: z.boolean().default(true),
+  categoryId: z.string().optional(),
   recipeIngredients: z.array(recipeIngredientSchema).optional(),
 });
 
@@ -44,6 +45,7 @@ export const updateDishSchema = z.object({
   description: z.string().optional(),
   sellingPrice: z.number().positive('Selling price must be positive').optional(),
   isActive: z.boolean().optional(),
+  categoryId: z.string().optional(),
   recipeIngredients: z.array(recipeIngredientWithIdSchema).optional(),
 });
 

@@ -245,9 +245,9 @@ export function ProductionSelectionPhase({
       {/* Main content area */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Header with search and actions */}
-        <div className="flex-shrink-0 px-4 md:px-6 py-4 border-b space-y-4">
+        <div className="flex-shrink-0 md:px-6 py-4 px-0 md:py-4 py-3 border-b space-y-3 md:space-y-4">
           {/* Mobile: Category button + title */}
-          <div className="flex items-center gap-3 mb-2 lg:hidden">
+          <div className="flex items-center gap-3 mb-2 lg:hidden px-4">
             <Button
               variant="outline"
               size="sm"
@@ -265,7 +265,7 @@ export function ProductionSelectionPhase({
           </div>
 
           {/* Desktop: Title */}
-          <div className="hidden lg:block">
+          <div className="hidden lg:block px-0">
             <h2 className="text-xl font-bold">{getCurrentCategoryName()}</h2>
             <p className="text-sm text-muted-foreground mt-1">
               {filteredItems.length} recette{filteredItems.length !== 1 ? 's' : ''}
@@ -274,8 +274,8 @@ export function ProductionSelectionPhase({
           </div>
 
           {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="relative px-4 md:px-0">
+            <Search className="absolute left-7 md:left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="text"
               placeholder="Rechercher un plat, sauce ou préparation..."
@@ -287,7 +287,7 @@ export function ProductionSelectionPhase({
 
           {/* Selection actions */}
           {filteredItems.length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap px-4 md:px-0">
               <Button
                 variant="outline"
                 size="sm"
@@ -309,7 +309,7 @@ export function ProductionSelectionPhase({
         </div>
 
         {/* Dishes grid */}
-        <div className="flex-1 overflow-auto px-4 md:px-6 py-4">
+        <div className="flex-1 overflow-auto md:px-6 py-4 px-0 md:py-4 py-3 pb-24 md:pb-4">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
@@ -334,7 +334,7 @@ export function ProductionSelectionPhase({
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 px-4 md:px-0">
             {filteredItems.map((item) => {
               const { cost, ingredientCount, margin, sellingPrice } = calculateItemMetrics(item);
               const isSelected = selectedItemIds.includes(item.id);
@@ -361,12 +361,13 @@ export function ProductionSelectionPhase({
         )}
       </div>
 
-        {/* Footer with actions */}
-        <div className="flex-shrink-0 px-4 md:px-6 py-4 border-t bg-muted/30">
-          <div className="flex items-center justify-between gap-4">
+        {/* Footer with actions - Fixed at bottom on mobile */}
+        <div className="flex-shrink-0 md:px-6 py-4 px-0 md:py-4 py-3 border-t bg-background md:bg-muted/30 fixed md:relative bottom-0 left-0 right-0 md:bottom-auto md:left-auto md:right-auto shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] md:shadow-none z-10">
+          <div className="flex items-center justify-between gap-4 px-4 md:px-0">
             <Button
               variant="outline"
               onClick={onCancel}
+              className="flex-1 md:flex-none"
             >
               Annuler
             </Button>
@@ -374,7 +375,7 @@ export function ProductionSelectionPhase({
             <Button
               onClick={handleContinue}
               disabled={selectedItemIds.length === 0}
-              className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90"
+              className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 flex-1 md:flex-none"
             >
               Continuer ({selectedItemIds.length})
             </Button>

@@ -138,35 +138,35 @@ export function StockMovementsList() {
       ) : (
         <div className="space-y-2">
           {filteredMovements.map((movement) => (
-            <Card key={movement.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-4">
+            <Card key={movement.id} className="hover:shadow-md transition-shadow overflow-hidden">
+              <CardContent className="p-3 sm:p-4 overflow-hidden">
+                <div className="flex items-start justify-between gap-2 sm:gap-4 overflow-hidden w-full">
                   {/* Left: Icon + Product Info */}
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <div className="mt-1">{getMovementIcon(movement.movementType)}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold truncate">{movement.product.name}</h3>
-                        <Badge variant="outline" className={getMovementColor(movement.movementType)}>
+                  <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0 overflow-hidden">
+                    <div className="mt-1 shrink-0">{getMovementIcon(movement.movementType)}</div>
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                      <div className="flex items-start gap-2 mb-1">
+                        <h3 className="font-semibold text-sm line-clamp-2 break-words flex-1 min-w-0">{movement.product.name}</h3>
+                        <Badge variant="outline" className={`${getMovementColor(movement.movementType)} shrink-0 text-xs`}>
                           {movement.movementType === 'IN' ? '+' : movement.movementType === 'OUT' ? '-' : '±'}
                           {movement.quantity.toFixed(2)} {movement.product.unit}
                         </Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">{movement.reason}</p>
+                      <p className="text-sm text-muted-foreground line-clamp-2 break-words">{movement.reason}</p>
                       {movement.description && (
-                        <p className="text-xs text-muted-foreground mt-0.5 italic">
+                        <p className="text-xs text-muted-foreground mt-0.5 italic line-clamp-2 break-words">
                           {movement.description}
                         </p>
                       )}
-                      <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {formatDistanceToNow(new Date(movement.movementDate), {
+                      <div className="flex items-center gap-2 sm:gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Clock className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{formatDistanceToNow(new Date(movement.movementDate), {
                             addSuffix: true,
                             locale: fr,
-                          })}
+                          })}</span>
                         </div>
-                        <Badge variant="secondary" className="text-xs">
+                        <Badge variant="secondary" className="text-xs shrink-0">
                           {getSourceLabel(movement.source)}
                         </Badge>
                       </div>

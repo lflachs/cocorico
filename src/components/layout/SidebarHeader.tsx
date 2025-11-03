@@ -12,20 +12,12 @@ export function SidebarHeader({ isCollapsed, onToggleCollapsed }: SidebarHeaderP
   return (
     <div className="border-b border-sidebar-border p-6 relative">
       <div className="flex items-center justify-center gap-2">
-        {isCollapsed ? (
-          <span className="text-4xl" role="img" aria-label="Rooster">
-            🐓
-          </span>
-        ) : (
-          <>
-            <span className="text-4xl" role="img" aria-label="Rooster">
-              🐓
-            </span>
-            <h2 className="text-center text-4xl font-extralight tracking-wide text-sidebar-foreground">
-              Cocorico
-            </h2>
-          </>
-        )}
+        <span className="text-4xl" role="img" aria-label="Rooster">
+          🐓
+        </span>
+        <h2 className={`text-center text-4xl font-extralight tracking-wide text-sidebar-foreground ${isCollapsed ? 'lg:hidden' : ''}`}>
+          Cocorico
+        </h2>
       </div>
 
       {/* Circular toggle button that overflows the sidebar edge */}

@@ -50,10 +50,10 @@ export function NavigationMenu({ isCollapsed, onItemClick }: NavigationMenuProps
                         isActive
                           ? 'bg-sidebar-primary hover:bg-sidebar-primary/90'
                           : 'hover:bg-sidebar-accent'
-                      } ${isCollapsed ? 'justify-center px-0' : 'justify-start gap-3'}`}
+                      } ${isCollapsed ? 'lg:justify-center lg:px-0' : 'justify-start gap-3'} justify-start gap-3`}
                     >
                       <Icon className="h-5 w-5" />
-                      {!isCollapsed && <span className="font-medium">{itemLabel}</span>}
+                      <span className={`font-medium ${isCollapsed ? 'lg:hidden' : ''}`}>{itemLabel}</span>
                     </Button>
                   );
 

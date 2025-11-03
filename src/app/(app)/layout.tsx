@@ -10,7 +10,9 @@ import { PermissionManager } from '@/components/PermissionManager';
 import { useRouter } from 'next/navigation';
 
 // Lazy load VoiceAssistant for better initial page load performance
-const VoiceAssistant = lazy(() => import('@/components/voice/VoiceAssistant').then(module => ({ default: module.VoiceAssistant })));
+const VoiceAssistant = lazy(() =>
+  import('@/components/voice/VoiceAssistant').then((module) => ({ default: module.VoiceAssistant }))
+);
 
 /**
  * App Layout
@@ -52,7 +54,7 @@ function AppContent({ children }: { children: ReactNode }) {
       <div className="flex min-h-0 flex-1 flex-col lg:ml-0">
         <MobileHeader />
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain p-8 px-4 pb-20">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto overscroll-contain p-8">
           <div className="mx-auto min-h-full max-w-7xl space-y-6">{children}</div>
         </main>
       </div>

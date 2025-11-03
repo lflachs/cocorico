@@ -30,7 +30,7 @@ export function ProductionHistoryCard({ productions }: ProductionHistoryCardProp
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground text-center py-8">
+          <p className="text-muted-foreground py-8 text-center text-sm">
             Aucune production récente
           </p>
         </CardContent>
@@ -49,30 +49,28 @@ export function ProductionHistoryCard({ productions }: ProductionHistoryCardProp
           </Badge>
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="max-h-[60vh] overflow-y-auto">
         <div className="space-y-3">
           {productions.map((production) => (
             <div
               key={production.id}
-              className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+              className="bg-card hover:bg-accent/50 flex items-start gap-3 rounded-lg border p-3 transition-colors overflow-hidden"
             >
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <Package className="h-5 w-5 text-primary" />
+              <div className="bg-primary/10 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full">
+                <Package className="text-primary h-5 w-5" />
               </div>
-              <div className="flex-1 min-w-0">
+              <div className="min-w-0 flex-1 overflow-hidden">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">
-                      {production.dishName}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
+                  <div className="min-w-0 flex-1 overflow-hidden">
+                    <p className="text-sm font-medium line-clamp-2 break-words">{production.dishName}</p>
+                    <p className="text-muted-foreground text-xs">
                       {formatDistanceToNow(new Date(production.productionDate), {
                         addSuffix: true,
                         locale: fr,
                       })}
                     </p>
                     {production.notes && (
-                      <p className="text-xs text-muted-foreground mt-1 italic">
+                      <p className="text-muted-foreground mt-1 text-xs italic">
                         {production.notes}
                       </p>
                     )}

@@ -6,6 +6,7 @@ import { cookies } from 'next/headers';
 import { PageHeader } from '@/components/PageHeader';
 import { MissingPriceAlert } from '@/components/MissingPriceAlert';
 import { db } from '@/lib/db/client';
+import { getRecipeCategoriesAction } from '@/lib/actions/recipe-category.actions';
 
 /**
  * Inventory Page (Server Component)
@@ -117,17 +118,20 @@ async function getMenuCriticalIngredients() {
 }
 
 export default async function InventoryPage() {
-  const [products, menuIngredients] = await Promise.all([
+  const [products, menuIngredients, categoriesResult] = await Promise.all([
     getProducts(),
     getMenuCriticalIngredients(),
+    getRecipeCategoriesAction('INVENTORY'),
   ]);
 
   const cookieStore = await cookies();
   const language = (cookieStore.get('language')?.value as 'en' | 'fr') || 'en';
   const t = getTranslation(language);
 
+  const categories = categoriesResult.success ? categoriesResult.data : [];
+
   return (
-    <div className="space-y-6 overflow-hidden">
+    <div className="space-y-4 overflow-hidden">
       {/* Header with gradient background */}
       <PageHeader
         title={t('inventory.title')}
@@ -139,6 +143,7 @@ export default async function InventoryPage() {
       <InventoryView
         initialProducts={products}
         menuIngredients={menuIngredients}
+        categories={categories}
       />
     </div>
   );

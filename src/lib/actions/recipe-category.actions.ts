@@ -19,7 +19,7 @@ export async function getRecipeCategoriesAction(categoryType: CategoryType) {
         _count: {
           select: {
             dishes: categoryType === 'DISH',
-            preparedProducts: categoryType === 'PREPARED_INGREDIENT',
+            products: categoryType === 'PREPARED_INGREDIENT' || categoryType === 'INVENTORY',
           },
         },
         children: {
@@ -27,7 +27,7 @@ export async function getRecipeCategoriesAction(categoryType: CategoryType) {
             _count: {
               select: {
                 dishes: categoryType === 'DISH',
-                preparedProducts: categoryType === 'PREPARED_INGREDIENT',
+                products: categoryType === 'PREPARED_INGREDIENT' || categoryType === 'INVENTORY',
               },
             },
           },

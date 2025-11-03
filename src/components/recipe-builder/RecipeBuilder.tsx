@@ -10,6 +10,7 @@ import { SmartIngredientPicker } from "./SmartIngredientPicker";
 import { IngredientPill } from "./IngredientPill";
 import { QuickComponentCreator } from "./QuickComponentCreator";
 import { RecipeSummary } from "./RecipeSummary";
+import { RecipeCategorySelect } from "@/components/cookbook/RecipeCategorySelect";
 import { ChefHat, Plus } from "lucide-react";
 
 type IngredientItem = {
@@ -38,6 +39,7 @@ export function RecipeBuilder({ open, onOpenChange, onSave }: RecipeBuilderProps
   const [sellingPrice, setSellingPrice] = useState<number | null>(null);
   const [yields, setYields] = useState<number>(1);
   const [yieldsUnit, setYieldsUnit] = useState("portion");
+  const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
 
   // Calculate total cost
   const totalCost = ingredients.reduce((sum, ing) => {
@@ -93,6 +95,7 @@ export function RecipeBuilder({ open, onOpenChange, onSave }: RecipeBuilderProps
       yields,
       yieldsUnit,
       totalCost,
+      categoryId,
     };
     onSave?.(recipe);
     onOpenChange(false);
@@ -196,6 +199,15 @@ export function RecipeBuilder({ open, onOpenChange, onSave }: RecipeBuilderProps
                 />
               </div>
             </div>
+
+            {/* Chapter Selection */}
+            <RecipeCategorySelect
+              value={categoryId}
+              onChange={setCategoryId}
+              categoryType="DISH"
+              label="Chapter"
+              placeholder="Select a chapter (optional)"
+            />
 
             {/* Recipe Summary */}
             <RecipeSummary

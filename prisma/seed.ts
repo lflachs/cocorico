@@ -123,6 +123,79 @@ async function main() {
   console.log('✅ Created 5 suppliers\n');
 
   // ============================================================================
+  // INVENTORY CATEGORIES
+  // ============================================================================
+  console.log('📦 Creating inventory categories...');
+
+  const herbesAromatiquesCat = await prisma.recipeCategory.create({
+    data: {
+      name: 'Herbes aromatiques',
+      icon: '🌿',
+      color: '#228B22',
+      order: 1,
+      categoryType: 'INVENTORY',
+      isPredefined: true,
+    },
+  });
+
+  const condimentsCat = await prisma.recipeCategory.create({
+    data: {
+      name: 'Condiments',
+      icon: '🧂',
+      color: '#DAA520',
+      order: 2,
+      categoryType: 'INVENTORY',
+      isPredefined: true,
+    },
+  });
+
+  const legumesCat = await prisma.recipeCategory.create({
+    data: {
+      name: 'Légumes',
+      icon: '🥬',
+      color: '#3CB371',
+      order: 3,
+      categoryType: 'INVENTORY',
+      isPredefined: true,
+    },
+  });
+
+  const proteinesCat = await prisma.recipeCategory.create({
+    data: {
+      name: 'Protéines',
+      icon: '🥩',
+      color: '#8B4513',
+      order: 4,
+      categoryType: 'INVENTORY',
+      isPredefined: true,
+    },
+  });
+
+  const produitslaitiersCat = await prisma.recipeCategory.create({
+    data: {
+      name: 'Produits laitiers',
+      icon: '🥛',
+      color: '#F0E68C',
+      order: 5,
+      categoryType: 'INVENTORY',
+      isPredefined: true,
+    },
+  });
+
+  const produitsSecsCat = await prisma.recipeCategory.create({
+    data: {
+      name: 'Produits secs',
+      icon: '📦',
+      color: '#D2B48C',
+      order: 6,
+      categoryType: 'INVENTORY',
+      isPredefined: true,
+    },
+  });
+
+  console.log('✅ Created 6 inventory categories\n');
+
+  // ============================================================================
   // BASE PRODUCTS (Ingredients)
   // ============================================================================
   console.log('📦 Creating base products...');
@@ -137,6 +210,7 @@ async function main() {
         trackable: true,
         parLevel: 30,
         category: 'Produits laitiers',
+        categoryId: produitslaitiersCat.id,
         isComposite: false,
       },
     }),
@@ -149,6 +223,7 @@ async function main() {
         trackable: true,
         parLevel: 15,
         category: 'Produits laitiers',
+        categoryId: produitslaitiersCat.id,
         isComposite: false,
       },
     }),
@@ -161,6 +236,7 @@ async function main() {
         trackable: true,
         parLevel: 10,
         category: 'Produits laitiers',
+        categoryId: produitslaitiersCat.id,
         isComposite: false,
       },
     }),
@@ -173,6 +249,7 @@ async function main() {
         trackable: true,
         parLevel: 200,
         category: 'Produits laitiers',
+        categoryId: produitslaitiersCat.id,
         isComposite: false,
       },
     }),
@@ -187,6 +264,7 @@ async function main() {
         trackable: true,
         parLevel: 50,
         category: 'Épicerie sèche',
+        categoryId: produitsSecsCat.id,
         isComposite: false,
       },
     }),
@@ -199,6 +277,7 @@ async function main() {
         trackable: true,
         parLevel: 30,
         category: 'Épicerie sèche',
+        categoryId: produitsSecsCat.id,
         isComposite: false,
       },
     }),
@@ -211,6 +290,7 @@ async function main() {
         trackable: true,
         parLevel: 15,
         category: 'Épicerie sèche',
+        categoryId: condimentsCat.id,
         isComposite: false,
       },
     }),
@@ -225,6 +305,7 @@ async function main() {
         trackable: true,
         parLevel: 20,
         category: 'Viandes',
+        categoryId: proteinesCat.id,
         isComposite: false,
       },
     }),
@@ -237,6 +318,7 @@ async function main() {
         trackable: true,
         parLevel: 5,
         category: 'Viandes',
+        categoryId: proteinesCat.id,
         isComposite: false,
       },
     }),
@@ -249,6 +331,7 @@ async function main() {
         trackable: true,
         parLevel: 8,
         category: 'Viandes',
+        categoryId: proteinesCat.id,
         isComposite: false,
       },
     }),
@@ -261,6 +344,7 @@ async function main() {
         trackable: true,
         parLevel: 6,
         category: 'Viandes',
+        categoryId: proteinesCat.id,
         isComposite: false,
       },
     }),
@@ -273,6 +357,7 @@ async function main() {
         trackable: true,
         parLevel: 4,
         category: 'Viandes',
+        categoryId: proteinesCat.id,
         isComposite: false,
       },
     }),
@@ -286,6 +371,7 @@ async function main() {
         trackable: true,
         parLevel: 10,
         category: 'Poissons',
+        categoryId: proteinesCat.id,
         isComposite: false,
       },
     }),
@@ -297,6 +383,7 @@ async function main() {
         unitPrice: 28.0,
         trackable: true,
         parLevel: 6,
+        categoryId: proteinesCat.id,
         category: 'Poissons',
         isComposite: false,
       },
@@ -310,6 +397,7 @@ async function main() {
         trackable: true,
         parLevel: 8,
         category: 'Poissons',
+        categoryId: proteinesCat.id,
         isComposite: false,
       },
     }),
@@ -322,6 +410,7 @@ async function main() {
         trackable: true,
         parLevel: 3,
         category: 'Poissons',
+        categoryId: proteinesCat.id,
         isComposite: false,
       },
     }),
@@ -336,6 +425,7 @@ async function main() {
         trackable: true,
         parLevel: 50,
         category: 'Légumes',
+        categoryId: legumesCat.id,
         isComposite: false,
       },
     }),
@@ -348,6 +438,7 @@ async function main() {
         trackable: true,
         parLevel: 15,
         category: 'Légumes',
+        categoryId: legumesCat.id,
         isComposite: false,
       },
     }),
@@ -360,6 +451,7 @@ async function main() {
         trackable: true,
         parLevel: 20,
         category: 'Légumes',
+        categoryId: legumesCat.id,
         isComposite: false,
       },
     }),
@@ -372,6 +464,7 @@ async function main() {
         trackable: true,
         parLevel: 15,
         category: 'Légumes',
+        categoryId: legumesCat.id,
         isComposite: false,
       },
     }),
@@ -386,6 +479,7 @@ async function main() {
         trackable: true,
         parLevel: 5,
         category: 'Herbes',
+        categoryId: herbesAromatiquesCat.id,
         isComposite: false,
       },
     }),
@@ -398,6 +492,7 @@ async function main() {
         trackable: true,
         parLevel: 4,
         category: 'Herbes',
+        categoryId: herbesAromatiquesCat.id,
         isComposite: false,
       },
     }),

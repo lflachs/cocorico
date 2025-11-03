@@ -25,6 +25,7 @@ import { CompositeProductWizard } from '../../inventory/_components/CompositePro
 import { Badge } from '@/components/ui/badge';
 import { SUPPORTED_UNITS, UNIT_LABELS } from '@/lib/constants/units';
 import { IngredientAutocomplete } from '@/components/ui/ingredient-autocomplete';
+import { RecipeCategorySelect } from '@/components/cookbook/RecipeCategorySelect';
 
 /**
  * Dish Wizard
@@ -60,6 +61,7 @@ export function DishWizard({ open, onOpenChange, sectionId, onSuccess }: DishWiz
   const [dishName, setDishName] = useState('');
   const [dishDescription, setDishDescription] = useState('');
   const [sellingPrice, setSellingPrice] = useState('');
+  const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
 
   // Current ingredient being added
@@ -98,6 +100,7 @@ export function DishWizard({ open, onOpenChange, sectionId, onSuccess }: DishWiz
     setDishName('');
     setDishDescription('');
     setSellingPrice('');
+    setCategoryId(undefined);
     setIngredients([]);
     setSearchQuery('');
     setSelectedProductId('');
@@ -244,6 +247,7 @@ export function DishWizard({ open, onOpenChange, sectionId, onSuccess }: DishWiz
         description: dishDescription || undefined,
         sellingPrice: sellingPrice ? parseFloat(sellingPrice) : undefined,
         isActive: true,
+        categoryId: categoryId,
         recipeIngredients: ingredientData,
       });
 
@@ -315,6 +319,15 @@ export function DishWizard({ open, onOpenChange, sectionId, onSuccess }: DishWiz
               />
               <p className="text-xs text-gray-500 mt-1">{t('menu.dishWizard.sellingPriceOptional')}</p>
             </div>
+
+            <RecipeCategorySelect
+              value={categoryId}
+              onChange={setCategoryId}
+              categoryType="DISH"
+              label={t('menu.dishWizard.category')}
+              placeholder="Sélectionnez un chapitre (optionnel)"
+              disabled={loading}
+            />
           </div>
 
           {/* Ingredients */}
