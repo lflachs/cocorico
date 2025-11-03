@@ -55,12 +55,9 @@ export function SplashScreen() {
               {/* DotLottie Animation */}
               <div className="h-64 w-64">
                 <DotLottieReact
-                  src="/animations/rooster.lottie"
+                  src="/animations/rooster.json"
                   loop
                   autoplay
-                  onLoadError={(error) => {
-                    console.warn('Animation loading error:', error);
-                  }}
                 />
               </div>
             </motion.div>

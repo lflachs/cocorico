@@ -14,6 +14,8 @@ export type CompositeIngredient = {
   available: number;
   sufficient?: boolean;
   isComposite?: boolean;
+  yieldQuantity?: number | null;
+  productUnit?: string;
   compositeIngredients?: CompositeIngredient[];
 };
 
@@ -25,6 +27,8 @@ export type ProductionIngredient = {
   availableQuantity: number;
   sufficient: boolean;
   isComposite?: boolean;
+  yieldQuantity?: number | null;
+  productUnit?: string;
   compositeIngredients?: CompositeIngredient[];
 };
 
@@ -32,6 +36,7 @@ export type ProductionPreview = {
   dishId: string;
   dishName: string;
   quantityToProduce: number;
+  productUnit?: string; // Unit for composite products (L, KG, etc.)
   ingredients: ProductionIngredient[];
   canProduce: boolean;
   missingIngredients: string[];
@@ -61,6 +66,7 @@ async function calculateCompositeProductIngredients(
                 unit: true,
                 quantity: true,
                 isComposite: true,
+                yieldQuantity: true,
               },
             },
           },
@@ -91,6 +97,8 @@ async function calculateCompositeProductIngredients(
         available: ci.baseProduct.quantity,
         sufficient,
         isComposite: ci.baseProduct.isComposite,
+        yieldQuantity: ci.baseProduct.yieldQuantity,
+        productUnit: ci.baseProduct.unit,
         compositeIngredients: nestedCompositeIngredients,
       });
     }
@@ -117,6 +125,8 @@ async function calculateCompositeProductIngredients(
       availableQuantity: compositeIngredient.baseProduct.quantity,
       sufficient,
       isComposite: compositeIngredient.baseProduct.isComposite,
+      yieldQuantity: compositeIngredient.baseProduct.yieldQuantity,
+      productUnit: compositeIngredient.baseProduct.unit,
       compositeIngredients,
     });
 
@@ -129,6 +139,7 @@ async function calculateCompositeProductIngredients(
     dishId: compositeProduct.id,
     dishName: compositeProduct.name,
     quantityToProduce: quantity,
+    productUnit: compositeProduct.unit,
     ingredients,
     canProduce: missingIngredients.length === 0,
     missingIngredients,
@@ -155,6 +166,7 @@ export async function calculateProductionIngredients(
               unit: true,
               quantity: true,
               isComposite: true,
+              yieldQuantity: true,
             },
           },
         },
@@ -176,6 +188,7 @@ export async function calculateProductionIngredients(
                 unit: true,
                 quantity: true,
                 isComposite: true,
+                yieldQuantity: true,
               },
             },
           },
@@ -216,6 +229,7 @@ export async function calculateProductionIngredients(
                 unit: true,
                 quantity: true,
                 isComposite: true,
+                yieldQuantity: true,
               },
             },
           },
@@ -246,6 +260,8 @@ export async function calculateProductionIngredients(
         available: ci.baseProduct.quantity,
         sufficient,
         isComposite: ci.baseProduct.isComposite,
+        yieldQuantity: ci.baseProduct.yieldQuantity,
+        productUnit: ci.baseProduct.unit,
         compositeIngredients: nestedCompositeIngredients,
       });
     }
@@ -271,6 +287,8 @@ export async function calculateProductionIngredients(
       availableQuantity: recipeIngredient.product.quantity,
       sufficient,
       isComposite: recipeIngredient.product.isComposite,
+      yieldQuantity: recipeIngredient.product.yieldQuantity,
+      productUnit: recipeIngredient.product.unit,
       compositeIngredients,
     });
 
@@ -283,6 +301,7 @@ export async function calculateProductionIngredients(
     dishId: dish.id,
     dishName: dish.name,
     quantityToProduce: quantity,
+    productUnit: undefined, // Dishes are measured in portions, not a specific unit
     ingredients,
     canProduce: missingIngredients.length === 0,
     missingIngredients,

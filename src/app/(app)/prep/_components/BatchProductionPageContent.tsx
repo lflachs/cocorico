@@ -229,7 +229,39 @@ export function BatchProductionPageContent() {
     }
   };
 
-  const handleAddPreparationNow = async (preparationId: string) => {
+  // Helper function to convert between units
+  const convertToBaseUnit = (quantity: number, fromUnit: string, toUnit: string): number => {
+    // If units are the same, no conversion needed
+    if (fromUnit === toUnit) return quantity;
+
+    // Normalize unit strings (handle case variations)
+    const from = fromUnit.toUpperCase();
+    const to = toUnit.toUpperCase();
+
+    // Weight conversions
+    if (from === 'G' && to === 'KG') return quantity / 1000;
+    if (from === 'KG' && to === 'G') return quantity * 1000;
+
+    // Volume conversions
+    if (from === 'ML' && to === 'L') return quantity / 1000;
+    if (from === 'L' && to === 'ML') return quantity * 1000;
+    if (from === 'CL' && to === 'L') return quantity / 100;
+    if (from === 'L' && to === 'CL') return quantity * 100;
+    if (from === 'ML' && to === 'CL') return quantity / 10;
+    if (from === 'CL' && to === 'ML') return quantity * 10;
+
+    // If no conversion is available, return original quantity
+    console.warn(`No conversion available from ${fromUnit} to ${toUnit}`);
+    return quantity;
+  };
+
+  const handleAddPreparationNow = async (
+    preparationId: string,
+    requiredQuantity: number,
+    requiredUnit: string,
+    yieldQuantity?: number | null,
+    productUnit?: string
+  ) => {
     // Find the preparation item in loaded items
     let item = items.find((i) => i.id === preparationId);
 
@@ -253,11 +285,24 @@ export function BatchProductionPageContent() {
       }
     }
 
-    // Create the preparation item
+    // Calculate how many batches to produce based on required quantity and yield
+    // If yieldQuantity is not set, default to 1
+    const effectiveYieldQuantity = yieldQuantity || 1;
+
+    // Convert required quantity to product's base unit if needed
+    const convertedQuantity = productUnit
+      ? convertToBaseUnit(requiredQuantity, requiredUnit, productUnit)
+      : requiredQuantity;
+
+    // Calculate batches needed (required quantity / yield per batch)
+    // We don't round up because fractional batches are allowed
+    const batchesToProduce = convertedQuantity / effectiveYieldQuantity;
+
+    // Create the preparation item with calculated quantity
     const preparationItem: ProductionItem = {
       dishId: preparationId,
       dishName: item.name,
-      quantity: 1,
+      quantity: batchesToProduce,
     };
 
     // Insert the preparation at the current index, pushing the current dish back
@@ -339,9 +384,10 @@ export function BatchProductionPageContent() {
 
         {phase === 'step-by-step' && productionQueue[currentIndex] && (
           <ProductionStepPhase
-            key={productionQueue[currentIndex].dishId}
+            key={`${productionQueue[currentIndex].dishId}-${currentIndex}`}
             dishId={productionQueue[currentIndex].dishId}
             dishName={productionQueue[currentIndex].dishName}
+            initialQuantity={productionQueue[currentIndex].quantity}
             currentIndex={currentIndex}
             totalCount={productionQueue.length}
             onProcess={handleProcessCurrent}

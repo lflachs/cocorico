@@ -9,6 +9,7 @@ import { RecipeCategorySidebar } from '@/components/cookbook/RecipeCategorySideb
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { toast } from 'sonner';
 import type { CategoryType } from '@/components/cookbook/RecipeCategorySidebar';
+import { getAllDescendantCategoryIds, flattenCategories } from '@/lib/utils/category-helpers';
 
 type RecipeCategory = {
   id: string;
@@ -128,9 +129,14 @@ export function ProductionSelectionPhase({
     // Ensure items is always an array
     let filtered = items || [];
 
-    // Filter by category
+    // Filter by category (including subcategories)
     if (selectedCategoryId) {
-      filtered = filtered.filter((item) => item.categoryId === selectedCategoryId);
+      const flatCategories = flattenCategories(categories);
+      const categoryIds = getAllDescendantCategoryIds(selectedCategoryId, flatCategories);
+
+      filtered = filtered.filter((item) =>
+        item.categoryId && categoryIds.includes(item.categoryId)
+      );
     }
 
     // Filter by search
@@ -149,7 +155,7 @@ export function ProductionSelectionPhase({
     }
 
     return filtered;
-  }, [items, searchQuery, selectedCategoryId]);
+  }, [items, searchQuery, selectedCategoryId, categories]);
 
   // Calculate item metrics for display
   const calculateItemMetrics = (item: RecipeItem) => {

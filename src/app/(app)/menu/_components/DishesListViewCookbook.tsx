@@ -12,6 +12,7 @@ import { CategoryManagementDialog } from "@/components/cookbook/CategoryManageme
 import { DishQuickCreateFlow } from "./DishQuickCreateFlow";
 import { DishQuickEditDialog } from "./DishQuickEditDialog";
 import type { CategoryType } from "@/components/cookbook/RecipeCategorySidebar";
+import { getAllDescendantCategoryIds, flattenCategories } from "@/lib/utils/category-helpers";
 
 /**
  * Cookbook-style Dishes List View
@@ -130,13 +131,18 @@ export function DishesListViewCookbook() {
       );
     }
 
-    // Filter by category
+    // Filter by category (including subcategories)
     if (selectedCategoryId) {
-      filtered = filtered.filter((dish) => dish.categoryId === selectedCategoryId);
+      const flatCategories = flattenCategories(categories);
+      const categoryIds = getAllDescendantCategoryIds(selectedCategoryId, flatCategories);
+
+      filtered = filtered.filter((dish) =>
+        dish.categoryId && categoryIds.includes(dish.categoryId)
+      );
     }
 
     return filtered;
-  }, [dishes, searchQuery, selectedCategoryId]);
+  }, [dishes, searchQuery, selectedCategoryId, categories]);
 
   // Group dishes by category for display
   const dishesByCategory = useMemo(() => {

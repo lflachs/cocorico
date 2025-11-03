@@ -12,6 +12,7 @@ import { PreparedIngredientCard } from "@/components/cookbook/PreparedIngredient
 import { CategoryManagementDialog } from "@/components/cookbook/CategoryManagementDialog";
 import { PreparedQuickCreateFlow } from "./PreparedQuickCreateFlow";
 import type { CategoryType } from "@/components/cookbook/RecipeCategorySidebar";
+import { getAllDescendantCategoryIds, flattenCategories } from "@/lib/utils/category-helpers";
 
 /**
  * Cookbook-style Prepared Ingredients List
@@ -129,12 +130,15 @@ export function PreparedIngredientsListCookbook() {
       );
     }
 
-    // Filter by category
+    // Filter by category (including subcategories)
     if (selectedCategoryId) {
-      const category = categories.find((c) => c.id === selectedCategoryId);
-      if (category) {
-        filtered = filtered.filter((product) => product.category === category.name);
-      }
+      // Get all descendant category IDs
+      const flatCategories = flattenCategories(categories);
+      const categoryIds = getAllDescendantCategoryIds(selectedCategoryId, flatCategories);
+
+      filtered = filtered.filter((product) =>
+        product.categoryId && categoryIds.includes(product.categoryId)
+      );
     }
 
     return filtered;

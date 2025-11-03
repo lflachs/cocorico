@@ -45,12 +45,52 @@ export async function getByproductSuggestions(
   console.log('[Byproduct AI] Ingredients:', ingredients.map(i => i.productName).join(', '));
 
   try {
-    // TODO: Re-enable caching later when we have stable French prompts
-    // For now, always generate fresh suggestions
-    console.log('[Byproduct AI] Generating fresh suggestions via LLM (caching disabled)');
+    // Generate hash from ingredient IDs
+    const ingredientIds = ingredients.map((i) => i.productId);
+    const hash = generateIngredientsHash(ingredientIds);
+    console.log('[Byproduct AI] Ingredients hash:', hash);
+
+    // Check for cached suggestions
+    const cachedSuggestion = await db.byproductSuggestion.findUnique({
+      where: { ingredientsHash: hash },
+    });
+
+    if (cachedSuggestion) {
+      console.log('[Byproduct AI] Found cached suggestions');
+
+      // Update usage stats
+      await db.byproductSuggestion.update({
+        where: { id: cachedSuggestion.id },
+        data: {
+          usageCount: cachedSuggestion.usageCount + 1,
+          lastUsedAt: new Date(),
+        },
+      });
+
+      console.log(`[Byproduct AI] Cache hit! Used ${cachedSuggestion.usageCount + 1} times`);
+      return cachedSuggestion.suggestions as ByproductSuggestion[];
+    }
+
+    // No cache hit - generate new suggestions via LLM
+    console.log('[Byproduct AI] No cached suggestions found, generating via LLM');
     const suggestions = await generateSuggestionsViaLLM(ingredients);
 
     console.log(`[Byproduct AI] Generated ${suggestions.length} suggestions`);
+
+    // Cache the suggestions
+    if (suggestions.length > 0) {
+      await db.byproductSuggestion.create({
+        data: {
+          ingredientsHash: hash,
+          ingredientsList: ingredientIds,
+          suggestions: suggestions as any, // Prisma Json type
+          generatedAt: new Date(),
+          lastUsedAt: new Date(),
+          usageCount: 1,
+        },
+      });
+      console.log('[Byproduct AI] Cached suggestions for future use');
+    }
 
     return suggestions;
   } catch (error) {

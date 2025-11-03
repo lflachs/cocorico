@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { translateUnit } from '@/lib/utils/unit-converter';
 
 type CompositeIngredient = {
   id: string;
@@ -37,6 +38,8 @@ type CompositeIngredient = {
   available: number;
   sufficient?: boolean;
   isComposite?: boolean;
+  yieldQuantity?: number | null;
+  productUnit?: string;
   compositeIngredients?: CompositeIngredient[];
 };
 
@@ -48,6 +51,8 @@ type ProductionIngredient = {
   availableQuantity: number;
   sufficient: boolean;
   isComposite?: boolean;
+  yieldQuantity?: number | null;
+  productUnit?: string;
   compositeIngredients?: CompositeIngredient[];
 };
 
@@ -62,6 +67,7 @@ type ProductionPreview = {
   dishId: string;
   dishName: string;
   quantityToProduce: number;
+  productUnit?: string;
   ingredients: ProductionIngredient[];
   canProduce: boolean;
   missingIngredients: string[];
@@ -80,6 +86,7 @@ type Byproduct = {
 type ProductionStepPhaseProps = {
   dishId: string;
   dishName: string;
+  initialQuantity?: number; // Initial quantity from the production queue
   currentIndex: number;
   totalCount: number;
   onProcess: (
@@ -90,7 +97,7 @@ type ProductionStepPhaseProps = {
   ) => Promise<void>;
   onSkip: () => void;
   onBack: () => void;
-  onAddPreparationNow?: (preparationId: string) => void; // New: immediately add prep to queue
+  onAddPreparationNow?: (preparationId: string, requiredQuantity: number, requiredUnit: string, yieldQuantity?: number | null, productUnit?: string) => void; // New: immediately add prep to queue with quantity info
 };
 
 // Recursive component for sub-ingredients
@@ -104,7 +111,7 @@ function SubIngredientItem({
   ingredient: CompositeIngredient;
   expandedIds: Set<string>;
   onToggleExpand: (id: string) => void;
-  onPrepareNow: (id: string) => void;
+  onPrepareNow: (id: string, requiredQuantity: number, requiredUnit: string, yieldQuantity?: number | null, productUnit?: string) => void;
   level?: number;
 }) {
   const isExpanded = expandedIds.has(ingredient.id);
@@ -163,7 +170,7 @@ function SubIngredientItem({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => onPrepareNow(ingredient.id)}
+                onClick={() => onPrepareNow(ingredient.id, ingredient.quantity, ingredient.unit, ingredient.yieldQuantity, ingredient.productUnit)}
                 className={cn(
                   'mt-2 h-7 w-full text-xs',
                   isMissing
@@ -201,6 +208,7 @@ function SubIngredientItem({
 export function ProductionStepPhase({
   dishId,
   dishName,
+  initialQuantity = 1,
   currentIndex,
   totalCount,
   onProcess,
@@ -208,7 +216,7 @@ export function ProductionStepPhase({
   onBack,
   onAddPreparationNow,
 }: ProductionStepPhaseProps) {
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState(initialQuantity);
   const [notes, setNotes] = useState('');
   const [preview, setPreview] = useState<ProductionPreview | null>(null);
   const [loading, setLoading] = useState(false);
@@ -222,7 +230,7 @@ export function ProductionStepPhase({
 
   // Reset state when dish changes
   useEffect(() => {
-    setQuantity(1);
+    setQuantity(initialQuantity);
     setNotes('');
     setPreview(null);
     setExpandedIngredients(new Set());
@@ -231,7 +239,7 @@ export function ProductionStepPhase({
     setExpandedSuggestionIndex(null);
     setSuggestions([]);
     setLoadingSuggestions(false);
-  }, [dishId]);
+  }, [dishId, initialQuantity]);
 
   // Load preview when dish or quantity changes
   useEffect(() => {
@@ -292,15 +300,15 @@ export function ProductionStepPhase({
     });
   };
 
-  const handlePrepareNow = (preparationId: string) => {
+  const handlePrepareNow = (preparationId: string, requiredQuantity: number, requiredUnit: string, yieldQuantity?: number | null, productUnit?: string) => {
     // Immediately switch to preparing this item
     if (onAddPreparationNow) {
-      onAddPreparationNow(preparationId);
+      onAddPreparationNow(preparationId, requiredQuantity, requiredUnit, yieldQuantity, productUnit);
     }
   };
 
   const handleQuantityChange = (newQuantity: number) => {
-    if (newQuantity > 0) {
+    if (newQuantity >= 0.01) {
       setQuantity(newQuantity);
     }
   };
@@ -441,32 +449,43 @@ export function ProductionStepPhase({
             <Button
               variant="outline"
               size="icon"
-              onClick={() => handleQuantityChange(quantity - 1)}
-              disabled={quantity <= 1 || loading || processing}
+              onClick={() => handleQuantityChange(Math.max(0.01, quantity - (preview?.productUnit ? 0.1 : 1)))}
+              disabled={quantity <= 0.01 || loading || processing}
               className="h-12 w-12"
             >
               <Minus className="h-5 w-5" />
             </Button>
-            <Input
-              type="number"
-              min="1"
-              step="1"
-              value={quantity}
-              onChange={(e) => handleQuantityChange(parseInt(e.target.value) || 1)}
-              className="h-12 flex-1 text-center text-2xl font-bold"
-              disabled={loading || processing}
-            />
+            <div className="flex-1 flex items-baseline justify-center gap-2">
+              <Input
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={quantity}
+                onChange={(e) => handleQuantityChange(parseFloat(e.target.value) || 0.01)}
+                className="h-12 flex-1 text-center text-2xl font-bold"
+                disabled={loading || processing}
+              />
+              {preview?.productUnit && (
+                <span className="text-lg font-semibold text-muted-foreground">
+                  {translateUnit(preview.productUnit, quantity)}
+                </span>
+              )}
+            </div>
             <Button
               variant="outline"
               size="icon"
-              onClick={() => handleQuantityChange(quantity + 1)}
+              onClick={() => handleQuantityChange(quantity + (preview?.productUnit ? 0.1 : 1))}
               disabled={loading || processing}
               className="h-12 w-12"
             >
               <Plus className="h-5 w-5" />
             </Button>
           </div>
-          <p className="text-muted-foreground text-sm">Nombre de portions à préparer</p>
+          <p className="text-muted-foreground text-sm">
+            {preview?.productUnit
+              ? `Quantité à produire (en ${translateUnit(preview.productUnit, quantity)})`
+              : 'Nombre de portions à préparer'}
+          </p>
         </div>
 
         {/* Notes */}
@@ -854,7 +873,7 @@ export function ProductionStepPhase({
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handlePrepareNow(ingredient.productId)}
+                              onClick={() => handlePrepareNow(ingredient.productId, ingredient.quantityRequired, ingredient.unit, ingredient.yieldQuantity, ingredient.productUnit)}
                               className={cn(
                                 'mt-3 w-full',
                                 ingredient.sufficient

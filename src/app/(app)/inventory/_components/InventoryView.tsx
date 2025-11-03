@@ -38,6 +38,7 @@ import { StockMovementsList } from './StockMovementsList';
 import { formatQuantity, translateUnit } from '@/lib/utils/unit-converter';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { InventoryCategorySidebar, type InventoryCategory } from '@/components/inventory/InventoryCategorySidebar';
+import { getAllDescendantCategoryIds, flattenCategories } from '@/lib/utils/category-helpers';
 
 /**
  * Comprehensive Inventory View Component
@@ -117,9 +118,14 @@ export function InventoryView({ initialProducts, menuIngredients, categories }: 
       );
     }
 
-    // Apply category filter
+    // Apply category filter (including subcategories)
     if (selectedCategoryId) {
-      filtered = filtered.filter((product) => product.categoryId === selectedCategoryId);
+      const flatCategories = flattenCategories(categories);
+      const categoryIds = getAllDescendantCategoryIds(selectedCategoryId, flatCategories);
+
+      filtered = filtered.filter((product) =>
+        product.categoryId && categoryIds.includes(product.categoryId)
+      );
     }
 
     // Apply stock status filter

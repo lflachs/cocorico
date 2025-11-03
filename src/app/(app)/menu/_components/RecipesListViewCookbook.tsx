@@ -15,6 +15,7 @@ import { DishQuickCreateFlow } from "./DishQuickCreateFlow";
 import { DishQuickEditDialog } from "./DishQuickEditDialog";
 import { PreparedQuickCreateFlow } from "./PreparedQuickCreateFlow";
 import type { CategoryType } from "@/components/cookbook/RecipeCategorySidebar";
+import { getAllDescendantCategoryIds, flattenCategories } from "@/lib/utils/category-helpers";
 
 /**
  * Unified Cookbook-style Recipes List View
@@ -203,7 +204,12 @@ export function RecipesListViewCookbook() {
       );
     }
     if (selectedCategoryId) {
-      filteredDishes = filteredDishes.filter((dish) => dish.categoryId === selectedCategoryId);
+      const flatCategories = flattenCategories(categories);
+      const categoryIds = getAllDescendantCategoryIds(selectedCategoryId, flatCategories);
+
+      filteredDishes = filteredDishes.filter((dish) =>
+        dish.categoryId && categoryIds.includes(dish.categoryId)
+      );
     }
 
     // Filter composite products
@@ -214,10 +220,12 @@ export function RecipesListViewCookbook() {
       );
     }
     if (selectedCategoryId) {
-      const category = categories.find((c) => c.id === selectedCategoryId);
-      if (category) {
-        filteredComposite = filteredComposite.filter((product) => product.category === category.name);
-      }
+      const flatCategories = flattenCategories(categories);
+      const categoryIds = getAllDescendantCategoryIds(selectedCategoryId, flatCategories);
+
+      filteredComposite = filteredComposite.filter((product) =>
+        product.categoryId && categoryIds.includes(product.categoryId)
+      );
     }
 
     // Combine into unified array with type markers
