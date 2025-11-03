@@ -197,47 +197,47 @@
 
   /* Sonner Toast Styles */
   [data-sonner-toast] {
-    background-color: hsl(var(--popover)) !important;
-    border-color: hsl(var(--border)) !important;
+    background-color: var(--popover) !important;
+    border-color: var(--border) !important;
   }
 
   [data-sonner-toast][data-type="success"] {
-    background-color: hsl(var(--success)) !important;
-    border-color: hsl(var(--success)) !important;
+    background-color: var(--success) !important;
+    border-color: var(--success) !important;
   }
 
   [data-sonner-toast][data-type="success"] [data-title],
   [data-sonner-toast][data-type="success"] [data-description] {
-    color: hsl(var(--success-foreground)) !important;
+    color: var(--success-foreground) !important;
   }
 
   [data-sonner-toast][data-type="error"] {
-    background-color: hsl(var(--destructive)) !important;
-    border-color: hsl(var(--destructive)) !important;
+    background-color: var(--destructive) !important;
+    border-color: var(--destructive) !important;
   }
 
   [data-sonner-toast][data-type="error"] [data-title],
   [data-sonner-toast][data-type="error"] [data-description] {
-    color: hsl(var(--destructive-foreground)) !important;
+    color: var(--destructive-foreground) !important;
   }
 
   [data-sonner-toast][data-type="warning"] {
-    background-color: hsl(var(--warning)) !important;
-    border-color: hsl(var(--warning)) !important;
+    background-color: var(--warning) !important;
+    border-color: var(--warning) !important;
   }
 
   [data-sonner-toast][data-type="warning"] [data-title],
   [data-sonner-toast][data-type="warning"] [data-description] {
-    color: hsl(var(--warning-foreground)) !important;
+    color: var(--warning-foreground) !important;
   }
 
   [data-sonner-toast][data-type="info"] {
-    background-color: hsl(var(--info)) !important;
-    border-color: hsl(var(--info)) !important;
+    background-color: var(--info) !important;
+    border-color: var(--info) !important;
   }
 
   [data-sonner-toast][data-type="info"] [data-title],
   [data-sonner-toast][data-type="info"] [data-description] {
-    color: hsl(var(--info-foreground)) !important;
+    color: var(--info-foreground) !important;
   }
 }

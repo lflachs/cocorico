@@ -37,8 +37,8 @@ const UNITS = [
   { value: 'ML', label: 'Millilitres (ML)' },
   { value: 'CL', label: 'Centilitres (CL)' },
   { value: 'PC', label: 'Pièces (PC)' },
-  { value: 'BUNCH', label: 'Botte (BUNCH)' },
-  { value: 'CLOVE', label: 'Gousse (CLOVE)' },
+  { value: 'BUNCH', label: 'Botte' },
+  { value: 'CLOVE', label: 'Gousse' },
 ];
 
 type Product = {

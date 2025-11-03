@@ -35,6 +35,7 @@ import { formatQuantity } from '@/lib/utils/number-format';
 import { type InventoryCategory } from '@/components/inventory/InventoryCategorySidebar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { translateUnit } from '@/lib/utils/unit-converter';
 
 type FlowState = 'START' | 'SYNCING' | 'COMPLETE';
 
@@ -482,7 +483,7 @@ export function InventorySyncFlow({ open, onOpenChange, products, categories, in
                 <div>
                   <h3 className="text-2xl font-bold mb-1">{currentProduct.name}</h3>
                   <div className="flex gap-2 items-center">
-                    <Badge variant="outline">{currentProduct.unit}</Badge>
+                    <Badge variant="outline">{translateUnit(currentProduct.unit)}</Badge>
                     {currentProduct.category && (
                       <Badge variant="secondary">{currentProduct.category}</Badge>
                     )}
@@ -508,7 +509,7 @@ export function InventorySyncFlow({ open, onOpenChange, products, categories, in
                     Quantité actuelle
                   </label>
                   <div className="text-3xl font-mono font-bold text-muted-foreground">
-                    {formatQuantity(currentProduct.quantity)} {currentProduct.unit}
+                    {formatQuantity(currentProduct.quantity)} {translateUnit(currentProduct.unit, currentProduct.quantity)}
                   </div>
                 </div>
 
@@ -533,7 +534,7 @@ export function InventorySyncFlow({ open, onOpenChange, products, categories, in
                       />
                     </div>
                     <div className="text-2xl font-medium text-muted-foreground pb-3">
-                      {currentProduct.unit}
+                      {translateUnit(currentProduct.unit)}
                     </div>
                   </div>
                 </div>
@@ -543,7 +544,7 @@ export function InventorySyncFlow({ open, onOpenChange, products, categories, in
                     <div className="text-sm text-blue-900">
                       <strong>Différence:</strong>{' '}
                       {editedQuantity > currentProduct.quantity ? '+' : ''}
-                      {formatQuantity(editedQuantity - currentProduct.quantity)} {currentProduct.unit}
+                      {formatQuantity(editedQuantity - currentProduct.quantity)} {translateUnit(currentProduct.unit, Math.abs(editedQuantity - currentProduct.quantity))}
                     </div>
                   </div>
                 )}
@@ -577,7 +578,7 @@ export function InventorySyncFlow({ open, onOpenChange, products, categories, in
 
                 {currentProduct.parLevel && (
                   <div className="text-sm text-muted-foreground">
-                    Niveau de stock idéal: {formatQuantity(currentProduct.parLevel)} {currentProduct.unit}
+                    Niveau de stock idéal: {formatQuantity(currentProduct.parLevel)} {translateUnit(currentProduct.unit, currentProduct.parLevel)}
                   </div>
                 )}
               </div>
@@ -741,7 +742,7 @@ export function InventorySyncFlow({ open, onOpenChange, products, categories, in
                     {largestLoss && (
                       <div className="mt-2 p-2 rounded bg-red-100 text-xs">
                         <div className="font-medium text-red-900">{largestLoss.product.name}</div>
-                        <div className="text-red-700">-{formatQuantity(largestLoss.amount)} {largestLoss.product.unit}</div>
+                        <div className="text-red-700">-{formatQuantity(largestLoss.amount)} {translateUnit(largestLoss.product.unit, largestLoss.amount)}</div>
                       </div>
                     )}
                   </div>
@@ -762,7 +763,7 @@ export function InventorySyncFlow({ open, onOpenChange, products, categories, in
                     {largestAddition && (
                       <div className="mt-2 p-2 rounded bg-green-100 text-xs">
                         <div className="font-medium text-green-900">{largestAddition.product.name}</div>
-                        <div className="text-green-700">+{formatQuantity(largestAddition.amount)} {largestAddition.product.unit}</div>
+                        <div className="text-green-700">+{formatQuantity(largestAddition.amount)} {translateUnit(largestAddition.product.unit, largestAddition.amount)}</div>
                       </div>
                     )}
                   </div>
