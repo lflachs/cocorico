@@ -13,6 +13,7 @@ import { DishQuickCreateFlow } from "./DishQuickCreateFlow";
 import { DishQuickEditDialog } from "./DishQuickEditDialog";
 import type { CategoryType } from "@/components/cookbook/RecipeCategorySidebar";
 import { getAllDescendantCategoryIds, flattenCategories } from "@/lib/utils/category-helpers";
+import { calculateProductUnitCost } from "@/lib/utils/product-cost";
 
 /**
  * Cookbook-style Dishes List View
@@ -104,8 +105,9 @@ export function DishesListViewCookbook() {
   // Calculate dish cost and margin
   const calculateDishMetrics = (dish: Dish) => {
     const cost = dish.recipeIngredients?.reduce((sum, ing) => {
-      const unitPrice = ing.product.unitPrice ?? 0;
-      return sum + unitPrice * ing.quantityRequired;
+      // Use recursive calculator for composite products
+      const unitCost = calculateProductUnitCost(ing.product as any);
+      return sum + unitCost * ing.quantityRequired;
     }, 0) ?? 0;
 
     const ingredientCount = dish.recipeIngredients?.length ?? 0;

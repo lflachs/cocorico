@@ -527,6 +527,7 @@ Product: ${p.name}
         open={syncFlowOpen}
         onOpenChange={setSyncFlowOpen}
         products={initialProducts}
+        categories={categories}
         initialConfidence={confidence.level}
       />
 

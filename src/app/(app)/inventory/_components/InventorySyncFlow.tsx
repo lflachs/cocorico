@@ -32,6 +32,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { formatQuantity } from '@/lib/utils/number-format';
+import { type InventoryCategory } from '@/components/inventory/InventoryCategorySidebar';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
 type FlowState = 'START' | 'SYNCING' | 'COMPLETE';
 
@@ -58,6 +61,7 @@ type InventorySyncFlowProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   products: Product[];
+  categories: InventoryCategory[];
   initialConfidence?: number;
 };
 
@@ -67,7 +71,7 @@ type InventorySyncFlowProps = {
  * Flow: START → SYNCING (card carousel) → COMPLETE
  * Products ordered by least recently updated first
  */
-export function InventorySyncFlow({ open, onOpenChange, products, initialConfidence = 0 }: InventorySyncFlowProps) {
+export function InventorySyncFlow({ open, onOpenChange, products, categories, initialConfidence = 0 }: InventorySyncFlowProps) {
   const router = useRouter();
   const [state, setState] = useState<FlowState>('START');
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -76,9 +80,16 @@ export function InventorySyncFlow({ open, onOpenChange, products, initialConfide
   const [confirmedProducts, setConfirmedProducts] = useState<Set<string>>(new Set());
   const [stockChanges, setStockChanges] = useState<Map<string, { oldQty: number; newQty: number; product: Product }>>(new Map());
   const [lossReason, setLossReason] = useState<LossReason | undefined>(undefined);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<Set<string>>(new Set());
+  const [selectAll, setSelectAll] = useState(true);
+
+  // Filter products by selected categories
+  const filteredProducts = selectedCategoryIds.size === 0 || selectAll
+    ? products
+    : products.filter(p => p.categoryId && selectedCategoryIds.has(p.categoryId));
 
   // Calculate estimated time (30 seconds per product as rough estimate)
-  const estimatedMinutes = Math.ceil((products.length * 30) / 60);
+  const estimatedMinutes = Math.ceil((filteredProducts.length * 30) / 60);
 
   // Confetti celebration function
   const celebrateWithConfetti = () => {
@@ -114,20 +125,48 @@ export function InventorySyncFlow({ open, onOpenChange, products, initialConfide
   };
 
   const handleStart = () => {
-    // Sort products by lastVerifiedAt (oldest/never verified first) to prioritize items that need verification
-    const sorted = [...products].sort((a, b) => {
-      // Products never verified (null lastVerifiedAt) should come first
-      if (!a.lastVerifiedAt && !b.lastVerifiedAt) return 0;
-      if (!a.lastVerifiedAt) return -1; // a comes first
-      if (!b.lastVerifiedAt) return 1;  // b comes first
+    // Sort products by category first, then by lastVerifiedAt within each category
+    const sorted = [...filteredProducts].sort((a, b) => {
+      // Sort by category name first
+      const catA = categories.find(c => c.id === a.categoryId)?.name || 'Zzz_Uncategorized';
+      const catB = categories.find(c => c.id === b.categoryId)?.name || 'Zzz_Uncategorized';
 
-      // Both have verification dates, sort by oldest first
+      if (catA !== catB) {
+        return catA.localeCompare(catB);
+      }
+
+      // Within same category, sort by lastVerifiedAt (oldest/never verified first)
+      if (!a.lastVerifiedAt && !b.lastVerifiedAt) return 0;
+      if (!a.lastVerifiedAt) return -1;
+      if (!b.lastVerifiedAt) return 1;
+
       return new Date(a.lastVerifiedAt).getTime() - new Date(b.lastVerifiedAt).getTime();
     });
 
     setSortedProducts(sorted);
     setState('SYNCING');
     setCurrentIndex(0);
+  };
+
+  const handleToggleCategory = (categoryId: string) => {
+    const newSelected = new Set(selectedCategoryIds);
+    if (newSelected.has(categoryId)) {
+      newSelected.delete(categoryId);
+    } else {
+      newSelected.add(categoryId);
+    }
+    setSelectedCategoryIds(newSelected);
+    setSelectAll(false);
+  };
+
+  const handleToggleAll = () => {
+    if (selectAll) {
+      setSelectAll(false);
+      setSelectedCategoryIds(new Set());
+    } else {
+      setSelectAll(true);
+      setSelectedCategoryIds(new Set());
+    }
   };
 
   const [editedQuantity, setEditedQuantity] = useState<number>(0);
@@ -307,6 +346,8 @@ export function InventorySyncFlow({ open, onOpenChange, products, initialConfide
     setConfirmedProducts(new Set());
     setStockChanges(new Map());
     setLossReason(undefined);
+    setSelectedCategoryIds(new Set());
+    setSelectAll(true);
   };
 
   const renderContent = () => {
@@ -328,8 +369,10 @@ export function InventorySyncFlow({ open, onOpenChange, products, initialConfide
             <div className="grid grid-cols-2 gap-3">
               <div className="p-4 rounded-lg border bg-card text-center">
                 <Package className="h-6 w-6 mx-auto mb-2 text-primary" />
-                <div className="text-2xl font-bold">{products.length}</div>
-                <div className="text-xs text-muted-foreground">produits</div>
+                <div className="text-2xl font-bold">{filteredProducts.length}</div>
+                <div className="text-xs text-muted-foreground">
+                  {filteredProducts.length !== products.length ? `sur ${products.length} ` : ''}produits
+                </div>
               </div>
               <div className="p-4 rounded-lg border bg-card text-center">
                 <Clock className="h-6 w-6 mx-auto mb-2 text-orange-500" />
@@ -338,12 +381,55 @@ export function InventorySyncFlow({ open, onOpenChange, products, initialConfide
               </div>
             </div>
 
+            {/* Category selection */}
+            <div className="p-4 rounded-lg border bg-card">
+              <h3 className="font-semibold mb-3 text-sm">Sélectionner les catégories</h3>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                <div className="flex items-center space-x-2 p-2 rounded hover:bg-muted">
+                  <Checkbox
+                    id="select-all"
+                    checked={selectAll}
+                    onCheckedChange={handleToggleAll}
+                  />
+                  <Label
+                    htmlFor="select-all"
+                    className="text-sm font-medium cursor-pointer flex-1"
+                  >
+                    Toutes les catégories ({products.length} produits)
+                  </Label>
+                </div>
+                <div className="border-t pt-2">
+                  {categories.map((category) => {
+                    const categoryProducts = products.filter(p => p.categoryId === category.id);
+                    if (categoryProducts.length === 0) return null;
+
+                    return (
+                      <div key={category.id} className="flex items-center space-x-2 p-2 rounded hover:bg-muted">
+                        <Checkbox
+                          id={`cat-${category.id}`}
+                          checked={selectAll || selectedCategoryIds.has(category.id)}
+                          onCheckedChange={() => handleToggleCategory(category.id)}
+                          disabled={selectAll}
+                        />
+                        <Label
+                          htmlFor={`cat-${category.id}`}
+                          className="text-sm cursor-pointer flex-1"
+                        >
+                          {category.name} ({categoryProducts.length})
+                        </Label>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
             <div className="p-4 rounded-lg border bg-blue-50 border-blue-200">
               <div className="flex gap-2">
                 <Sparkles className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
                 <div className="text-sm text-blue-900">
-                  <strong>Astuce:</strong> Vous n'êtes pas obligé de tout faire d'un coup.
-                  Plus vous en faites, mieux c'est !
+                  <strong>Astuce:</strong> Sélectionnez des catégories spécifiques pour aller plus vite !
+                  Les produits seront groupés par catégorie.
                 </div>
               </div>
             </div>
@@ -352,6 +438,7 @@ export function InventorySyncFlow({ open, onOpenChange, products, initialConfide
               onClick={handleStart}
               size="lg"
               className="w-full h-16 text-lg font-semibold"
+              disabled={filteredProducts.length === 0}
             >
               <RefreshCw className="mr-3 h-6 w-6" />
               Commencer la synchronisation

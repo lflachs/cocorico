@@ -10,6 +10,7 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { toast } from 'sonner';
 import type { CategoryType } from '@/components/cookbook/RecipeCategorySidebar';
 import { getAllDescendantCategoryIds, flattenCategories } from '@/lib/utils/category-helpers';
+import { calculateProductUnitCost } from '@/lib/utils/product-cost';
 
 type RecipeCategory = {
   id: string;
@@ -162,8 +163,9 @@ export function ProductionSelectionPhase({
     // Check if it's a Dish
     if ('recipeIngredients' in item && item.recipeIngredients) {
       const cost = item.recipeIngredients.reduce((sum, ing) => {
-        const unitPrice = ing.product.unitPrice ?? 0;
-        return sum + unitPrice * ing.quantityRequired;
+        // Use recursive calculator for composite products
+        const unitCost = calculateProductUnitCost(ing.product as any);
+        return sum + unitCost * ing.quantityRequired;
       }, 0);
 
       const ingredientCount = item.recipeIngredients.length;
@@ -178,8 +180,9 @@ export function ProductionSelectionPhase({
     // It's a PreparedIngredient
     if ('compositeIngredients' in item && item.compositeIngredients) {
       const cost = item.compositeIngredients.reduce((sum, ing) => {
-        const unitPrice = ing.baseProduct.unitPrice ?? 0;
-        return sum + unitPrice * ing.quantity;
+        // Use recursive calculator for composite products
+        const unitCost = calculateProductUnitCost(ing.baseProduct as any);
+        return sum + unitCost * ing.quantity;
       }, 0);
 
       const ingredientCount = item.compositeIngredients.length;

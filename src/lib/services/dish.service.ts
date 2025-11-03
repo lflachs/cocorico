@@ -49,6 +49,31 @@ export async function getDishes(query: DishQuery = {}): Promise<DishWithRecipe[]
                   unit: true,
                   quantity: true,
                   unitPrice: true,
+                  isComposite: true,
+                  yieldQuantity: true,
+                  compositeIngredients: {
+                    include: {
+                      baseProduct: {
+                        select: {
+                          id: true,
+                          unitPrice: true,
+                          isComposite: true,
+                          yieldQuantity: true,
+                          compositeIngredients: {
+                            include: {
+                              baseProduct: {
+                                select: {
+                                  id: true,
+                                  unitPrice: true,
+                                  isComposite: true,
+                                },
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
                 },
               },
             },
@@ -78,6 +103,31 @@ export async function getDishById(id: string): Promise<DishWithRecipe | null> {
               unit: true,
               quantity: true,
               unitPrice: true,
+              isComposite: true,
+              yieldQuantity: true,
+              compositeIngredients: {
+                include: {
+                  baseProduct: {
+                    select: {
+                      id: true,
+                      unitPrice: true,
+                      isComposite: true,
+                      yieldQuantity: true,
+                      compositeIngredients: {
+                        include: {
+                          baseProduct: {
+                            select: {
+                              id: true,
+                              unitPrice: true,
+                              isComposite: true,
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
             },
           },
         },

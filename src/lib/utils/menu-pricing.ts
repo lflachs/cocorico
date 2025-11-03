@@ -4,6 +4,7 @@
  */
 
 import { PricingType } from '@/lib/validations/menu.schema';
+import { calculateProductUnitCost, type Product } from './product-cost';
 
 export type Dish = {
   id: string;
@@ -12,9 +13,7 @@ export type Dish = {
   recipeIngredients?: {
     id: string;
     quantityRequired: number;
-    product: {
-      unitPrice?: number | null;
-    };
+    product: Product;
   }[];
 };
 
@@ -44,6 +43,7 @@ export type Menu = {
 
 /**
  * Calculate the cost of a single dish based on its ingredients
+ * Handles both simple and composite products recursively
  */
 export function calculateDishCost(dish: Dish): number {
   if (!dish.recipeIngredients || dish.recipeIngredients.length === 0) {
@@ -51,8 +51,9 @@ export function calculateDishCost(dish: Dish): number {
   }
 
   return dish.recipeIngredients.reduce((total, ingredient) => {
-    const unitPrice = ingredient.product?.unitPrice || 0;
-    return total + ingredient.quantityRequired * unitPrice;
+    // Use recursive calculator that handles composite products
+    const unitCost = calculateProductUnitCost(ingredient.product);
+    return total + ingredient.quantityRequired * unitCost;
   }, 0);
 }
 
