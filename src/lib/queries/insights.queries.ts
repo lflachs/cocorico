@@ -279,3 +279,298 @@ export async function getWasteTrends(days: number = 30) {
     a.date.localeCompare(b.date)
   );
 }
+
+/**
+ * Get zero-waste byproduct insights
+ * Track how chefs are using byproducts instead of throwing them away
+ */
+export async function getByproductInsights(days: number = 30) {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+
+  // Get all productions in this period with their ingredients
+  const productions = await db.production.findMany({
+    where: {
+      productionDate: {
+        gte: startDate,
+      },
+    },
+    include: {
+      dish: {
+        include: {
+          recipeIngredients: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  category: true,
+                },
+              },
+            },
+          },
+        },
+      },
+      product: {
+        include: {
+          compositeIngredients: {
+            include: {
+              baseProduct: {
+                select: {
+                  id: true,
+                  name: true,
+                  category: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const totalProductions = productions.length;
+
+  // Get all byproducts created in this period
+  const byproducts = await db.byproduct.findMany({
+    where: {
+      createdAt: {
+        gte: startDate,
+      },
+    },
+    include: {
+      production: {
+        include: {
+          dish: {
+            select: {
+              name: true,
+            },
+          },
+          product: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+
+  // Count productions with byproducts
+  const productionsWithByproducts = new Set(byproducts.map(bp => bp.productionId)).size;
+
+  // Count by type
+  const byType = {
+    COMPOST: byproducts.filter(b => b.byproductType === 'COMPOST').length,
+    STOCK: byproducts.filter(b => b.byproductType === 'STOCK').length,
+    WASTE: byproducts.filter(b => b.byproductType === 'WASTE').length,
+    REUSE: byproducts.filter(b => b.byproductType === 'REUSE').length,
+  };
+
+  // Estimate potential byproducts based on ingredients used (for info only, not score)
+  let estimatedPotentialByproducts = 0;
+
+  for (const production of productions) {
+    const ingredients = production.dish?.recipeIngredients || production.product?.compositeIngredients || [];
+
+    // Categories that typically generate byproducts
+    const byproductCategories = [
+      'Viandes', 'Volailles', 'Poissons', 'Légumes', 'Fruits',
+      'Herbes', 'Aromates', 'Produits frais'
+    ];
+
+    for (const ingredient of ingredients) {
+      const productData = 'product' in ingredient ? ingredient.product : ingredient.baseProduct;
+      const category = productData?.category || '';
+
+      // If ingredient category typically generates byproducts, count it
+      if (byproductCategories.some(cat => category.includes(cat))) {
+        // Average: assume each ingredient can generate 1-2 byproducts
+        estimatedPotentialByproducts += 1.5;
+      }
+    }
+  }
+
+  // Simple tracking rate: % of productions with at least 1 byproduct
+  // Goal: Every production should generate at least some byproducts (peels, bones, scraps...)
+  const trackingRate = totalProductions > 0
+    ? (productionsWithByproducts / totalProductions) * 100
+    : 0;
+
+  // Calculate valorization rate (% of non-waste byproducts among tracked)
+  const totalByproducts = byproducts.length;
+  const nonWasteByproducts = byType.COMPOST + byType.STOCK + byType.REUSE;
+  const valorizationRate = totalByproducts > 0
+    ? (nonWasteByproducts / totalByproducts) * 100
+    : 0;
+
+  // Calculate CO2 impact
+  // Convert units to kg and calculate CO2 savings
+  let totalCO2Saved = 0;
+
+  const convertToKg = (quantity: number, unit: string): number => {
+    const unitUpper = unit.toUpperCase();
+    switch (unitUpper) {
+      case 'KG':
+        return quantity;
+      case 'G':
+        return quantity / 1000;
+      case 'L':
+        return quantity; // Approximate 1L ~ 1kg for organic matter
+      case 'ML':
+      case 'CL':
+        return quantity / 1000;
+      case 'PC':
+      case 'PIECE':
+      case 'BUNCH':
+      case 'CLOVE':
+        // Very conservative estimate: 1 piece/bunch = 0.05kg (50g)
+        return quantity * 0.05;
+      case 'BOX':
+      case 'BAG':
+        // Conservative: 1 box/bag = 0.5kg
+        return quantity * 0.5;
+      case 'PACK':
+        return quantity * 0.3;
+      default:
+        // Unknown unit: very conservative, assume small quantities
+        return quantity * 0.02;
+    }
+  };
+
+  for (const bp of byproducts) {
+    if (bp.byproductType !== 'WASTE') {
+      const quantityInKg = convertToKg(bp.quantity, bp.unit);
+
+      // Conservative CO2 savings estimates per kg
+      // Based on studies: composting vs landfill/incineration
+      const co2PerKg = bp.byproductType === 'STOCK'
+        ? 0.5  // Stock/reuse: conservative estimate (avoids production + transport)
+        : 0.3; // Compost/reuse: saves methane emissions from landfill
+
+      totalCO2Saved += quantityInKg * co2PerKg;
+    }
+  }
+
+  // Concrete comparisons (more conservative)
+  const kmInCar = (totalCO2Saved / 0.12).toFixed(0); // Average car: ~0.12kg CO2/km
+  const treesEquivalent = (totalCO2Saved / 22).toFixed(1); // 1 tree absorbs ~22kg CO2/year
+
+  // Final zero-waste score combines both metrics
+  // If you don't track byproducts, score is low
+  // If you track them but they're all waste, score is low
+  // If you track them and valorize them, score is high
+  const zeroWasteScore = totalProductions > 0
+    ? (trackingRate * 0.5) + (valorizationRate * 0.5)
+    : 0;
+
+  // Group by dish/product
+  const byDish = new Map<string, {
+    dishName: string;
+    byproductCount: number;
+    byproducts: Array<{
+      name: string;
+      quantity: number;
+      unit: string;
+      type: string;
+    }>;
+  }>();
+
+  byproducts.forEach(bp => {
+    const dishName = bp.production?.dish?.name || bp.production?.product?.name || 'Production inconnue';
+    const existing = byDish.get(dishName);
+
+    if (existing) {
+      existing.byproductCount += 1;
+      existing.byproducts.push({
+        name: bp.name,
+        quantity: bp.quantity,
+        unit: bp.unit,
+        type: bp.byproductType,
+      });
+    } else {
+      byDish.set(dishName, {
+        dishName,
+        byproductCount: 1,
+        byproducts: [{
+          name: bp.name,
+          quantity: bp.quantity,
+          unit: bp.unit,
+          type: bp.byproductType,
+        }],
+      });
+    }
+  });
+
+  const topDishesWithByproducts = Array.from(byDish.values())
+    .sort((a, b) => b.byproductCount - a.byproductCount)
+    .slice(0, 10);
+
+  // Most common byproducts
+  const byproductNames = new Map<string, {
+    name: string;
+    count: number;
+    totalQuantity: number;
+    unit: string;
+    types: Set<string>;
+  }>();
+
+  byproducts.forEach(bp => {
+    const existing = byproductNames.get(bp.name);
+    if (existing) {
+      existing.count += 1;
+      existing.totalQuantity += bp.quantity;
+      existing.types.add(bp.byproductType);
+    } else {
+      byproductNames.set(bp.name, {
+        name: bp.name,
+        count: 1,
+        totalQuantity: bp.quantity,
+        unit: bp.unit,
+        types: new Set([bp.byproductType]),
+      });
+    }
+  });
+
+  const topByproducts = Array.from(byproductNames.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10)
+    .map(bp => ({
+      ...bp,
+      types: Array.from(bp.types),
+    }));
+
+  return {
+    summary: {
+      totalByproducts,
+      totalProductions,
+      productionsWithByproducts,
+      estimatedPotentialByproducts: Math.round(estimatedPotentialByproducts),
+      byType,
+      zeroWasteScore,
+      trackingRate,
+      valorizationRate,
+      nonWasteByproducts,
+      wasteByproducts: byType.WASTE,
+      co2Impact: {
+        totalCO2Saved: parseFloat(totalCO2Saved.toFixed(2)),
+        kmInCar: parseInt(kmInCar),
+        treesEquivalent: parseFloat(treesEquivalent),
+      },
+    },
+    topDishesWithByproducts,
+    topByproducts,
+    recentByproducts: byproducts.slice(0, 10).map(bp => ({
+      name: bp.name,
+      quantity: bp.quantity,
+      unit: bp.unit,
+      type: bp.byproductType,
+      dishName: bp.production?.dish?.name || bp.production?.product?.name || 'Production inconnue',
+      date: bp.createdAt,
+      notes: bp.notes,
+    })),
+  };
+}

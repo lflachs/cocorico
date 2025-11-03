@@ -79,6 +79,12 @@ export default async function PrepPage() {
             name: true,
           },
         },
+        product: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
       orderBy: {
         productionDate: 'desc',
@@ -148,8 +154,8 @@ export default async function PrepPage() {
   // Transform productions
   const recentProductions = rawProductions.map((production) => ({
     id: production.id,
-    dishId: production.dishId,
-    dishName: production.dish?.name || 'Unknown',
+    dishId: production.dishId || production.productId || '',
+    dishName: production.dish?.name || production.product?.name || 'Production inconnue',
     quantityProduced: production.quantityProduced,
     productionDate: production.productionDate,
     notes: production.notes,
