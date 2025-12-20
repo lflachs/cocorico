@@ -2,15 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { getOrderPDFBase64, type OrderPDFData } from '@/lib/utils/pdf-generator';
 
-// Initialize Resend with API key from environment
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 /**
  * POST /api/orders/send-email
  * Send order email to supplier with PDF attachment
  */
 export async function POST(request: NextRequest) {
   try {
+    if (!process.env.RESEND_API_KEY) {
+      return NextResponse.json(
+        { error: 'Email service not configured. Please add RESEND_API_KEY to your environment variables.' },
+        { status: 500 }
+      );
+    }
+
+    const resend = new Resend(process.env.RESEND_API_KEY);
+
     const body = await request.json();
     const { orderData, supplierEmail, fromEmail } = body as {
       orderData: OrderPDFData;
@@ -22,13 +28,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Supplier email is required' },
         { status: 400 }
-      );
-    }
-
-    if (!process.env.RESEND_API_KEY) {
-      return NextResponse.json(
-        { error: 'Email service not configured. Please add RESEND_API_KEY to your environment variables.' },
-        { status: 500 }
       );
     }
 
