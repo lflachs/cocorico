@@ -9,10 +9,6 @@ import {
   getExpiringProductsDetails,
 } from '@/lib/actions/cocorico-assistant.actions';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 // Cache for initial greetings
 // Key: hash of briefSummary + language
 // Value: { message: string, timestamp: number }
@@ -26,6 +22,17 @@ const GREETING_CACHE_DURATION = 12 * 60 * 60 * 1000; // 12 hours (half a day)
  */
 export async function POST(request: NextRequest) {
   try {
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { error: 'OpenAI API key not configured' },
+        { status: 500 }
+      );
+    }
+
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+
     const { messages, language = 'fr', initialContext } = await request.json();
 
     console.log('[Voice API] Received conversation request:', {
