@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,6 @@ import { ChefHat, Info, CalendarDays } from 'lucide-react';
 import { ExpiringTodayCard } from './ExpiringTodayCard';
 import { TodaysMenuCard } from './TodaysMenuCard';
 import { StockStatusCard } from './StockStatusCard';
-import { DailyMenuDialog } from './DailyMenuDialog';
 import { ProductionHistoryCard } from './ProductionHistoryCard';
 
 type ExpiringProduct = {
@@ -65,7 +64,29 @@ type PrepPageContentProps = {
 export function PrepPageContent({ expiringProducts, menuItems, lowStockItems, recentProductions }: PrepPageContentProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('production');
-  const [dailyMenuDialogOpen, setDailyMenuDialogOpen] = useState(false);
+  const [hasTodaysMenu, setHasTodaysMenu] = useState(false);
+  const [checkingMenu, setCheckingMenu] = useState(true);
+
+  useEffect(() => {
+    async function checkTodaysMenu() {
+      try {
+        const { getTodaysDailyMenuAction } = await import('@/lib/actions/menu.actions');
+        const result = await getTodaysDailyMenuAction();
+        if (result.success && result.data) {
+          setHasTodaysMenu(true);
+        } else {
+          setHasTodaysMenu(false);
+        }
+      } catch (error) {
+        console.error('Error checking today\'s menu:', error);
+        setHasTodaysMenu(false);
+      } finally {
+        setCheckingMenu(false);
+      }
+    }
+
+    checkTodaysMenu();
+  }, []);
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -115,24 +136,25 @@ export function PrepPageContent({ expiringProducts, menuItems, lowStockItems, re
           <div className="text-center space-y-2">
             <h2 className="text-3xl font-bold">Menu du jour</h2>
             <p className="text-muted-foreground">
-              Définissez le menu du jour en sélectionnant entrée, plat et dessert
+              {hasTodaysMenu
+                ? 'Modifiez le menu du jour déjà enregistré'
+                : 'Définissez le menu du jour en sélectionnant entrée, plat et dessert'}
             </p>
           </div>
           <Button
-            onClick={() => setDailyMenuDialogOpen(true)}
+            onClick={() => router.push('/prep/daily-menu')}
             size="lg"
             className="h-16 px-8 text-lg font-semibold"
+            disabled={checkingMenu}
           >
             <CalendarDays className="mr-2 h-6 w-6" />
-            Configurer le menu du jour
+            {checkingMenu
+              ? 'Chargement...'
+              : hasTodaysMenu
+              ? 'Modifier le menu du jour'
+              : 'Configurer le menu du jour'}
           </Button>
         </div>
-
-        {/* Daily Menu Dialog */}
-        <DailyMenuDialog
-          open={dailyMenuDialogOpen}
-          onOpenChange={setDailyMenuDialogOpen}
-        />
       </TabsContent>
 
       {/* INFO TAB - Today's information */}

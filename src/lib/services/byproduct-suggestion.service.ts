@@ -113,60 +113,77 @@ async function generateSuggestionsViaLLM(
     .map((i) => `- ${i.productName} (${i.quantity} ${i.unit})`)
     .join('\n');
 
-  const prompt = `Tu es un expert culinaire spécialisé dans le zéro déchet et la durabilité en restauration. Voici une liste d'ingrédients utilisés dans une production alimentaire. Identifie les sous-produits et chutes qui seront générés pendant la préparation.
+  const prompt = `Tu es un expert culinaire spécialisé dans le zéro déchet et la durabilité en restauration. Voici une liste d'ingrédients utilisés dans une production alimentaire. Identifie UNIQUEMENT les sous-produits qui peuvent être RÉUTILISÉS dans d'autres recettes.
 
 Ingrédients utilisés :
 ${ingredientsList}
 
-Pour chaque ingrédient, identifie les sous-produits concrets qui seront générés :
-- Épluchures, peaux et parures
-- Os, coquilles ou carcasses
-- Tiges, feuilles et fanes
-- Graines et trognons
-- Toute autre partie comestible ou compostable
+CRITÈRES IMPORTANTS :
+- Ne suggère QUE les sous-produits qui peuvent être utilisés dans d'autres recettes de manière HYGIÉNIQUE
+- N'inclus JAMAIS des ingrédients de base utilisés (farine, beurre, huile, etc.) - ce n'est pas hygiénique
+- Focus uniquement sur les CHUTES et SOUS-PRODUITS générés lors de la préparation
 
-Génère 3 à 5 sous-produits concrets qui seront générés pendant cette préparation. Pour chaque sous-produit, fournis :
-1. name : Le nom du sous-produit lui-même (ex: "Peaux de pommes de terre", "Os de bœuf", "Fanes de carottes")
-   IMPORTANT: Nomme le sous-produit brut, PAS la préparation finale (pas "Bouillon d'os" mais "Os de bœuf")
-2. description : D'où vient ce sous-produit et pourquoi il est généré (1 phrase courte)
-3. byproductType : Parmi : COMPOST, STOCK, REUSE, ou WASTE
-   - COMPOST : Chutes végétales pour le compost
-   - STOCK : Os, coquilles, parures végétales pour faire un fond/bouillon
-   - REUSE : Réutilisation culinaire créative (pesto, chips, poudre, etc.)
-   - WASTE : Déchet non valorisable (à utiliser avec parcimonie)
-4. usageIdeas : Tableau de 2-3 idées concrètes pour valoriser CE sous-produit
+Pour chaque ingrédient, identifie les sous-produits réutilisables ET hygiéniques :
+- Os, coquilles ou carcasses → pour fonds, bouillons, fumets
+- Parures de viande/poisson → pour farces, terrines, rillettes
+- Fanes, tiges et feuilles comestibles → pour pestos, soupes, garnitures
+- Peaux et épluchures comestibles → pour chips, poudres, infusions
+- Chutes nobles → pour sauces, garnitures, accompagnements
+
+❌ NE JAMAIS suggérer : farine, beurre, huile, sel, sucre, épices, ou tout autre ingrédient de base - ce n'est pas hygiénique de les réutiliser
+
+Génère 3 à 5 sous-produits réutilisables qui seront générés pendant cette préparation. Pour chaque sous-produit, fournis :
+1. name : Le nom du sous-produit lui-même (ex: "Os de volaille", "Parures de saumon", "Fanes de carottes")
+   IMPORTANT: Nomme le sous-produit brut, PAS la préparation finale (pas "Bouillon d'os" mais "Os de volaille")
+2. description : D'où vient ce sous-produit et comment il peut être réutilisé en cuisine (1 phrase courte)
+3. byproductType : UNIQUEMENT STOCK ou REUSE
+   - STOCK : Os, coquilles, parures pour faire un fond/bouillon/fumet
+   - REUSE : Réutilisation culinaire directe (pesto, chips, sauce, farce, etc.)
+4. usageIdeas : Tableau de 2-3 recettes ou préparations concrètes utilisant CE sous-produit
 
 Retourne ta réponse sous forme d'objet JSON valide avec un tableau "suggestions". Format exemple :
 {
   "suggestions": [
     {
       "name": "Fanes de carottes",
-      "description": "Feuillage vert des carottes, retiré lors de la préparation.",
+      "description": "Feuillage vert des carottes, parfait pour des préparations aromatiques.",
       "byproductType": "REUSE",
       "usageIdeas": [
         "Faire un pesto avec ail, noix et huile d'olive",
-        "Ajouter dans les soupes et bouillons",
+        "Incorporer dans un potage de légumes",
         "Sécher pour faire une poudre aromatique"
       ]
     },
     {
-      "name": "Os de bœuf",
-      "description": "Os retirés après désossage de la viande.",
+      "name": "Os de volaille",
+      "description": "Os retirés après désossage, base idéale pour fonds et bouillons.",
       "byproductType": "STOCK",
       "usageIdeas": [
-        "Faire un fond de veau brun",
-        "Préparer un bouillon pour risotto",
-        "Conserver pour un pot-au-feu"
+        "Fond blanc de volaille pour sauces",
+        "Bouillon pour risotto ou pilaf",
+        "Base pour soupe ou pot-au-feu"
+      ]
+    },
+    {
+      "name": "Parures de saumon",
+      "description": "Chutes de saumon après découpe, excellentes pour des préparations.",
+      "byproductType": "REUSE",
+      "usageIdeas": [
+        "Rillettes de saumon",
+        "Farce pour raviolis ou wontons",
+        "Tartare ou ceviche"
       ]
     }
   ]
 }
 
 Important :
-- Nomme les SOUS-PRODUITS BRUTS (épluchures, os, fanes), pas les recettes
-- Concentre-toi uniquement sur les sous-produits réellement générés par ces ingrédients
-- Privilégie REUSE et STOCK plutôt que COMPOST quand c'est possible
-- Les usageIdeas expliquent comment valoriser le sous-produit
+- Ne suggère QUE des sous-produits RÉUTILISABLES ET HYGIÉNIQUES (types STOCK ou REUSE uniquement)
+- Nomme les SOUS-PRODUITS BRUTS (os, parures, fanes), pas les recettes finales
+- N'inclus JAMAIS des ingrédients de base (farine, beurre, huile, sel, sucre, épices) - ce n'est pas hygiénique
+- Concentre-toi uniquement sur les CHUTES et sous-produits réellement générés lors de la préparation
+- Les usageIdeas doivent être des recettes/préparations concrètes et réalistes
+- Exclus tout ce qui est compost, déchet, ou non-hygiénique
 - Retourne UNIQUEMENT du JSON valide avec la structure ci-dessus, sans formatage markdown
 - TOUTES les suggestions doivent être EN FRANÇAIS`;
 
@@ -177,7 +194,7 @@ Important :
       messages: [
         {
           role: 'system',
-          content: 'Tu es un expert culinaire spécialisé dans le zéro déchet. Retourne uniquement du JSON valide sans texte additionnel ni formatage markdown. Toutes tes suggestions doivent être en français.',
+          content: 'Tu es un expert culinaire spécialisé dans le zéro déchet et la réutilisation des sous-produits en cuisine. Suggère UNIQUEMENT des sous-produits réutilisables dans d\'autres recettes (types STOCK ou REUSE). Retourne uniquement du JSON valide sans texte additionnel ni formatage markdown. Toutes tes suggestions doivent être en français.',
         },
         {
           role: 'user',

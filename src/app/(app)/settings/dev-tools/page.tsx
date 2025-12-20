@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 export default function DevToolsPage() {
   const [isSeeding, setIsSeeding] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const [seedOutput, setSeedOutput] = useState<string>('');
 
   const handleSeed = async () => {
@@ -82,6 +83,45 @@ export default function DevToolsPage() {
     }
   };
 
+  const handleClearSession = async () => {
+    if (
+      !confirm(
+        '⚠️ This will log you out and clear all cookies.\n\nYou will need to sign in again.\n\nContinue?'
+      )
+    ) {
+      return;
+    }
+
+    setIsClearing(true);
+
+    try {
+      const response = await fetch('/api/admin/clear-session', {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || data.details || 'Failed to clear session');
+      }
+
+      toast.success('Session cleared!', {
+        description: 'Redirecting to login...',
+      });
+
+      // Redirect to login after a short delay
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 1000);
+    } catch (error: any) {
+      console.error('Error clearing session:', error);
+      toast.error('Failed to clear session', {
+        description: error.message,
+      });
+      setIsClearing(false);
+    }
+  };
+
   return (
     <div className="w-full space-y-4 overflow-hidden sm:space-y-6">
       <PageHeader
@@ -90,7 +130,7 @@ export default function DevToolsPage() {
         icon={Database}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {/* Seed Database Card */}
         <Card>
           <CardHeader>
@@ -186,6 +226,56 @@ export default function DevToolsPage() {
                 <>
                   <Trash2 className="mr-2 h-4 w-4" />
                   Reset Database
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Clear Session Card */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-orange-600" />
+              <CardTitle>Clear Session</CardTitle>
+            </div>
+            <CardDescription>
+              Clear all cookies and session data. Useful after database reset.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-lg bg-orange-50 p-4 text-sm text-orange-800">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                <div className="space-y-1">
+                  <p className="font-medium">This will:</p>
+                  <ul className="ml-4 list-disc space-y-0.5">
+                    <li>Log you out completely</li>
+                    <li>Clear restaurant selection</li>
+                    <li>Clear all auth cookies</li>
+                    <li>Redirect to login page</li>
+                  </ul>
+                  <p className="mt-2">Use this after resetting the database to start completely fresh.</p>
+                </div>
+              </div>
+            </div>
+
+            <Button
+              onClick={handleClearSession}
+              disabled={isClearing}
+              variant="outline"
+              className="w-full border-orange-600 text-orange-600 hover:bg-orange-50"
+              size="lg"
+            >
+              {isClearing ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Clearing...
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="mr-2 h-4 w-4" />
+                  Clear Session & Logout
                 </>
               )}
             </Button>

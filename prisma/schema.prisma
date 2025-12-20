@@ -18,12 +18,13 @@ model User {
   id            String    @id @default(cuid())
   email         String    @unique
   name          String?
-  passwordHash  String
+  passwordHash  String?   // Optional for OAuth users
   role          UserRole  @default(USER)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   // Relations
+  restaurants    UserRestaurant[]
   stockMovements StockMovement[]
   sales          Sale[]
   productions    Production[]
@@ -38,11 +39,70 @@ enum UserRole {
 }
 
 // ============================================================================
+// RESTAURANTS & MULTI-TENANCY
+// ============================================================================
+
+model Restaurant {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  users              UserRestaurant[]
+  products           Product[]
+  suppliers          Supplier[]
+  bills              Bill[]
+  disputes           Dispute[]
+  recipeCategories   RecipeCategory[]
+  dishFolders        DishFolder[]
+  dishes             Dish[]
+  menus              Menu[]
+  menuSections       MenuSection[]
+  sales              Sale[]
+  productions        Production[]
+  byproducts         Byproduct[]
+  byproductSuggestions ByproductSuggestion[]
+  dailyMenuConfigs   DailyMenuConfig[]
+  dlcs               DLC[]
+  priceHistory       PriceHistory[]
+
+  @@index([slug])
+  @@map("restaurants")
+}
+
+model UserRestaurant {
+  id           String   @id @default(cuid())
+  userId       String
+  restaurantId String
+  role         RestaurantRole @default(MEMBER)
+  createdAt    DateTime @default(now())
+
+  // Relations
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, restaurantId])
+  @@index([userId])
+  @@index([restaurantId])
+  @@map("user_restaurants")
+}
+
+enum RestaurantRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+// ============================================================================
 // INVENTORY & PRODUCTS
 // ============================================================================
 
 model Product {
   id         String    @id @default(cuid())
+  restaurantId String
   name       String    // Full/official name (e.g., "Tomates rondes bio Fournisseur X")
   displayName String?  // Simplified searchable name (e.g., "Tomate")
   aliases    String[]  @default([]) // Alternative names for searching (e.g., ["Tomato", "Tomates"])
@@ -70,6 +130,7 @@ model Product {
   lastVerifiedAt DateTime? // Last time this product was verified during inventory sync
 
   // Relations
+  restaurant        Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   movements         StockMovement[]
   billProducts      BillProduct[]
   recipeIngredients RecipeIngredient[]
@@ -85,6 +146,7 @@ model Product {
   // Price history
   priceHistory         PriceHistory[]
 
+  @@index([restaurantId])
   @@index([name])
   @@index([displayName])
   @@index([category])
@@ -210,7 +272,8 @@ enum LossReason {
 
 model Supplier {
   id          String   @id @default(cuid())
-  name        String   @unique
+  restaurantId String
+  name        String
   contactName String?
   email       String?
   phone       String?
@@ -223,10 +286,13 @@ model Supplier {
   updatedAt DateTime @updatedAt
 
   // Relations
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   bills Bill[]
   dlcs  DLC[]
   priceHistory PriceHistory[]
 
+  @@unique([restaurantId, name])
+  @@index([restaurantId])
   @@index([name])
   @@index([isActive])
   @@map("suppliers")
@@ -238,6 +304,7 @@ model Supplier {
 
 model Bill {
   id          String     @id @default(cuid())
+  restaurantId String
   filename    String
   supplierId  String?
   billDate    DateTime?
@@ -250,12 +317,14 @@ model Bill {
   updatedAt DateTime @updatedAt
 
   // Relations
+  restaurant     Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   supplier       Supplier?       @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   products       BillProduct[]
   disputes       Dispute[]
   stockMovements StockMovement[]
   priceChanges   PriceHistory[]
 
+  @@index([restaurantId])
   @@index([billDate])
   @@index([supplierId])
   @@index([status])
@@ -295,6 +364,7 @@ model BillProduct {
 
 model Dispute {
   id             String        @id @default(cuid())
+  restaurantId   String
   billId         String
   type           DisputeType
   status         DisputeStatus @default(OPEN)
@@ -311,10 +381,12 @@ model Dispute {
   updatedAt DateTime @updatedAt
 
   // Relations
+  restaurant     Restaurant        @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   bill           Bill              @relation(fields: [billId], references: [id], onDelete: Cascade)
   products       DisputeProduct[]
   stockMovements StockMovement[]
 
+  @@index([restaurantId])
   @@index([billId])
   @@index([status])
   @@map("disputes")
@@ -360,6 +432,7 @@ model DisputeProduct {
 // New hierarchical category system for organizing recipes
 model RecipeCategory {
   id        String   @id @default(cuid())
+  restaurantId String
   name      String
   icon      String?  // Emoji or icon identifier
   color     String?  // Hex color for visual organization
@@ -379,9 +452,11 @@ model RecipeCategory {
   updatedAt DateTime @updatedAt
 
   // Relations
+  restaurant        Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   dishes            Dish[]
   products          Product[] @relation("ProductCategory") // For all products (inventory, prepared, etc.)
 
+  @@index([restaurantId])
   @@index([order])
   @@index([parentId])
   @@index([categoryType])
@@ -397,6 +472,7 @@ enum CategoryType {
 // Legacy folder system (kept for backward compatibility during migration)
 model DishFolder {
   id        String   @id @default(cuid())
+  restaurantId String
   name      String
   color     String?  // Optional color for visual organization
   order     Int      @default(0) // Display order
@@ -404,14 +480,17 @@ model DishFolder {
   updatedAt DateTime @updatedAt
 
   // Relations
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   dishes Dish[]
 
+  @@index([restaurantId])
   @@index([order])
   @@map("dish_folders")
 }
 
 model Dish {
   id          String  @id @default(cuid())
+  restaurantId String
   name        String
   description String? @db.Text
   isActive    Boolean @default(true)
@@ -432,11 +511,14 @@ model Dish {
   updatedAt DateTime @updatedAt
 
   // Relations
+  restaurant        Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   recipeIngredients RecipeIngredient[]
   sales             Sale[]
   productions       Production[]
   menuDishes        MenuDish[]
+  dailyMenuConfigs  DailyMenuConfig[]
 
+  @@index([restaurantId])
   @@index([name])
   @@index([categoryId])
   @@index([folderId])
@@ -464,6 +546,7 @@ model RecipeIngredient {
 
 model Menu {
   id          String   @id @default(cuid())
+  restaurantId String
   name        String
   description String?  @db.Text
   startDate   DateTime?
@@ -484,8 +567,10 @@ model Menu {
   updatedAt DateTime @updatedAt
 
   // Relations
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   sections MenuSection[]
 
+  @@index([restaurantId])
   @@index([name])
   @@index([menuType])
   @@map("menus")
@@ -493,6 +578,7 @@ model Menu {
 
 model MenuSection {
   id           String @id @default(cuid())
+  restaurantId String
   menuId       String
   name         String
   displayOrder Int
@@ -505,9 +591,11 @@ model MenuSection {
   createdAt DateTime @default(now())
 
   // Relations
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   menu  Menu       @relation(fields: [menuId], references: [id], onDelete: Cascade)
   dishes MenuDish[]
 
+  @@index([restaurantId])
   @@index([menuId])
   @@map("menu_sections")
 }
@@ -550,6 +638,7 @@ enum PricingType {
 
 model Sale {
   id           String   @id @default(cuid())
+  restaurantId String
   dishId       String
   quantitySold Int
   saleDate     DateTime @default(now())
@@ -560,10 +649,12 @@ model Sale {
   createdAt DateTime @default(now())
 
   // Relations
+  restaurant     Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   dish           Dish            @relation(fields: [dishId], references: [id], onDelete: Restrict)
   user           User?           @relation(fields: [userId], references: [id])
   stockMovements StockMovement[]
 
+  @@index([restaurantId])
   @@index([dishId])
   @@index([saleDate])
   @@index([userId])
@@ -576,6 +667,7 @@ model Sale {
 
 model Production {
   id               String   @id @default(cuid())
+  restaurantId     String
   dishId           String?
   productId        String?  // For composite products (prepared ingredients)
   quantityProduced Float
@@ -587,12 +679,14 @@ model Production {
   createdAt DateTime @default(now())
 
   // Relations
+  restaurant     Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   dish           Dish?           @relation(fields: [dishId], references: [id], onDelete: Restrict)
   product        Product?        @relation(fields: [productId], references: [id], onDelete: Restrict)
   user           User?           @relation(fields: [userId], references: [id])
   stockMovements StockMovement[]
   byproducts     Byproduct[]
 
+  @@index([restaurantId])
   @@index([dishId])
   @@index([productId])
   @@index([productionDate])
@@ -603,6 +697,7 @@ model Production {
 // Byproducts generated during production (e.g., vegetable peelings, bones)
 model Byproduct {
   id           String        @id @default(cuid())
+  restaurantId String
   productionId String
   name         String        // e.g., "Épluchures de carotte"
   quantity     Float
@@ -619,8 +714,10 @@ model Byproduct {
   createdAt    DateTime      @default(now())
 
   // Relations
+  restaurant   Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   production   Production    @relation(fields: [productionId], references: [id], onDelete: Cascade)
 
+  @@index([restaurantId])
   @@index([productionId])
   @@index([byproductType])
   @@map("byproducts")
@@ -636,6 +733,7 @@ enum ByproductType {
 // Cache for LLM-generated byproduct suggestions (zero-waste recommendations)
 model ByproductSuggestion {
   id               String   @id @default(cuid())
+  restaurantId     String
   ingredientsHash  String   @unique // Hash of sorted ingredient IDs for lookup
   ingredientsList  String[] // Array of product IDs for reference
   suggestions      Json     // Array of {name, description, byproductType, usageIdeas}
@@ -648,9 +746,49 @@ model ByproductSuggestion {
   // Timestamps
   updatedAt        DateTime @updatedAt
 
+  // Relations
+  restaurant       Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
   @@index([ingredientsHash])
   @@index([lastUsedAt])
   @@map("byproduct_suggestions")
+}
+
+// ============================================================================
+// DAILY MENU CONFIGURATION (Menu du jour)
+// ============================================================================
+
+// Daily Menu Configuration (Menu du jour)
+// Stores which dish/recipe is configured as menu du jour for a specific date
+// Stock is deducted when the menu is sold, not when configured
+model DailyMenuConfig {
+  id           String   @id @default(cuid())
+  restaurantId String
+  date         DateTime @db.Date // Date this menu is for
+  dishId       String?  // Reference to the dish being used (optional - can be custom)
+
+  // Ingredient configuration for this specific day
+  // Can be from the dish recipe or custom ingredients
+  ingredients  Json     // Array of {productId, productName, quantityPerServing, unit}
+
+  // Display information
+  name         String?  // Optional custom name (defaults to dish name)
+  description  String?  @db.Text
+
+  // Timestamps
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  dish         Dish?      @relation(fields: [dishId], references: [id], onDelete: SetNull)
+
+  // One menu du jour config per restaurant per day
+  @@unique([restaurantId, date])
+  @@index([restaurantId])
+  @@index([date])
+  @@map("daily_menu_configs")
 }
 
 // ============================================================================
@@ -659,6 +797,7 @@ model ByproductSuggestion {
 
 model DLC {
   id              String   @id @default(cuid())
+  restaurantId    String
   productId       String
   expirationDate  DateTime
   quantity        Float
@@ -679,9 +818,11 @@ model DLC {
   updatedAt       DateTime @updatedAt
 
   // Relations
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   product  Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
   supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
 
+  @@index([restaurantId])
   @@index([productId])
   @@index([expirationDate])
   @@index([status])
@@ -702,6 +843,7 @@ enum DLCStatus {
 
 model PriceHistory {
   id          String   @id @default(cuid())
+  restaurantId String
   productId   String
   product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
@@ -723,6 +865,10 @@ model PriceHistory {
 
   changedAt   DateTime @default(now())
 
+  // Relations
+  restaurant  Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
   @@index([productId])
   @@index([changedAt])
   @@index([billId])

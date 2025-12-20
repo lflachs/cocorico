@@ -7,9 +7,19 @@ import type { ProductInput, UpdateProductInput, CompositeProductInput } from '@/
  * Handles all product-related business logic
  */
 
-export async function createProduct(data: ProductInput): Promise<Product> {
+export async function createProduct(data: ProductInput, restaurantId?: string): Promise<Product> {
+  // Get restaurant ID if not provided
+  if (!restaurantId) {
+    const { getSelectedRestaurantId } = await import('@/lib/actions/restaurant.actions');
+    restaurantId = await getSelectedRestaurantId();
+    if (!restaurantId) {
+      throw new Error('No restaurant selected');
+    }
+  }
+
   return await db.product.create({
     data: {
+      restaurantId,
       name: data.name,
       quantity: data.quantity,
       unit: data.unit,
@@ -29,8 +39,9 @@ export async function updateProduct(id: string, data: UpdateProductInput): Promi
   });
 }
 
-export async function getAllProducts(): Promise<Product[]> {
+export async function getAllProducts(restaurantId?: string): Promise<Product[]> {
   return await db.product.findMany({
+    where: restaurantId ? { restaurantId } : undefined,
     orderBy: { name: 'asc' },
   });
 }
@@ -50,9 +61,10 @@ export async function deleteProduct(id: string): Promise<void> {
   });
 }
 
-export async function searchProducts(query: string): Promise<Product[]> {
+export async function searchProducts(query: string, restaurantId?: string): Promise<Product[]> {
   return await db.product.findMany({
     where: {
+      ...(restaurantId && { restaurantId }),
       name: {
         contains: query,
         mode: 'insensitive',
@@ -68,9 +80,19 @@ export async function searchProducts(query: string): Promise<Product[]> {
  * Handles composite product creation and management
  */
 
-export async function createCompositeProduct(data: CompositeProductInput) {
+export async function createCompositeProduct(data: CompositeProductInput, restaurantId?: string) {
+  // Get restaurant ID if not provided
+  if (!restaurantId) {
+    const { getSelectedRestaurantId } = await import('@/lib/actions/restaurant.actions');
+    restaurantId = await getSelectedRestaurantId();
+    if (!restaurantId) {
+      throw new Error('No restaurant selected');
+    }
+  }
+
   return await db.product.create({
     data: {
+      restaurantId,
       name: data.name,
       quantity: 0, // Initial quantity is 0
       unit: data.unit,

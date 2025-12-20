@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ocrService } from '@/lib/services/ocr.service';
 import { createBill, addProductsToBill } from '@/lib/services/bill.service';
+import { getSelectedRestaurantId } from '@/lib/actions/restaurant.actions';
 
 /**
  * POST /api/bills/process
@@ -9,6 +10,15 @@ import { createBill, addProductsToBill } from '@/lib/services/bill.service';
 
 export async function POST(request: NextRequest) {
   try {
+    // Get current restaurant
+    const restaurantId = await getSelectedRestaurantId();
+    if (!restaurantId) {
+      return NextResponse.json(
+        { error: 'No restaurant selected' },
+        { status: 403 }
+      );
+    }
+
     const formData = await request.formData();
     const files = formData.getAll('files');
 
@@ -50,6 +60,7 @@ export async function POST(request: NextRequest) {
 
       // Create bill in database
       const bill = await createBill({
+        restaurantId,
         filename: file.name,
         supplier: ocrResult.supplierName,
         billDate: ocrResult.date,

@@ -228,6 +228,293 @@ export async function setTodayDailyMenuAction(input: {
 }
 
 /**
+ * Check if menu du jour configuration exists for today
+ */
+export async function getTodaysDailyMenuAction() {
+  try {
+    const { db } = await import('@/lib/db/client');
+    const { getSelectedRestaurantId } = await import('@/lib/actions/restaurant.actions');
+
+    const restaurantId = await getSelectedRestaurantId();
+    if (!restaurantId) {
+      return { success: false, error: 'No restaurant selected' };
+    }
+
+    // Get today's date (start of day)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Find today's daily menu configuration
+    const config = await db.dailyMenuConfig.findUnique({
+      where: {
+        restaurantId_date: {
+          restaurantId,
+          date: today,
+        },
+      },
+      include: {
+        dish: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+          },
+        },
+      },
+    });
+
+    if (!config) {
+      return { success: true, data: null };
+    }
+
+    return {
+      success: true,
+      data: {
+        id: config.id,
+        dishId: config.dishId,
+        dishName: config.dish?.name || config.name,
+        ingredients: config.ingredients as Array<{
+          productId: string;
+          productName: string;
+          quantityPerServing: number;
+          unit: string;
+        }>,
+        name: config.name,
+        description: config.description,
+        date: config.date,
+      },
+    };
+  } catch (error) {
+    console.error('Error fetching today\'s daily menu:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch daily menu',
+    };
+  }
+}
+
+/**
+ * Delete today's daily menu configuration
+ */
+export async function deleteTodaysDailyMenuAction(configId: string) {
+  try {
+    const { db } = await import('@/lib/db/client');
+    const { getSelectedRestaurantId } = await import('@/lib/actions/restaurant.actions');
+
+    const restaurantId = await getSelectedRestaurantId();
+    if (!restaurantId) {
+      throw new Error('No restaurant selected');
+    }
+
+    // Verify the config belongs to this restaurant
+    const config = await db.dailyMenuConfig.findUnique({
+      where: { id: configId },
+    });
+
+    if (!config || config.restaurantId !== restaurantId) {
+      throw new Error('Menu configuration not found or access denied');
+    }
+
+    // Delete the configuration (no stock reversal needed - stock was never deducted)
+    await db.dailyMenuConfig.delete({
+      where: { id: configId },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting daily menu:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to delete daily menu',
+    };
+  }
+}
+
+/**
+ * Record Menu du jour sale
+ * Deducts ingredients from stock based on quantity sold
+ */
+export async function recordMenuDuJourSaleAction(input: {
+  quantity: number;
+  price?: number;
+  date?: Date;
+}) {
+  try {
+    const { db } = await import('@/lib/db/client');
+    const { getSelectedRestaurantId } = await import('@/lib/actions/restaurant.actions');
+    const { auth } = await import('@/auth');
+
+    const restaurantId = await getSelectedRestaurantId();
+    if (!restaurantId) {
+      throw new Error('No restaurant selected');
+    }
+
+    // Get current user
+    const session = await auth();
+    const userId = session?.user?.id;
+
+    // Get today's menu configuration
+    const today = new Date(input.date || new Date());
+    today.setHours(0, 0, 0, 0);
+
+    const config = await db.dailyMenuConfig.findUnique({
+      where: {
+        restaurantId_date: {
+          restaurantId,
+          date: today,
+        },
+      },
+    });
+
+    if (!config) {
+      throw new Error('Menu du jour non configuré pour aujourd\'hui');
+    }
+
+    const ingredients = config.ingredients as Array<{
+      productId: string;
+      productName: string;
+      quantityPerServing: number;
+      unit: string;
+    }>;
+
+    console.log('Recording Menu du jour sale:', {
+      quantity: input.quantity,
+      ingredientsCount: ingredients.length,
+      ingredients: ingredients.map(i => `${i.productName}: ${i.quantityPerServing * input.quantity} ${i.unit}`)
+    });
+
+    // Deduct ingredients from stock in a transaction
+    const result = await db.$transaction(async (tx) => {
+      const movements = [];
+
+      for (const ingredient of ingredients) {
+        const totalQuantity = ingredient.quantityPerServing * input.quantity;
+
+        const product = await tx.product.findUnique({
+          where: { id: ingredient.productId },
+          select: { quantity: true, name: true },
+        });
+
+        if (!product) {
+          throw new Error(`Produit ${ingredient.productName} introuvable`);
+        }
+
+        if (product.quantity < totalQuantity) {
+          throw new Error(
+            `Stock insuffisant pour ${ingredient.productName}: ${product.quantity} ${ingredient.unit} disponible, ${totalQuantity} ${ingredient.unit} requis`
+          );
+        }
+
+        const newBalance = product.quantity - totalQuantity;
+
+        // Update product quantity
+        await tx.product.update({
+          where: { id: ingredient.productId },
+          data: { quantity: newBalance },
+        });
+
+        // Create stock movement (OUT)
+        const movement = await tx.stockMovement.create({
+          data: {
+            productId: ingredient.productId,
+            movementType: 'OUT',
+            quantity: totalQuantity,
+            balanceAfter: newBalance,
+            userId,
+            reason: `Vente Menu du jour: ${input.quantity}x`,
+            description: `Ingrédient utilisé pour Menu du jour`,
+            source: 'SCAN_SALES',
+          },
+        });
+
+        movements.push(movement);
+      }
+
+      return movements;
+    });
+
+    console.log('Menu du jour sale recorded successfully:', {
+      movementsCreated: result.length
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error recording menu du jour sale:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to record menu du jour sale',
+    };
+  }
+}
+
+/**
+ * Configure daily menu (Menu du jour)
+ * Saves the menu configuration - stock is deducted when sold, not when configured
+ */
+export async function recordDailyMenuAction(input: {
+  dishId?: string; // Optional: reference to an existing dish
+  ingredients: Array<{
+    productId: string;
+    productName: string;
+    quantityPerServing: number;
+    unit: string;
+  }>;
+  name?: string; // Optional custom name
+  description?: string; // Optional description
+}) {
+  try {
+    const { db } = await import('@/lib/db/client');
+    const { getSelectedRestaurantId } = await import('@/lib/actions/restaurant.actions');
+
+    // Get current restaurant
+    const restaurantId = await getSelectedRestaurantId();
+    if (!restaurantId) {
+      throw new Error('No restaurant selected');
+    }
+
+    // Get today's date (start of day)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Save or update today's menu configuration (upsert)
+    const config = await db.dailyMenuConfig.upsert({
+      where: {
+        restaurantId_date: {
+          restaurantId,
+          date: today,
+        },
+      },
+      create: {
+        restaurant: {
+          connect: { id: restaurantId },
+        },
+        date: today,
+        dish: input.dishId ? { connect: { id: input.dishId } } : undefined,
+        ingredients: input.ingredients,
+        name: input.name,
+        description: input.description,
+      },
+      update: {
+        dish: input.dishId ? { connect: { id: input.dishId } } : { disconnect: true },
+        ingredients: input.ingredients,
+        name: input.name,
+        description: input.description,
+      },
+    });
+
+    revalidatePath('/menu');
+    revalidatePath('/prep');
+    return { success: true, data: config };
+  } catch (error) {
+    console.error('Error configuring daily menu:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to configure daily menu',
+    };
+  }
+}
+
+/**
  * Import a scanned menu
  * Creates new dishes as needed and creates the menu with sections
  */

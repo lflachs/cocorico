@@ -326,6 +326,13 @@ export async function createProduction(
   notes?: string,
   byproducts?: ByproductInput[]
 ): Promise<Production> {
+  // Get current restaurant
+  const { getSelectedRestaurantId } = await import('@/lib/actions/restaurant.actions');
+  const restaurantId = await getSelectedRestaurantId();
+  if (!restaurantId) {
+    throw new Error('No restaurant selected');
+  }
+
   // First, validate we can produce
   const preview = await calculateProductionIngredients(dishId, quantity);
 
@@ -357,12 +364,15 @@ export async function createProduction(
     // Create production record
     const prod = await tx.production.create({
       data: {
-        dishId: dish ? dishId : null,
-        productId: compositeProduct ? dishId : null,
+        dish: dish ? { connect: { id: dishId } } : undefined,
+        product: compositeProduct ? { connect: { id: dishId } } : undefined,
         quantityProduced: quantity,
         userId,
         notes,
         productionDate: new Date(),
+        restaurant: {
+          connect: { id: restaurantId },
+        },
       },
     });
 
@@ -435,6 +445,7 @@ export async function createProduction(
           name: itemName,
           // Mark as prepared/composite product
           category: 'Prepared Dish',
+          restaurantId,
         },
       });
 
@@ -447,6 +458,9 @@ export async function createProduction(
             unit: 'PC', // Pieces/portions
             category: 'Prepared Dish',
             trackable: true,
+            restaurant: {
+              connect: { id: restaurantId },
+            },
           },
         });
       }
@@ -480,12 +494,17 @@ export async function createProduction(
       for (const byproduct of byproducts) {
         await tx.byproduct.create({
           data: {
-            productionId: prod.id,
+            production: {
+              connect: { id: prod.id },
+            },
             name: byproduct.name,
             quantity: byproduct.quantity,
             unit: byproduct.unit as any, // Cast to Unit enum
             byproductType: byproduct.byproductType,
             notes: byproduct.notes,
+            restaurant: {
+              connect: { id: restaurantId },
+            },
           },
         });
       }
@@ -500,8 +519,9 @@ export async function createProduction(
 /**
  * Get all productions with related data
  */
-export async function getProductions(limit?: number) {
+export async function getProductions(limit?: number, restaurantId?: string) {
   return await db.production.findMany({
+    where: restaurantId ? { restaurantId } : undefined,
     include: {
       dish: {
         select: {
@@ -538,8 +558,8 @@ export async function getProductions(limit?: number) {
 /**
  * Get production by ID
  */
-export async function getProductionById(id: string) {
-  return await db.production.findUnique({
+export async function getProductionById(id: string, restaurantId?: string) {
+  const production = await db.production.findUnique({
     where: { id },
     include: {
       dish: {
@@ -568,14 +588,21 @@ export async function getProductionById(id: string) {
       },
     },
   });
+
+  // Verify production belongs to restaurant if restaurantId provided
+  if (production && restaurantId && production.restaurantId !== restaurantId) {
+    return null;
+  }
+
+  return production;
 }
 
 /**
  * Get productions for a specific dish
  */
-export async function getProductionsByDish(dishId: string) {
+export async function getProductionsByDish(dishId: string, restaurantId?: string) {
   return await db.production.findMany({
-    where: { dishId },
+    where: restaurantId ? { dishId, restaurantId } : { dishId },
     include: {
       user: {
         select: {

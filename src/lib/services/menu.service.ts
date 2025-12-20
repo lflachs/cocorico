@@ -20,13 +20,14 @@ export type MenuWithSections = Menu & {
 /**
  * Get all menus with optional filtering
  */
-export async function getMenus(query: MenuQuery = {}): Promise<MenuWithSections[]> {
+export async function getMenus(query: MenuQuery = {}, restaurantId?: string): Promise<MenuWithSections[]> {
   const { isActive, search, includeSections, includeDishes, currentOnly } = query;
 
   const now = new Date();
 
   const menus = await db.menu.findMany({
     where: {
+      ...(restaurantId && { restaurantId }),
       ...(isActive !== undefined && { isActive }),
       ...(search && {
         OR: [
@@ -88,7 +89,7 @@ export async function getMenus(query: MenuQuery = {}): Promise<MenuWithSections[
 /**
  * Get menu by ID
  */
-export async function getMenuById(id: string): Promise<MenuWithSections | null> {
+export async function getMenuById(id: string, restaurantId?: string): Promise<MenuWithSections | null> {
   const menu = await db.menu.findUnique({
     where: { id },
     include: {
@@ -114,6 +115,11 @@ export async function getMenuById(id: string): Promise<MenuWithSections | null> 
     },
   });
 
+  // Verify menu belongs to restaurant if restaurantId provided
+  if (menu && restaurantId && menu.restaurantId !== restaurantId) {
+    return null;
+  }
+
   return menu as MenuWithSections | null;
 }
 
@@ -121,7 +127,16 @@ export async function getMenuById(id: string): Promise<MenuWithSections | null> 
  * Create a new menu
  * Automatically creates 3 default sections: Appetizers, Main Course, Dessert
  */
-export async function createMenu(data: CreateMenuInput): Promise<Menu> {
+export async function createMenu(data: CreateMenuInput, restaurantId?: string): Promise<Menu> {
+  // Get restaurant ID if not provided
+  if (!restaurantId) {
+    const { getSelectedRestaurantId } = await import('@/lib/actions/restaurant.actions');
+    restaurantId = await getSelectedRestaurantId();
+    if (!restaurantId) {
+      throw new Error('No restaurant selected');
+    }
+  }
+
   const { sections, ...menuData } = data;
 
   // Default sections if none provided
@@ -136,8 +151,10 @@ export async function createMenu(data: CreateMenuInput): Promise<Menu> {
   const menu = await db.menu.create({
     data: {
       ...menuData,
+      restaurantId,
       sections: {
         create: sectionsToCreate.map((section, sectionIndex) => ({
+          restaurantId,
           name: section.name,
           displayOrder: section.displayOrder !== undefined ? section.displayOrder : sectionIndex + 1,
           isRequired: section.isRequired !== undefined ? section.isRequired : true,
@@ -179,6 +196,16 @@ export async function updateMenu(id: string, data: UpdateMenuInput): Promise<Men
 
   // If sections are provided, replace all existing ones
   if (sections) {
+    // Get the menu's restaurantId
+    const menu = await db.menu.findUnique({
+      where: { id },
+      select: { restaurantId: true },
+    });
+
+    if (!menu) {
+      throw new Error('Menu not found');
+    }
+
     // Delete existing sections and their dishes (cascade should handle dishes)
     await db.menuSection.deleteMany({
       where: { menuId: id },
@@ -187,6 +214,7 @@ export async function updateMenu(id: string, data: UpdateMenuInput): Promise<Men
     // Create new sections
     await db.menuSection.createMany({
       data: sections.map((section) => ({
+        restaurantId: menu.restaurantId,
         menuId: id,
         name: section.name,
         displayOrder: section.displayOrder,
@@ -328,12 +356,13 @@ export async function getActiveMenusForDate(date: Date): Promise<MenuWithSection
 /**
  * Get today's daily menu (Menu du jour)
  */
-export async function getTodayDailyMenu(): Promise<MenuWithSections | null> {
+export async function getTodayDailyMenu(restaurantId?: string): Promise<MenuWithSections | null> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   const menus = await db.menu.findMany({
     where: {
+      ...(restaurantId && { restaurantId }),
       menuType: 'DAILY',
       isActive: true,
       OR: [
@@ -389,13 +418,23 @@ export async function getTodayDailyMenu(): Promise<MenuWithSections | null> {
 export async function setTodayDailyMenu(
   appetizerId: string,
   mainId: string,
-  dessertId: string
+  dessertId: string,
+  restaurantId?: string
 ): Promise<Menu> {
+  // Get restaurant ID if not provided
+  if (!restaurantId) {
+    const { getSelectedRestaurantId } = await import('@/lib/actions/restaurant.actions');
+    restaurantId = await getSelectedRestaurantId();
+    if (!restaurantId) {
+      throw new Error('No restaurant selected');
+    }
+  }
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   // Check if a daily menu already exists for today
-  const existingMenu = await getTodayDailyMenu();
+  const existingMenu = await getTodayDailyMenu(restaurantId);
 
   if (existingMenu) {
     // Update existing menu
@@ -416,6 +455,7 @@ export async function setTodayDailyMenu(
     // Create new sections with dishes
     await db.menuSection.create({
       data: {
+        restaurantId,
         menuId: existingMenu.id,
         name: 'Entrée',
         displayOrder: 1,
@@ -430,6 +470,7 @@ export async function setTodayDailyMenu(
 
     await db.menuSection.create({
       data: {
+        restaurantId,
         menuId: existingMenu.id,
         name: 'Plat',
         displayOrder: 2,
@@ -444,6 +485,7 @@ export async function setTodayDailyMenu(
 
     await db.menuSection.create({
       data: {
+        restaurantId,
         menuId: existingMenu.id,
         name: 'Dessert',
         displayOrder: 3,
@@ -467,6 +509,7 @@ export async function setTodayDailyMenu(
     // Create new daily menu
     const menu = await db.menu.create({
       data: {
+        restaurantId,
         name: 'Menu du jour',
         description: 'Menu quotidien',
         menuType: 'DAILY',
@@ -475,6 +518,7 @@ export async function setTodayDailyMenu(
         sections: {
           create: [
             {
+              restaurantId,
               name: 'Entrée',
               displayOrder: 1,
               dishes: {
@@ -485,6 +529,7 @@ export async function setTodayDailyMenu(
               },
             },
             {
+              restaurantId,
               name: 'Plat',
               displayOrder: 2,
               dishes: {
@@ -495,6 +540,7 @@ export async function setTodayDailyMenu(
               },
             },
             {
+              restaurantId,
               name: 'Dessert',
               displayOrder: 3,
               dishes: {

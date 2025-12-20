@@ -8,6 +8,7 @@ import { calculateWeightedAverage, calculatePriceChange } from '@/lib/utils/pric
  */
 
 type CreateBillData = {
+  restaurantId: string;
   filename: string;
   supplier: string;
   billDate: Date;
@@ -27,6 +28,7 @@ export async function createBill(data: CreateBillData): Promise<Bill> {
   // This allows the user to review and correct the supplier name first
   return await db.bill.create({
     data: {
+      restaurantId: data.restaurantId,
       filename: data.filename,
       billDate: data.billDate,
       totalAmount: data.totalAmount,
@@ -36,8 +38,8 @@ export async function createBill(data: CreateBillData): Promise<Bill> {
   });
 }
 
-export async function getBillById(id: string) {
-  return await db.bill.findUnique({
+export async function getBillById(id: string, restaurantId?: string) {
+  const bill = await db.bill.findUnique({
     where: { id },
     include: {
       supplier: true,
@@ -49,10 +51,18 @@ export async function getBillById(id: string) {
       disputes: true,
     },
   });
+
+  // Verify bill belongs to restaurant if restaurantId provided
+  if (bill && restaurantId && bill.restaurantId !== restaurantId) {
+    return null;
+  }
+
+  return bill;
 }
 
-export async function getAllBills() {
+export async function getAllBills(restaurantId?: string) {
   return await db.bill.findMany({
+    where: restaurantId ? { restaurantId } : undefined,
     orderBy: { createdAt: 'desc' },
     include: {
       supplier: true,
@@ -144,6 +154,7 @@ export async function confirmBill(
       if (hasPriceChange) {
         await tx.priceHistory.create({
           data: {
+            restaurantId: product.restaurantId,
             productId: mapping.productId,
             oldPrice: currentPrice,
             newPrice: newWeightedPrice,

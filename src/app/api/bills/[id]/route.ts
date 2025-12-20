@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBillById } from '@/lib/services/bill.service';
 import { db } from '@/lib/db/client';
+import { getSelectedRestaurantId } from '@/lib/actions/restaurant.actions';
 
 /**
  * GET /api/bills/[id]
@@ -12,8 +13,17 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Get current restaurant
+    const restaurantId = await getSelectedRestaurantId();
+    if (!restaurantId) {
+      return NextResponse.json(
+        { error: 'No restaurant selected' },
+        { status: 403 }
+      );
+    }
+
     const { id } = await params;
-    const bill = await getBillById(id);
+    const bill = await getBillById(id, restaurantId);
 
     if (!bill) {
       return NextResponse.json({ error: 'Bill not found' }, { status: 404 });
@@ -66,7 +76,34 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Get current restaurant
+    const restaurantId = await getSelectedRestaurantId();
+    if (!restaurantId) {
+      return NextResponse.json(
+        { error: 'No restaurant selected' },
+        { status: 403 }
+      );
+    }
+
     const { id } = await params;
+
+    // Verify bill belongs to restaurant before deleting
+    const bill = await db.bill.findUnique({
+      where: { id },
+      select: { restaurantId: true },
+    });
+
+    if (!bill) {
+      return NextResponse.json({ error: 'Bill not found' }, { status: 404 });
+    }
+
+    if (bill.restaurantId !== restaurantId) {
+      return NextResponse.json(
+        { error: 'Unauthorized: Bill belongs to another restaurant' },
+        { status: 403 }
+      );
+    }
+
     // Delete the bill (cascade will delete related records)
     await db.bill.delete({
       where: { id },

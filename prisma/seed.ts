@@ -4,6 +4,20 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
+  // Get restaurant ID from environment or error
+  const restaurantId = process.env.SEED_RESTAURANT_ID;
+  if (!restaurantId) {
+    throw new Error('SEED_RESTAURANT_ID environment variable is required');
+  }
+  console.log(`🏢 Seeding data for restaurant: ${restaurantId}\n`);
+
+  // Get user ID from environment or error
+  const userId = process.env.SEED_USER_ID;
+  if (!userId) {
+    throw new Error('SEED_USER_ID environment variable is required');
+  }
+  console.log(`👤 Using current user ID: ${userId}\n`);
+
   console.log('🌱 Starting database seed...\n');
 
   // Clean up existing data (in reverse order of dependencies)
@@ -26,34 +40,12 @@ async function main() {
   await prisma.compositeIngredient.deleteMany();
   await prisma.product.deleteMany();
   await prisma.supplier.deleteMany();
-  await prisma.user.deleteMany();
   console.log('✅ Cleanup complete\n');
 
   // ============================================================================
-  // USERS
+  // USERS (Skip - users already exist from authentication)
   // ============================================================================
-  console.log('👤 Creating users...');
-  const adminPassword = await bcrypt.hash('admin123', 10);
-  const userPassword = await bcrypt.hash('user123', 10);
-
-  const admin = await prisma.user.create({
-    data: {
-      email: 'admin@cocorico.fr',
-      name: 'Chef Alexandre',
-      passwordHash: adminPassword,
-      role: UserRole.ADMIN,
-    },
-  });
-
-  const user = await prisma.user.create({
-    data: {
-      email: 'user@cocorico.fr',
-      name: 'Sous-Chef Marie',
-      passwordHash: userPassword,
-      role: UserRole.USER,
-    },
-  });
-  console.log('✅ Created 2 users\n');
+  console.log('👤 Skipping user creation (users managed via authentication)\n');
 
   // ============================================================================
   // SUPPLIERS
@@ -62,6 +54,7 @@ async function main() {
 
   const metro = await prisma.supplier.create({
     data: {
+      restaurantId,
       name: 'Metro Cash & Carry',
       contactName: 'Jean Dupont',
       email: 'commandes@metro.fr',
@@ -74,6 +67,7 @@ async function main() {
 
   const rungis = await prisma.supplier.create({
     data: {
+      restaurantId,
       name: 'Rungis Marée',
       contactName: 'Marie Leclerc',
       email: 'poissons@rungis-maree.fr',
@@ -86,6 +80,7 @@ async function main() {
 
   const lactalis = await prisma.supplier.create({
     data: {
+      restaurantId,
       name: 'Lactalis',
       contactName: 'Pierre Martin',
       email: 'pro@lactalis.fr',
@@ -98,6 +93,7 @@ async function main() {
 
   const legumes = await prisma.supplier.create({
     data: {
+      restaurantId,
       name: 'Les Jardins du Marais',
       contactName: 'Sophie Dubois',
       email: 'contact@jardins-marais.fr',
@@ -110,6 +106,7 @@ async function main() {
 
   const epicerie = await prisma.supplier.create({
     data: {
+      restaurantId,
       name: 'Épicerie Centrale',
       contactName: 'Luc Bernard',
       email: 'commandes@epicerie-centrale.fr',
@@ -129,6 +126,7 @@ async function main() {
 
   const herbesAromatiquesCat = await prisma.recipeCategory.create({
     data: {
+      restaurantId,
       name: 'Herbes aromatiques',
       icon: '🌿',
       color: '#228B22',
@@ -140,6 +138,7 @@ async function main() {
 
   const condimentsCat = await prisma.recipeCategory.create({
     data: {
+      restaurantId,
       name: 'Condiments',
       icon: '🧂',
       color: '#DAA520',
@@ -151,6 +150,7 @@ async function main() {
 
   const legumesCat = await prisma.recipeCategory.create({
     data: {
+      restaurantId,
       name: 'Légumes',
       icon: '🥬',
       color: '#3CB371',
@@ -162,6 +162,7 @@ async function main() {
 
   const proteinesCat = await prisma.recipeCategory.create({
     data: {
+      restaurantId,
       name: 'Protéines',
       icon: '🥩',
       color: '#8B4513',
@@ -173,6 +174,7 @@ async function main() {
 
   const produitslaitiersCat = await prisma.recipeCategory.create({
     data: {
+      restaurantId,
       name: 'Produits laitiers',
       icon: '🥛',
       color: '#F0E68C',
@@ -184,6 +186,7 @@ async function main() {
 
   const produitsSecsCat = await prisma.recipeCategory.create({
     data: {
+      restaurantId,
       name: 'Produits secs',
       icon: '📦',
       color: '#D2B48C',
@@ -203,6 +206,7 @@ async function main() {
     // Dairy
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Lait entier',
         quantity: 12, // BELOW parLevel (30) -> CRITICAL
         unit: Unit.L,
@@ -216,6 +220,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Crème fraîche 35%',
         quantity: 6, // BELOW parLevel (15) -> CRITICAL
         unit: Unit.L,
@@ -229,6 +234,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Beurre doux',
         quantity: 8, // BELOW parLevel (10) -> LOW
         unit: Unit.KG,
@@ -242,6 +248,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Œufs frais',
         quantity: 85, // BELOW parLevel (200) -> CRITICAL
         unit: Unit.PC,
@@ -257,6 +264,7 @@ async function main() {
     // Dry goods
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Farine T55',
         quantity: 100,
         unit: Unit.KG,
@@ -270,6 +278,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Sucre en poudre',
         quantity: 45,
         unit: Unit.KG,
@@ -283,6 +292,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Sel fin',
         quantity: 25,
         unit: Unit.KG,
@@ -298,6 +308,7 @@ async function main() {
     // Proteins - Meats
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Poulet fermier (entier)',
         quantity: 8, // BELOW parLevel (20) -> CRITICAL
         unit: Unit.PC,
@@ -311,6 +322,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Magret de canard',
         quantity: 2, // BELOW parLevel (5) -> CRITICAL
         unit: Unit.PC,
@@ -324,6 +336,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Filet de bœuf',
         quantity: 3, // BELOW parLevel (8) -> CRITICAL
         unit: Unit.KG,
@@ -337,6 +350,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Onglet de bœuf',
         quantity: 10,
         unit: Unit.KG,
@@ -350,6 +364,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Quasi de veau',
         quantity: 6,
         unit: Unit.KG,
@@ -364,6 +379,7 @@ async function main() {
     // Proteins - Seafood
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Saumon norvégien',
         quantity: 15,
         unit: Unit.KG,
@@ -377,6 +393,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Bar de ligne',
         quantity: 3, // BELOW parLevel (6) -> CRITICAL
         unit: Unit.KG,
@@ -390,6 +407,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Daurade royale',
         quantity: 5, // BELOW parLevel (8) -> LOW
         unit: Unit.KG,
@@ -403,6 +421,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Gambas (grosses crevettes)',
         quantity: 5,
         unit: Unit.KG,
@@ -418,6 +437,7 @@ async function main() {
     // Vegetables
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Pommes de terre',
         quantity: 80,
         unit: Unit.KG,
@@ -431,6 +451,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Carottes',
         quantity: 25,
         unit: Unit.KG,
@@ -444,6 +465,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Oignons',
         quantity: 30,
         unit: Unit.KG,
@@ -457,6 +479,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Tomates',
         quantity: 20,
         unit: Unit.KG,
@@ -472,6 +495,7 @@ async function main() {
     // Herbs & Spices
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Persil frais',
         quantity: 8,
         unit: Unit.BUNCH,
@@ -485,6 +509,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Thym frais',
         quantity: 6,
         unit: Unit.BUNCH,
@@ -498,6 +523,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Basilic frais',
         quantity: 5,
         unit: Unit.BUNCH,
@@ -511,6 +537,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Romarin frais',
         quantity: 4,
         unit: Unit.BUNCH,
@@ -524,6 +551,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Coriandre fraîche',
         quantity: 6,
         unit: Unit.BUNCH,
@@ -537,6 +565,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Menthe fraîche',
         quantity: 4,
         unit: Unit.BUNCH,
@@ -550,6 +579,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Estragon',
         quantity: 3,
         unit: Unit.BUNCH,
@@ -563,6 +593,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Ciboulette',
         quantity: 5,
         unit: Unit.BUNCH,
@@ -576,6 +607,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Laurier (feuilles)',
         quantity: 100,
         unit: Unit.G,
@@ -589,6 +621,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Poivre noir moulu',
         quantity: 500,
         unit: Unit.G,
@@ -602,6 +635,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Poivre noir en grains',
         quantity: 300,
         unit: Unit.G,
@@ -615,6 +649,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Paprika',
         quantity: 200,
         unit: Unit.G,
@@ -628,6 +663,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Cumin',
         quantity: 150,
         unit: Unit.G,
@@ -641,6 +677,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Noix de muscade',
         quantity: 100,
         unit: Unit.G,
@@ -654,6 +691,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Cannelle en poudre',
         quantity: 150,
         unit: Unit.G,
@@ -667,6 +705,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Gousses de vanille',
         quantity: 20,
         unit: Unit.PC,
@@ -680,6 +719,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Curry en poudre',
         quantity: 180,
         unit: Unit.G,
@@ -695,6 +735,7 @@ async function main() {
     // Oils & Vinegars
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Huile d\'olive extra vierge',
         quantity: 15,
         unit: Unit.L,
@@ -708,6 +749,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Huile de tournesol',
         quantity: 20,
         unit: Unit.L,
@@ -721,6 +763,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Huile de noix',
         quantity: 2,
         unit: Unit.L,
@@ -734,6 +777,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Vinaigre balsamique',
         quantity: 3,
         unit: Unit.L,
@@ -747,6 +791,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Vinaigre de vin rouge',
         quantity: 4,
         unit: Unit.L,
@@ -760,6 +805,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Vinaigre de vin blanc',
         quantity: 4,
         unit: Unit.L,
@@ -773,6 +819,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Vinaigre de Xérès',
         quantity: 2,
         unit: Unit.L,
@@ -788,6 +835,7 @@ async function main() {
     // More Vegetables
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Laitue',
         quantity: 15,
         unit: Unit.PC,
@@ -801,6 +849,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Champignons de Paris',
         quantity: 8,
         unit: Unit.KG,
@@ -814,6 +863,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Champignons shiitake',
         quantity: 3,
         unit: Unit.KG,
@@ -827,6 +877,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Poireaux',
         quantity: 12,
         unit: Unit.KG,
@@ -840,6 +891,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Céleri branche',
         quantity: 8,
         unit: Unit.PC,
@@ -853,6 +905,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Courgettes',
         quantity: 15,
         unit: Unit.KG,
@@ -866,6 +919,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Aubergines',
         quantity: 10,
         unit: Unit.KG,
@@ -879,6 +933,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Poivrons rouges',
         quantity: 8,
         unit: Unit.KG,
@@ -892,6 +947,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Poivrons verts',
         quantity: 7,
         unit: Unit.KG,
@@ -905,6 +961,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Asperges vertes',
         quantity: 5,
         unit: Unit.KG,
@@ -918,6 +975,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Épinards frais',
         quantity: 6,
         unit: Unit.KG,
@@ -931,6 +989,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Endives',
         quantity: 8,
         unit: Unit.KG,
@@ -944,6 +1003,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Ail',
         quantity: 2,
         unit: Unit.KG,
@@ -957,6 +1017,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Échalotes',
         quantity: 3,
         unit: Unit.KG,
@@ -970,6 +1031,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Haricots verts',
         quantity: 10,
         unit: Unit.KG,
@@ -983,6 +1045,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Betteraves',
         quantity: 8,
         unit: Unit.KG,
@@ -998,6 +1061,7 @@ async function main() {
     // Cheese
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Parmesan (Parmigiano Reggiano)',
         quantity: 3,
         unit: Unit.KG,
@@ -1011,6 +1075,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Fromage de chèvre',
         quantity: 4,
         unit: Unit.KG,
@@ -1024,6 +1089,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Comté',
         quantity: 3,
         unit: Unit.KG,
@@ -1037,6 +1103,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Roquefort',
         quantity: 2,
         unit: Unit.KG,
@@ -1050,6 +1117,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Brie',
         quantity: 2,
         unit: Unit.KG,
@@ -1063,6 +1131,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Camembert',
         quantity: 2,
         unit: Unit.KG,
@@ -1076,6 +1145,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Mascarpone',
         quantity: 3,
         unit: Unit.KG,
@@ -1089,6 +1159,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Yaourt nature',
         quantity: 10,
         unit: Unit.L,
@@ -1104,6 +1175,7 @@ async function main() {
     // Pasta & Rice
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Spaghetti',
         quantity: 15,
         unit: Unit.KG,
@@ -1117,6 +1189,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Penne',
         quantity: 12,
         unit: Unit.KG,
@@ -1130,6 +1203,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Tagliatelles fraîches',
         quantity: 8,
         unit: Unit.KG,
@@ -1143,6 +1217,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Riz arborio (risotto)',
         quantity: 10,
         unit: Unit.KG,
@@ -1156,6 +1231,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Riz basmati',
         quantity: 12,
         unit: Unit.KG,
@@ -1171,6 +1247,7 @@ async function main() {
     // Fruits
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Citrons',
         quantity: 30,
         unit: Unit.PC,
@@ -1184,6 +1261,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Citrons verts',
         quantity: 20,
         unit: Unit.PC,
@@ -1197,6 +1275,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Pommes Granny Smith',
         quantity: 10,
         unit: Unit.KG,
@@ -1210,6 +1289,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Poires',
         quantity: 8,
         unit: Unit.KG,
@@ -1223,6 +1303,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Fraises',
         quantity: 5,
         unit: Unit.KG,
@@ -1236,6 +1317,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Framboises',
         quantity: 3,
         unit: Unit.KG,
@@ -1249,6 +1331,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Rhubarbe',
         quantity: 4,
         unit: Unit.KG,
@@ -1262,6 +1345,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Oranges',
         quantity: 15,
         unit: Unit.PC,
@@ -1277,6 +1361,7 @@ async function main() {
     // Wines & Spirits
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Vin blanc sec (cuisine)',
         quantity: 12,
         unit: Unit.L,
@@ -1290,6 +1375,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Vin rouge (cuisine)',
         quantity: 10,
         unit: Unit.L,
@@ -1303,6 +1389,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Cognac',
         quantity: 2,
         unit: Unit.L,
@@ -1316,6 +1403,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Porto',
         quantity: 2,
         unit: Unit.L,
@@ -1331,6 +1419,7 @@ async function main() {
     // Canned Goods
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Concentré de tomate',
         quantity: 20,
         unit: Unit.PC,
@@ -1344,6 +1433,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Tomates pelées en conserve',
         quantity: 30,
         unit: Unit.PC,
@@ -1357,6 +1447,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Anchois à l\'huile',
         quantity: 12,
         unit: Unit.PC,
@@ -1370,6 +1461,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Olives noires',
         quantity: 5,
         unit: Unit.KG,
@@ -1383,6 +1475,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Olives vertes',
         quantity: 5,
         unit: Unit.KG,
@@ -1396,6 +1489,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Câpres',
         quantity: 8,
         unit: Unit.PC,
@@ -1411,6 +1505,7 @@ async function main() {
     // Baking Items
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Levure chimique',
         quantity: 500,
         unit: Unit.G,
@@ -1424,6 +1519,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Levure de boulanger',
         quantity: 400,
         unit: Unit.G,
@@ -1437,6 +1533,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Cacao en poudre',
         quantity: 1,
         unit: Unit.KG,
@@ -1450,6 +1547,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Chocolat noir 70%',
         quantity: 4,
         unit: Unit.KG,
@@ -1463,6 +1561,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Chocolat au lait',
         quantity: 3,
         unit: Unit.KG,
@@ -1476,6 +1575,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Chocolat blanc',
         quantity: 2,
         unit: Unit.KG,
@@ -1489,6 +1589,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Gélatine en feuilles',
         quantity: 200,
         unit: Unit.G,
@@ -1502,6 +1603,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Sucre vanillé',
         quantity: 500,
         unit: Unit.G,
@@ -1515,6 +1617,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Sucre glace',
         quantity: 2,
         unit: Unit.KG,
@@ -1528,6 +1631,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Miel',
         quantity: 3,
         unit: Unit.KG,
@@ -1543,6 +1647,7 @@ async function main() {
     // Nuts & Dried Fruits
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Amandes effilées',
         quantity: 2,
         unit: Unit.KG,
@@ -1556,6 +1661,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Noix',
         quantity: 2,
         unit: Unit.KG,
@@ -1569,6 +1675,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Noisettes',
         quantity: 2,
         unit: Unit.KG,
@@ -1582,6 +1689,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Pignons de pin',
         quantity: 500,
         unit: Unit.G,
@@ -1595,6 +1703,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Raisins secs',
         quantity: 1,
         unit: Unit.KG,
@@ -1608,6 +1717,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Abricots secs',
         quantity: 1,
         unit: Unit.KG,
@@ -1623,6 +1733,7 @@ async function main() {
     // More Seafood
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Moules',
         quantity: 8,
         unit: Unit.KG,
@@ -1636,6 +1747,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Saint-Jacques',
         quantity: 3,
         unit: Unit.KG,
@@ -1649,6 +1761,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Calamar',
         quantity: 5,
         unit: Unit.KG,
@@ -1662,6 +1775,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Thon frais',
         quantity: 6,
         unit: Unit.KG,
@@ -1675,6 +1789,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Cabillaud',
         quantity: 8,
         unit: Unit.KG,
@@ -1688,6 +1803,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Sole',
         quantity: 4,
         unit: Unit.KG,
@@ -1701,6 +1817,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Turbot',
         quantity: 3,
         unit: Unit.KG,
@@ -1716,6 +1833,7 @@ async function main() {
     // More Meats
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Côtelettes d\'agneau',
         quantity: 5,
         unit: Unit.KG,
@@ -1729,6 +1847,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Épaule d\'agneau',
         quantity: 4,
         unit: Unit.KG,
@@ -1742,6 +1861,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Côtes de porc',
         quantity: 8,
         unit: Unit.KG,
@@ -1755,6 +1875,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Filet mignon de porc',
         quantity: 6,
         unit: Unit.KG,
@@ -1768,6 +1889,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Foie gras de canard',
         quantity: 2,
         unit: Unit.KG,
@@ -1781,6 +1903,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Confit de canard',
         quantity: 15,
         unit: Unit.PC,
@@ -1794,6 +1917,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Saucisses de Toulouse',
         quantity: 5,
         unit: Unit.KG,
@@ -1807,6 +1931,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Lardons fumés',
         quantity: 4,
         unit: Unit.KG,
@@ -1820,6 +1945,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Jambon blanc',
         quantity: 3,
         unit: Unit.KG,
@@ -1835,6 +1961,7 @@ async function main() {
     // Broths & Stocks
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Fond de volaille',
         quantity: 10,
         unit: Unit.L,
@@ -1848,6 +1975,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Fumet de poisson',
         quantity: 8,
         unit: Unit.L,
@@ -1861,6 +1989,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Fond de veau',
         quantity: 6,
         unit: Unit.L,
@@ -1874,6 +2003,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Bouillon de légumes',
         quantity: 8,
         unit: Unit.L,
@@ -1889,6 +2019,7 @@ async function main() {
     // Condiments & Sauces
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Moutarde de Dijon',
         quantity: 3,
         unit: Unit.KG,
@@ -1902,6 +2033,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Moutarde à l\'ancienne',
         quantity: 2,
         unit: Unit.KG,
@@ -1915,6 +2047,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Mayonnaise',
         quantity: 4,
         unit: Unit.L,
@@ -1928,6 +2061,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Sauce soja',
         quantity: 2,
         unit: Unit.L,
@@ -1941,6 +2075,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Sauce worcestershire',
         quantity: 1,
         unit: Unit.L,
@@ -1954,6 +2089,7 @@ async function main() {
     }),
     prisma.product.create({
       data: {
+        restaurantId,
         name: 'Tabasco',
         quantity: 500,
         unit: Unit.ML,
@@ -1979,6 +2115,7 @@ async function main() {
   // Main DISH categories
   const entreesFroidesCat = await prisma.recipeCategory.create({
     data: {
+      restaurantId,
       name: 'Entrées Froides',
       icon: '🥗',
       color: '#32CD32',
@@ -1990,6 +2127,7 @@ async function main() {
 
   const entreesChaudesCat = await prisma.recipeCategory.create({
     data: {
+      restaurantId,
       name: 'Entrées Chaudes',
       icon: '🍲',
       color: '#FF8C00',
@@ -2001,6 +2139,7 @@ async function main() {
 
   const poissonsCat = await prisma.recipeCategory.create({
     data: {
+      restaurantId,
       name: 'Poissons',
       icon: '🐟',
       color: '#4682B4',
@@ -2012,6 +2151,7 @@ async function main() {
 
   const viandesCat = await prisma.recipeCategory.create({
     data: {
+      restaurantId,
       name: 'Viandes',
       icon: '🥩',
       color: '#8B0000',
@@ -2023,6 +2163,7 @@ async function main() {
 
   const dessertsCat = await prisma.recipeCategory.create({
     data: {
+      restaurantId,
       name: 'Desserts',
       icon: '🍰',
       color: '#FF69B4',
@@ -2035,6 +2176,7 @@ async function main() {
   // Dessert sub-categories
   const patisserieCat = await prisma.recipeCategory.create({
     data: {
+      restaurantId,
       name: 'Pâtisserie',
       icon: '📄',
       color: '#FFB6C1',
@@ -2047,6 +2189,7 @@ async function main() {
 
   const dessertsAssietteCat = await prisma.recipeCategory.create({
     data: {
+      restaurantId,
       name: 'Desserts à l\'Assiette',
       icon: '🍽️',
       color: '#DDA0DD',
@@ -2060,6 +2203,7 @@ async function main() {
   // PREPARED_INGREDIENT categories
   const basesCremesCat = await prisma.recipeCategory.create({
     data: {
+      restaurantId,
       name: 'Bases & Crèmes',
       icon: '🥛',
       color: '#F5F5DC',
@@ -2071,6 +2215,7 @@ async function main() {
 
   const saucesCat = await prisma.recipeCategory.create({
     data: {
+      restaurantId,
       name: 'Sauces',
       icon: '🥫',
       color: '#DC143C',
@@ -2090,6 +2235,7 @@ async function main() {
   // Crème pâtissière
   const cremePat = await prisma.product.create({
     data: {
+      restaurantId,
       name: 'Crème pâtissière',
       quantity: 5,
       unit: Unit.L,
@@ -2135,6 +2281,7 @@ async function main() {
   // Sauce béchamel
   const bechamel = await prisma.product.create({
     data: {
+      restaurantId,
       name: 'Sauce béchamel',
       quantity: 8,
       unit: Unit.L,
@@ -2174,6 +2321,7 @@ async function main() {
   // Marinade pour viande rouge
   const marinade = await prisma.product.create({
     data: {
+      restaurantId,
       name: 'Marinade pour viande rouge',
       quantity: 2,
       unit: Unit.L,
@@ -2213,6 +2361,7 @@ async function main() {
   // Sauce béarnaise
   const bearnaise = await prisma.product.create({
     data: {
+      restaurantId,
       name: 'Sauce béarnaise',
       quantity: 1.5,
       unit: Unit.L,
@@ -2252,6 +2401,7 @@ async function main() {
   // Pommes grenailles préparées
   const pommesGrenailles = await prisma.product.create({
     data: {
+      restaurantId,
       name: 'Pommes grenailles préparées',
       quantity: 10,
       unit: Unit.KG,
@@ -2297,6 +2447,7 @@ async function main() {
   // Mousseline de pommes de terre
   const mousseline = await prisma.product.create({
     data: {
+      restaurantId,
       name: 'Mousseline de pommes de terre',
       quantity: 8,
       unit: Unit.KG,
@@ -2342,6 +2493,7 @@ async function main() {
   // Siphon à la tomate
   const siphonTomate = await prisma.product.create({
     data: {
+      restaurantId,
       name: 'Siphon à la tomate',
       quantity: 2,
       unit: Unit.L,
@@ -2381,6 +2533,7 @@ async function main() {
   // Bœuf mariné (uses raw beef + marinade)
   const boeufMarine = await prisma.product.create({
     data: {
+      restaurantId,
       name: 'Bœuf mariné',
       quantity: 8,
       unit: Unit.KG,
@@ -2420,6 +2573,7 @@ async function main() {
   // Onglet de bœuf mariné
   const ongletMarine = await prisma.product.create({
     data: {
+      restaurantId,
       name: 'Onglet de bœuf mariné',
       quantity: 6,
       unit: Unit.KG,
@@ -2453,6 +2607,7 @@ async function main() {
   // Gambas marinées
   const gambasMarine = await prisma.product.create({
     data: {
+      restaurantId,
       name: 'Gambas marinées au thym',
       quantity: 3,
       unit: Unit.KG,
@@ -2492,6 +2647,7 @@ async function main() {
   // Veau mariné
   const veauMarine = await prisma.product.create({
     data: {
+      restaurantId,
       name: 'Veau mariné au thym',
       quantity: 4,
       unit: Unit.KG,
@@ -2538,6 +2694,7 @@ async function main() {
   // ENTRÉES
   const laMer = await prisma.dish.create({
     data: {
+      restaurantId,
       name: 'La mer',
       description: 'Croquant de chair de crabe, thon et haddock fumé, hareng mariné et douceur de choux fleurs aux betteraves multicolores',
       sellingPrice: 16.00,
@@ -2567,6 +2724,7 @@ async function main() {
 
   const carpaccioVeau = await prisma.dish.create({
     data: {
+      restaurantId,
       name: 'Le carpaccio de veau « cuit rosé »',
       description: 'Vitello tonnato à ma façon, aromates de saison au jambon cru et caviar aux aubergines confites',
       sellingPrice: 17.00,
@@ -2601,6 +2759,7 @@ async function main() {
 
   const tarteVegetarienne = await prisma.dish.create({
     data: {
+      restaurantId,
       name: 'La tarte sablée végétarienne',
       description: 'Douceurs asperges vertes, crème de burrata fumée, confit et bonbons de tomates cerises confits',
       sellingPrice: 17.00,
@@ -2640,6 +2799,7 @@ async function main() {
 
   const foieGras = await prisma.dish.create({
     data: {
+      restaurantId,
       name: 'Le foie gras et le magret fumé de canard',
       description: 'Comme « un opéra », artichauts poivrades et craquants, caramel acidulé à la sauge',
       sellingPrice: 21.00,
@@ -2674,6 +2834,7 @@ async function main() {
 
   const escargots = await prisma.dish.create({
     data: {
+      restaurantId,
       name: 'Les escargots de Bourgogne',
       description: 'Gâteau de pommes de terre croquillant aux aromates maison, pulpe de persil plat et jus onctueux au vin rouge',
       sellingPrice: 19.00,
@@ -2703,6 +2864,7 @@ async function main() {
 
   const cevicheBar = await prisma.dish.create({
     data: {
+      restaurantId,
       name: 'Le céviché de bar',
       description: 'Fine mousseline de petits pois frais, piquilllo farci au citron caviar, salicornes/poutargue et perles de harengs',
       sellingPrice: 20.00,
@@ -2738,6 +2900,7 @@ async function main() {
   // PLATS
   const filetDaurade = await prisma.dish.create({
     data: {
+      restaurantId,
       name: 'Le filet de daurade royale',
       description: 'Poêlé à l\'huile olive, condiment chimichurri au blanc de seiche, frégola sarda et petits légumes printaniers',
       sellingPrice: 30.00,
@@ -2772,6 +2935,7 @@ async function main() {
 
   const gambas = await prisma.dish.create({
     data: {
+      restaurantId,
       name: 'Les grosses gambas « black tiger »',
       description: 'Marinées et grillées au thym frais, siphon à la tomate et mousseline de pommes de terre à l\'huile olive, primeurs de légumes verts',
       sellingPrice: 37.00,
@@ -2806,6 +2970,7 @@ async function main() {
 
   const ongletBoeuf = await prisma.dish.create({
     data: {
+      restaurantId,
       name: 'L\'onglet de bœuf « Black Angus »',
       description: 'Rôti au beurre frais, rissolée de pommes grenailles et légumes du moment, béarnaise maison',
       sellingPrice: 32.00,
@@ -2840,6 +3005,7 @@ async function main() {
 
   const epauleAgneau = await prisma.dish.create({
     data: {
+      restaurantId,
       name: 'L\'épaule agneau française',
       description: 'Confite et pressée, crumble à la tomate/miel/épices, primeurs de pois gourmand et éryngii, jus court au thym frais',
       sellingPrice: 32.00,
@@ -2864,6 +3030,7 @@ async function main() {
 
   const quasiVeau = await prisma.dish.create({
     data: {
+      restaurantId,
       name: 'Le quasi de veau français',
       description: 'Rôti au thym frais, grosses asperges blanches rôties et primeurs de petits légumes, jus court',
       sellingPrice: 36.00,
@@ -2893,6 +3060,7 @@ async function main() {
 
   const poularde = await prisma.dish.create({
     data: {
+      restaurantId,
       name: 'La poularde Arnaud Tauzin',
       description: 'À l\'ancienne, morilles et orges perlés, sauce gourmande émulsionnée',
       sellingPrice: 37.00,
@@ -2917,6 +3085,7 @@ async function main() {
 
   const vegetal = await prisma.dish.create({
     data: {
+      restaurantId,
       name: 'Le végétal',
       description: 'Lasagnes « ouvertes », bolognaise de petits légumes printaniers, condiments de pignons et citron confit aux herbes fraîches',
       sellingPrice: 24.00,
@@ -2971,6 +3140,7 @@ async function main() {
 
   const coteBoeuf = await prisma.dish.create({
     data: {
+      restaurantId,
       name: 'La côte de bœuf Simmental (pour 2 personnes - 1kg)',
       description: 'Rôti au savoir, ail et thym frais, pommes grenailles et légumes de saison, béarnaise et jus court',
       sellingPrice: 92.00,
@@ -3006,6 +3176,7 @@ async function main() {
   // DESSERTS
   const rhubarbe = await prisma.dish.create({
     data: {
+      restaurantId,
       name: 'La rhubarbe',
       description: 'Marbré confit et chocolat dulcey, jus et sorbet à la groseille, gros sablé breton',
       sellingPrice: 14.00,
@@ -3035,6 +3206,7 @@ async function main() {
 
   const primeursFrages = await prisma.dish.create({
     data: {
+      restaurantId,
       name: 'Les primeurs de fraises',
       description: 'Jus et tartare, sablé croustillant et crème chiboust caramélisée aux oranges sanguines',
       sellingPrice: 14.00,
@@ -3064,6 +3236,7 @@ async function main() {
 
   const milleFeuille = await prisma.dish.create({
     data: {
+      restaurantId,
       name: 'Le véritable mille-feuille',
       description: 'Pâte caramélisée, à la vanille « bourbon» et caramel au beurre salé',
       sellingPrice: 14.00,
@@ -3093,6 +3266,7 @@ async function main() {
 
   const madeleine = await prisma.dish.create({
     data: {
+      restaurantId,
       name: 'La madeleine « de Proust » au citron',
       description: 'Confit agrumes au poivre de Timut, crémeux et perles de yuzu',
       sellingPrice: 15.00,
@@ -3127,6 +3301,7 @@ async function main() {
 
   const gourmand = await prisma.dish.create({
     data: {
+      restaurantId,
       name: 'Le gourmand',
       description: 'Trois inspirations du moment de notre pâtissier',
       sellingPrice: 15.00,
@@ -3151,6 +3326,7 @@ async function main() {
 
   const chocolatXoco = await prisma.dish.create({
     data: {
+      restaurantId,
       name: 'Le chocolat « Xoco »',
       description: 'Biscuit Marigny moelleux, ganache et crémeux au chocolat 70%, sorbet framboise et opaline croustillante',
       sellingPrice: 17.00,
@@ -3185,6 +3361,7 @@ async function main() {
 
   const fromages = await prisma.dish.create({
     data: {
+      restaurantId,
       name: 'Les fromages « de la maison Guibert »',
       description: 'Composition de trois fromages à sélectionner, chutney à la figue et quelques pousses',
       sellingPrice: 15.00,
@@ -3205,6 +3382,7 @@ async function main() {
 
   const menuCanaille = await prisma.menu.create({
     data: {
+      restaurantId,
       name: 'Menu Canaille',
       description: 'Menu servi dans son intégralité',
       fixedPrice: 49.00,
@@ -3213,6 +3391,7 @@ async function main() {
       sections: {
         create: [
           {
+            restaurantId,
             name: 'Nos Entrées',
             displayOrder: 1,
             isRequired: true,
@@ -3237,6 +3416,7 @@ async function main() {
             },
           },
           {
+            restaurantId,
             name: 'Nos Plats',
             displayOrder: 2,
             isRequired: true,
@@ -3266,6 +3446,7 @@ async function main() {
             },
           },
           {
+            restaurantId,
             name: 'Nos Desserts',
             displayOrder: 3,
             isRequired: true,
@@ -3296,6 +3477,7 @@ async function main() {
 
   const menuGourmand = await prisma.menu.create({
     data: {
+      restaurantId,
       name: 'Menu Gourmand',
       description: 'Menu servi dans son intégralité',
       fixedPrice: 68.00,
@@ -3304,6 +3486,7 @@ async function main() {
       sections: {
         create: [
           {
+            restaurantId,
             name: 'Nos Entrées',
             displayOrder: 1,
             isRequired: true,
@@ -3328,6 +3511,7 @@ async function main() {
             },
           },
           {
+            restaurantId,
             name: 'Nos Plats',
             displayOrder: 2,
             isRequired: true,
@@ -3357,6 +3541,7 @@ async function main() {
             },
           },
           {
+            restaurantId,
             name: 'Nos Desserts',
             displayOrder: 3,
             isRequired: true,
@@ -3401,10 +3586,9 @@ async function main() {
 
   const bill1 = await prisma.bill.create({
     data: {
+      restaurantId,
       filename: 'facture_metro_20250115.pdf',
-      supplier: {
-        connect: { id: metro.id }
-      },
+      supplierId: metro.id,
       billDate: getDaysAgo(8),
       totalAmount: 1245.80,
       status: 'PROCESSED',
@@ -3438,7 +3622,7 @@ async function main() {
             quantity: 30,
             balanceAfter: 80,
             reason: 'Livraison facture Metro',
-            userId: admin.id,
+            userId: userId,
           },
           {
             productId: productMap['Farine T55'].id,
@@ -3446,7 +3630,7 @@ async function main() {
             quantity: 50,
             balanceAfter: 150,
             reason: 'Livraison facture Metro',
-            userId: admin.id,
+            userId: userId,
           },
           {
             productId: productMap['Poulet fermier (entier)'].id,
@@ -3454,7 +3638,7 @@ async function main() {
             quantity: 15,
             balanceAfter: 45,
             reason: 'Livraison facture Metro',
-            userId: admin.id,
+            userId: userId,
           },
         ],
       },
@@ -3463,10 +3647,9 @@ async function main() {
 
   const bill2 = await prisma.bill.create({
     data: {
+      restaurantId,
       filename: 'facture_rungis_20250116.pdf',
-      supplier: {
-        connect: { id: rungis.id }
-      },
+      supplierId: rungis.id,
       billDate: getDaysAgo(7),
       totalAmount: 685.50,
       status: 'PROCESSED',
@@ -3494,7 +3677,7 @@ async function main() {
             quantity: 15,
             balanceAfter: 30,
             reason: 'Livraison Rungis',
-            userId: user.id,
+            userId: userId,
           },
           {
             productId: productMap['Filet de bœuf'].id,
@@ -3502,7 +3685,7 @@ async function main() {
             quantity: 8,
             balanceAfter: 20,
             reason: 'Livraison Rungis',
-            userId: user.id,
+            userId: userId,
           },
         ],
       },
@@ -3511,10 +3694,9 @@ async function main() {
 
   const bill3 = await prisma.bill.create({
     data: {
+      restaurantId,
       filename: 'facture_lactalis_20250117.pdf',
-      supplier: {
-        connect: { id: lactalis.id }
-      },
+      supplierId: lactalis.id,
       billDate: getDaysAgo(5),
       totalAmount: 342.00,
       status: 'PROCESSED',
@@ -3548,7 +3730,7 @@ async function main() {
             quantity: 20,
             balanceAfter: 40,
             reason: 'Livraison Lactalis',
-            userId: admin.id,
+            userId: userId,
           },
           {
             productId: productMap['Beurre doux'].id,
@@ -3556,7 +3738,7 @@ async function main() {
             quantity: 10,
             balanceAfter: 25,
             reason: 'Livraison Lactalis',
-            userId: admin.id,
+            userId: userId,
           },
           {
             productId: productMap['Œufs frais'].id,
@@ -3564,7 +3746,7 @@ async function main() {
             quantity: 200,
             balanceAfter: 500,
             reason: 'Livraison Lactalis',
-            userId: admin.id,
+            userId: userId,
           },
         ],
       },
@@ -3573,10 +3755,9 @@ async function main() {
 
   const bill4 = await prisma.bill.create({
     data: {
+      restaurantId,
       filename: 'facture_jardins_20250118.pdf',
-      supplier: {
-        connect: { id: legumes.id }
-      },
+      supplierId: legumes.id,
       billDate: getDaysAgo(3),
       totalAmount: 528.50,
       status: 'PROCESSED',
@@ -3616,7 +3797,7 @@ async function main() {
             quantity: 100,
             balanceAfter: 180,
             reason: 'Livraison Jardins du Marais',
-            userId: user.id,
+            userId: userId,
           },
           {
             productId: productMap['Carottes'].id,
@@ -3624,7 +3805,7 @@ async function main() {
             quantity: 40,
             balanceAfter: 65,
             reason: 'Livraison Jardins du Marais',
-            userId: user.id,
+            userId: userId,
           },
           {
             productId: productMap['Oignons'].id,
@@ -3632,7 +3813,7 @@ async function main() {
             quantity: 35,
             balanceAfter: 65,
             reason: 'Livraison Jardins du Marais',
-            userId: user.id,
+            userId: userId,
           },
           {
             productId: productMap['Tomates'].id,
@@ -3640,7 +3821,7 @@ async function main() {
             quantity: 30,
             balanceAfter: 50,
             reason: 'Livraison Jardins du Marais',
-            userId: user.id,
+            userId: userId,
           },
         ],
       },
@@ -3649,10 +3830,9 @@ async function main() {
 
   const bill5 = await prisma.bill.create({
     data: {
+      restaurantId,
       filename: 'facture_epicerie_20250119.pdf',
-      supplier: {
-        connect: { id: epicerie.id }
-      },
+      supplierId: epicerie.id,
       billDate: getDaysAgo(1),
       totalAmount: 195.50,
       status: 'PROCESSED',
@@ -3680,7 +3860,7 @@ async function main() {
             quantity: 50,
             balanceAfter: 95,
             reason: 'Livraison Épicerie Centrale',
-            userId: admin.id,
+            userId: userId,
           },
           {
             productId: productMap['Sel fin'].id,
@@ -3688,7 +3868,7 @@ async function main() {
             quantity: 30,
             balanceAfter: 55,
             reason: 'Livraison Épicerie Centrale',
-            userId: admin.id,
+            userId: userId,
           },
         ],
       },
@@ -3707,7 +3887,6 @@ async function main() {
 
   for (let daysAgo = 0; daysAgo < 10; daysAgo++) {
     const movementDate = getDaysAgo(daysAgo);
-    const userId = daysAgo % 2 === 0 ? admin.id : user.id;
 
     // Daily usage patterns
     additionalMovements.push(
@@ -3786,6 +3965,7 @@ async function main() {
 
   // Generate comprehensive sales data for 21 days
   const salesData: Array<{
+    restaurantId: string;
     dishId: string;
     quantitySold: number;
     saleDate: Date;
@@ -3827,7 +4007,6 @@ async function main() {
   for (let daysAgo = 0; daysAgo < 21; daysAgo++) {
     const saleDate = getDaysAgo(daysAgo);
     const isWeekend = saleDate.getDay() === 0 || saleDate.getDay() === 6;
-    const userId = daysAgo % 2 === 0 ? admin.id : user.id;
 
     dishSalesPatterns.forEach(({ dish, min, max, frequency }) => {
       // Randomly determine if this dish is sold on this day based on frequency
@@ -3838,6 +4017,7 @@ async function main() {
         const quantitySold = Math.round(baseQuantity * volumeMultiplier);
 
         salesData.push({
+          restaurantId,
           dishId: dish.id,
           quantitySold,
           saleDate,
@@ -3871,6 +4051,7 @@ async function main() {
   await prisma.dLC.createMany({
     data: [
       {
+        restaurantId,
         productId: productMap['Saumon norvégien'].id,
         expirationDate: futureDate1,
         quantity: 5,
@@ -3881,6 +4062,7 @@ async function main() {
         notes: 'Arrivage du 16/01',
       },
       {
+        restaurantId,
         productId: productMap['Poulet fermier (entier)'].id,
         expirationDate: futureDate2,
         quantity: 10,
@@ -3890,6 +4072,7 @@ async function main() {
         status: DLCStatus.ACTIVE,
       },
       {
+        restaurantId,
         productId: productMap['Crème fraîche 35%'].id,
         expirationDate: futureDate3,
         quantity: 8,
@@ -3899,6 +4082,7 @@ async function main() {
         status: DLCStatus.ACTIVE,
       },
       {
+        restaurantId,
         productId: productMap['Œufs frais'].id,
         expirationDate: expiredDate,
         quantity: 30,
@@ -3909,6 +4093,7 @@ async function main() {
         notes: 'À retirer du stock',
       },
       {
+        restaurantId,
         productId: productMap['Onglet de bœuf'].id,
         expirationDate: futureDate1,
         quantity: 8,
@@ -3919,6 +4104,7 @@ async function main() {
         notes: 'Viande premium - onglet',
       },
       {
+        restaurantId,
         productId: productMap['Tomates'].id,
         expirationDate: futureDate1,
         quantity: 15,
@@ -3939,6 +4125,7 @@ async function main() {
 
   const dispute1 = await prisma.dispute.create({
     data: {
+      restaurantId,
       billId: bill2.id,
       type: 'COMPLAINT',
       status: 'RESOLVED',
@@ -3962,6 +4149,7 @@ async function main() {
 
   const dispute2 = await prisma.dispute.create({
     data: {
+      restaurantId,
       billId: bill1.id,
       type: 'RETURN',
       status: 'IN_PROGRESS',
@@ -4105,7 +4293,7 @@ async function main() {
   ];
 
   await prisma.priceHistory.createMany({
-    data: priceHistoryData,
+    data: priceHistoryData.map(item => ({ ...item, restaurantId })),
   });
 
   console.log(`✅ Created ${priceHistoryData.length} price history records\n`);

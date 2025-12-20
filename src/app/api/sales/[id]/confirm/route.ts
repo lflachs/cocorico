@@ -25,10 +25,54 @@ export async function POST(
 
     const results = [];
 
+    // Get restaurant ID from session
+    const { auth } = await import('@/auth');
+    const { cookies } = await import('next/headers');
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+    const cookieStore = await cookies();
+    const restaurantId = cookieStore.get('selectedRestaurantId')?.value;
+    if (!restaurantId) {
+      return NextResponse.json({ error: 'No restaurant selected' }, { status: 400 });
+    }
+
     // Process each dish using the smart detection service
     for (const dishInput of dishes) {
       const { name, quantity, dishId } = dishInput;
 
+      // Check if this is Menu du jour (special handling)
+      if (dishId === 'menu-du-jour') {
+        try {
+          // Use createSaleAction which handles Menu du jour specially
+          const { createSaleAction } = await import('@/lib/actions/sale.actions');
+          const result = await createSaleAction({
+            dishId: 'menu-du-jour',
+            quantitySold: quantity,
+            saleDate: saleDate ? new Date(saleDate) : new Date(),
+            notes: `Imported from receipt scan - ${receiptId}`,
+          });
+
+          results.push({
+            dishName: name,
+            quantitySold: quantity,
+            success: result.success,
+            error: result.success ? undefined : result.error,
+          });
+        } catch (error) {
+          console.error(`Error recording Menu du jour sale:`, error);
+          results.push({
+            dishName: name,
+            quantitySold: quantity,
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
+        continue; // Skip to next dish
+      }
+
+      // Normal dish handling
       // Use dishId if provided (from DishConfirmCard matching), otherwise search by name
       let dish = dishId
         ? await db.dish.findUnique({ where: { id: dishId } })
@@ -38,6 +82,7 @@ export async function POST(
                 equals: name,
                 mode: 'insensitive',
               },
+              restaurantId,
             },
           });
 
@@ -48,6 +93,9 @@ export async function POST(
           data: {
             name: name,
             isActive: true,
+            restaurant: {
+              connect: { id: restaurantId },
+            },
           },
         });
       }

@@ -16,9 +16,6 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
-  },
   "dependencies": {
     "@azure/ai-form-recognizer": "^5.1.0",
     "@lottiefiles/dotlottie-react": "^0.17.6",

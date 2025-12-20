@@ -3,6 +3,7 @@ import { confirmBill, addProductsToBill } from '@/lib/services/bill.service';
 import { db } from '@/lib/db/client';
 import { suggestDisplayName } from '@/lib/utils/ingredients';
 import { suggestProductCategory } from '@/lib/services/category-ai.service';
+import { getSelectedRestaurantId } from '@/lib/actions/restaurant.actions';
 
 /**
  * POST /api/bills/[id]/confirm
@@ -23,15 +24,32 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Get current restaurant
+    const restaurantId = await getSelectedRestaurantId();
+    if (!restaurantId) {
+      return NextResponse.json(
+        { error: 'No restaurant selected' },
+        { status: 403 }
+      );
+    }
+
     const { id } = await params;
-    // Check if bill already processed
+    // Check if bill already processed and verify ownership
     const existingBill = await db.bill.findUnique({
       where: { id },
-      select: { status: true },
+      select: { status: true, restaurantId: true },
     });
 
     if (!existingBill) {
       return NextResponse.json({ error: 'Bill not found' }, { status: 404 });
+    }
+
+    // Verify bill belongs to current restaurant
+    if (existingBill.restaurantId !== restaurantId) {
+      return NextResponse.json(
+        { error: 'Unauthorized: Bill belongs to another restaurant' },
+        { status: 403 }
+      );
     }
 
     if (existingBill.status === 'PROCESSED') {
@@ -70,6 +88,7 @@ export async function POST(
 
         const newProduct = await db.product.create({
           data: {
+            restaurantId,
             name: product.productName,
             displayName: displayName,
             aliases: [], // Can be populated manually later
@@ -107,15 +126,21 @@ export async function POST(
     if (supplier && supplier.trim()) {
       const supplierName = supplier.trim();
 
-      // Try to find existing supplier
-      let existingSupplier = await db.supplier.findUnique({
-        where: { name: supplierName },
+      // Try to find existing supplier for this restaurant
+      let existingSupplier = await db.supplier.findFirst({
+        where: {
+          name: supplierName,
+          restaurantId,
+        },
       });
 
       // Create supplier if it doesn't exist
       if (!existingSupplier) {
         existingSupplier = await db.supplier.create({
-          data: { name: supplierName },
+          data: {
+            restaurantId,
+            name: supplierName,
+          },
         });
       }
 

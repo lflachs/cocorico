@@ -333,28 +333,18 @@ export function ProductionStepPhase({
     }
   };
 
-  const addByproduct = () => {
-    const newByproduct: Byproduct = {
-      id: `temp-${Date.now()}`,
-      name: '',
-      quantity: 0,
-      unit: 'KG',
-      byproductType: 'WASTE',
-    };
-    setByproducts([...byproducts, newByproduct]);
-  };
 
   const addSuggestionAsByproduct = (suggestion: ByproductSuggestion) => {
+    // Simple add - just name and type, no quantity needed
     const newByproduct: Byproduct = {
       id: `temp-${Date.now()}`,
       name: suggestion.name,
-      quantity: 0,
+      quantity: 0, // No quantity needed, just tracking it exists
       unit: 'KG',
       byproductType: suggestion.byproductType,
     };
     setByproducts([...byproducts, newByproduct]);
-    setByproductsExpanded(true);
-    toast.success(`"${suggestion.name}" ajouté aux sous-produits`);
+    toast.success(`"${suggestion.name}" ajouté au stock`);
   };
 
   const updateByproduct = (id: string, updates: Partial<Byproduct>) => {
@@ -397,8 +387,8 @@ export function ProductionStepPhase({
       return;
     }
 
-    // Validate byproducts if any are added
-    const validByproducts = byproducts.filter((bp) => bp.name.trim() && bp.quantity > 0);
+    // Include all byproducts with names (quantity not required)
+    const validByproducts = byproducts.filter((bp) => bp.name.trim());
 
     setProcessing(true);
     try {
@@ -409,6 +399,9 @@ export function ProductionStepPhase({
         validByproducts.length > 0 ? validByproducts : undefined
       );
       toast.success(`${quantity}x ${dishName} produit avec succès!`);
+      if (validByproducts.length > 0) {
+        toast.success(`${validByproducts.length} sous-produit(s) ajouté(s) au stock`);
+      }
     } catch (error) {
       console.error('Error processing production:', error);
       toast.error('Erreur lors de la production');
@@ -532,7 +525,7 @@ export function ProductionStepPhase({
           {byproductsExpanded && (
             <div className="space-y-3 pl-1">
               <p className="text-muted-foreground text-sm">
-                Épluchures, parures, os... Suivez vos sous-produits pour compost ou stock.
+                Os, parures, fanes... Sélectionnez les sous-produits réutilisables dans d'autres recettes.
               </p>
 
               {/* AI Byproduct Suggestions */}
@@ -627,7 +620,7 @@ export function ProductionStepPhase({
                                 className="h-7 w-full border-purple-300 bg-white text-xs text-purple-700 hover:bg-purple-100"
                               >
                                 <Plus className="mr-1 h-3 w-3" />
-                                Ajouter comme sous-produit
+                                Ajouter
                               </Button>
                             </div>
                           )}
@@ -639,124 +632,36 @@ export function ProductionStepPhase({
               )}
 
               {byproducts.length === 0 ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addByproduct}
-                  disabled={loading || processing}
-                  className="w-full"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Ajouter un sous-produit
-                </Button>
+                <p className="text-muted-foreground text-sm text-center py-4">
+                  Cliquez sur les suggestions ci-dessus pour les ajouter
+                </p>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Sous-produits sélectionnés</Label>
                   {byproducts.map((byproduct) => (
-                    <div key={byproduct.id} className="bg-muted/30 space-y-3 rounded-lg border p-3">
-                      <div className="flex items-start gap-2">
-                        <div className="flex-1 space-y-3">
-                          <div>
-                            <Label className="text-muted-foreground mb-1 text-xs">Nom</Label>
-                            <Input
-                              placeholder="ex: Épluchures de carotte"
-                              value={byproduct.name}
-                              onChange={(e) =>
-                                updateByproduct(byproduct.id, { name: e.target.value })
-                              }
-                              disabled={loading || processing}
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <Label className="text-muted-foreground mb-1 text-xs">Quantité</Label>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                min="0"
-                                placeholder="0"
-                                value={byproduct.quantity || ''}
-                                onChange={(e) =>
-                                  updateByproduct(byproduct.id, {
-                                    quantity: parseFloat(e.target.value) || 0,
-                                  })
-                                }
-                                disabled={loading || processing}
-                              />
-                            </div>
-                            <div>
-                              <Label className="text-muted-foreground mb-1 text-xs">Unité</Label>
-                              <select
-                                value={byproduct.unit}
-                                onChange={(e) =>
-                                  updateByproduct(byproduct.id, { unit: e.target.value })
-                                }
-                                disabled={loading || processing}
-                                className="border-input bg-background ring-offset-background focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
-                              >
-                                <option value="KG">kg</option>
-                                <option value="G">g</option>
-                                <option value="L">L</option>
-                                <option value="ML">mL</option>
-                                <option value="PC">pièces</option>
-                              </select>
-                            </div>
-                          </div>
-
-                          <div>
-                            <Label className="text-muted-foreground mb-1 text-xs">Type</Label>
-                            <div className="grid grid-cols-2 gap-2">
-                              {(['COMPOST', 'STOCK', 'WASTE', 'REUSE'] as ByproductType[]).map(
-                                (type) => (
-                                  <button
-                                    key={type}
-                                    type="button"
-                                    onClick={() =>
-                                      updateByproduct(byproduct.id, { byproductType: type })
-                                    }
-                                    disabled={loading || processing}
-                                    className={cn(
-                                      'flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors',
-                                      byproduct.byproductType === type
-                                        ? 'bg-primary text-primary-foreground border-primary'
-                                        : 'bg-background hover:bg-muted'
-                                    )}
-                                  >
-                                    {getByproductIcon(type)}
-                                    {getByproductLabel(type)}
-                                  </button>
-                                )
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeByproduct(byproduct.id)}
-                          disabled={loading || processing}
-                          className="shrink-0"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
+                    <div
+                      key={byproduct.id}
+                      className="flex items-center justify-between rounded-lg border bg-green-50/50 p-3"
+                    >
+                      <div className="flex items-center gap-2">
+                        {getByproductIcon(byproduct.byproductType)}
+                        <span className="text-sm font-medium">{byproduct.name}</span>
+                        <Badge variant="secondary" className="text-xs">
+                          {getByproductLabel(byproduct.byproductType)}
+                        </Badge>
                       </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeByproduct(byproduct.id)}
+                        disabled={loading || processing}
+                        className="h-8 w-8"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
                     </div>
                   ))}
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addByproduct}
-                    disabled={loading || processing}
-                    className="w-full"
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Ajouter un autre sous-produit
-                  </Button>
                 </div>
               )}
             </div>

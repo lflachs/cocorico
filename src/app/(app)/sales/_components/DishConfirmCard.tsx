@@ -47,63 +47,82 @@ export function DishConfirmCard({
   onRemove,
   onSkip,
 }: DishConfirmCardProps) {
+  // Check if this is Menu du jour immediately (before any state updates)
+  const normalized = dish.name.toLowerCase().trim();
+  const isMenuDuJourDish = normalized.includes('menu du jour') || normalized.includes('menu jour');
+
   const [editedDish, setEditedDish] = useState(dish);
   const [availableDishes, setAvailableDishes] = useState<DishOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [matchedDish, setMatchedDish] = useState<DishOption | null>(null);
   const [showWarning, setShowWarning] = useState(false);
-  const [isDailyMenu, setIsDailyMenu] = useState(false);
+  const [isDailyMenu, setIsDailyMenu] = useState(isMenuDuJourDish);
   const [dailyMenuDishes, setDailyMenuDishes] = useState<DishOption[]>([]);
+
+  // Debug: Log state values
+  console.log('DishConfirmCard state:', {
+    dishName: dish.name,
+    isDailyMenu,
+    isMenuDuJourDish,
+    showWarning,
+    matchedDish,
+    willShowWarning: showWarning && !matchedDish && !isDailyMenu
+  });
 
   // Load available dishes from database
   useEffect(() => {
-    loadDishes();
-    checkIfMenuDuJour();
+    // Check if this is Menu du jour FIRST (synchronously)
+    const normalized = dish.name.toLowerCase().trim();
+    const isMenuDuJour = normalized.includes('menu du jour') || normalized.includes('menu jour');
+
+    if (isMenuDuJour) {
+      setIsDailyMenu(true);
+      checkIfMenuDuJour();
+    } else {
+      loadDishes();
+    }
   }, []);
 
   const checkIfMenuDuJour = async () => {
-    // Check if this dish is "menu du jour" variant
-    const normalized = dish.name.toLowerCase().trim();
-    if (normalized.includes('menu du jour') || normalized.includes('menu jour')) {
-      setIsDailyMenu(true);
-      // Try to fetch today's daily menu
-      try {
-        const { getTodayDailyMenuAction } = await import('@/lib/actions/menu.actions');
-        const result = await getTodayDailyMenuAction();
+    // Try to fetch today's daily menu configuration
+    try {
+      const { getTodaysDailyMenuAction } = await import('@/lib/actions/menu.actions');
+      const result = await getTodaysDailyMenuAction();
 
-        if (result.success && result.data) {
-          // Extract all dishes from the daily menu
-          const dishes: DishOption[] = [];
-          result.data.sections?.forEach((section: any) => {
-            section.dishes?.forEach((menuDish: any) => {
-              if (menuDish.dish) {
-                dishes.push({
-                  id: menuDish.dish.id,
-                  name: menuDish.dish.name,
-                  isActive: menuDish.dish.isActive,
-                });
-              }
-            });
-          });
-
-          setDailyMenuDishes(dishes);
-          setShowWarning(dishes.length === 0);
-        } else {
-          setShowWarning(true);
-        }
-      } catch (error) {
-        console.error('Error checking daily menu:', error);
+      if (result.success && result.data) {
+        // Menu du jour is configured for today
+        // Mark as valid (no need to match to a dish - it's ingredient-based)
+        setEditedDish({
+          ...dish,
+          dishId: 'menu-du-jour', // Special ID for menu du jour
+          isMenuDuJour: true,
+        });
+        setShowWarning(false);
+      } else {
+        // No menu du jour configured for today
         setShowWarning(true);
       }
+    } catch (error) {
+      console.error('Error checking daily menu:', error);
+      setShowWarning(true);
     }
   };
 
   // Update editedDish when dish prop changes (navigating between dishes)
   useEffect(() => {
     setEditedDish(dish);
-    // Try to auto-match when dish changes
-    if (availableDishes.length > 0) {
+
+    // Re-check if this dish is Menu du jour (in case dish prop changed)
+    const normalized = dish.name.toLowerCase().trim();
+    const isMenuDuJour = normalized.includes('menu du jour') || normalized.includes('menu jour');
+
+    if (isMenuDuJour !== isDailyMenu) {
+      setIsDailyMenu(isMenuDuJour);
+    }
+
+    // Try to auto-match when dish changes (skip for Menu du jour)
+    if (availableDishes.length > 0 && !isMenuDuJour) {
       autoMatchDish(dish.name);
     }
   }, [dish, availableDishes]);
@@ -116,8 +135,10 @@ export function DishConfirmCard({
 
       if (result.success && result.data) {
         setAvailableDishes(result.data);
-        // Auto-match on first load
-        autoMatchDish(dish.name, result.data);
+        // Auto-match on first load (skip for Menu du jour)
+        if (!isDailyMenu) {
+          autoMatchDish(dish.name, result.data);
+        }
       }
     } catch (error) {
       console.error('Error loading dishes:', error);
@@ -297,14 +318,14 @@ export function DishConfirmCard({
                 </div>
               )}
 
-              {/* Warning for daily menu without dishes */}
-              {isDailyMenu && dailyMenuDishes.length === 0 && (
+              {/* Warning for daily menu not configured */}
+              {isDailyMenu && showWarning && (
                 <div className="mt-2 flex items-start gap-2 text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-md p-3">
                   <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
                   <div>
                     <p className="font-medium">Menu du jour non configuré</p>
                     <p className="text-xs mt-1">
-                      Aucun menu du jour n'a été défini pour aujourd'hui. Configurez-le dans la section Menu.
+                      Aucun menu du jour n'a été configuré pour aujourd'hui. Configurez-le dans Prep → Menu du jour.
                     </p>
                   </div>
                 </div>

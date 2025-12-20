@@ -52,6 +52,28 @@ export async function getSaleByIdAction(id: string) {
  */
 export async function createSaleAction(input: CreateSaleInput) {
   try {
+    // Check if this is a Menu du jour sale (special handling)
+    if (input.dishId === 'menu-du-jour') {
+      // Handle Menu du jour sale by deducting ingredients
+      const { recordMenuDuJourSaleAction } = await import('@/lib/actions/menu.actions');
+      const result = await recordMenuDuJourSaleAction({
+        quantity: input.quantitySold,
+        price: input.price,
+        date: input.saleDate,
+      });
+
+      if (!result.success) {
+        return result;
+      }
+
+      // Note: We don't create a Sale record for Menu du jour since it doesn't have a dishId
+      // The stock movements are recorded directly
+      revalidatePath('/today');
+      revalidatePath('/inventory');
+      return { success: true, data: { id: 'menu-du-jour', message: 'Menu du jour vendu' } as any };
+    }
+
+    // Normal dish sale
     const validatedData = createSaleSchema.parse(input);
     const sale = await saleService.createSale(validatedData);
     revalidatePath('/today');

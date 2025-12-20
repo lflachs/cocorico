@@ -2,6 +2,7 @@
 
 import { type ReactNode, useState, useEffect, lazy, Suspense } from 'react';
 import { LanguageProvider } from '@/providers/LanguageProvider';
+import { RestaurantProvider } from '@/providers/RestaurantProvider';
 import { Toaster } from '@/components/ui/sonner';
 import { MobileMenuToggle } from '@/components/layout/MobileMenuToggle';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -73,8 +74,10 @@ function AppContent({ children }: { children: ReactNode }) {
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <LanguageProvider>
-      <AppContent>{children}</AppContent>
-      <Toaster />
+      <RestaurantProvider>
+        <AppContent>{children}</AppContent>
+        <Toaster />
+      </RestaurantProvider>
     </LanguageProvider>
   );
 }

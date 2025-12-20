@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
+import { getSelectedRestaurantId } from '@/lib/actions/restaurant.actions';
 
 /**
  * GET /api/suppliers
@@ -7,7 +8,17 @@ import { db } from '@/lib/db/client';
  */
 export async function GET(request: NextRequest) {
   try {
+    // Get current restaurant
+    const restaurantId = await getSelectedRestaurantId();
+    if (!restaurantId) {
+      return NextResponse.json(
+        { error: 'No restaurant selected' },
+        { status: 403 }
+      );
+    }
+
     const suppliers = await db.supplier.findMany({
+      where: { restaurantId },
       orderBy: { name: 'asc' },
     });
 
@@ -30,6 +41,15 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Get current restaurant
+    const restaurantId = await getSelectedRestaurantId();
+    if (!restaurantId) {
+      return NextResponse.json(
+        { error: 'No restaurant selected' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { name, contactName, email, phone, address, notes, isActive } = body;
 
@@ -42,6 +62,7 @@ export async function POST(request: NextRequest) {
 
     const supplier = await db.supplier.create({
       data: {
+        restaurantId,
         name: name.trim(),
         contactName: contactName || null,
         email: email || null,

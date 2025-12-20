@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllBills } from '@/lib/services/bill.service';
+import { getSelectedRestaurantId } from '@/lib/actions/restaurant.actions';
 
 /**
  * GET /api/bills
@@ -7,7 +8,16 @@ import { getAllBills } from '@/lib/services/bill.service';
  */
 export async function GET(request: NextRequest) {
   try {
-    const bills = await getAllBills();
+    // Get current restaurant
+    const restaurantId = await getSelectedRestaurantId();
+    if (!restaurantId) {
+      return NextResponse.json(
+        { error: 'No restaurant selected' },
+        { status: 403 }
+      );
+    }
+
+    const bills = await getAllBills(restaurantId);
 
     // Transform the data for the frontend
     const transformedBills = bills.map((bill) => ({

@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import Lottie from 'lottie-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import roosterAnimation from '../../public/animations/Rooster.json';
 
 export function SplashScreen() {
   const [isVisible, setIsVisible] = useState(true);
@@ -52,10 +53,9 @@ export function SplashScreen() {
               }}
               className="relative"
             >
-              {/* DotLottie Animation */}
               <div className="h-64 w-64">
-                <DotLottieReact
-                  src="/animations/rooster.json"
+                <Lottie
+                  animationData={roosterAnimation}
                   loop
                   autoplay
                 />

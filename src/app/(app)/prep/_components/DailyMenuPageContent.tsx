@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, Check, ShoppingBasket, Plus, Minus, X } from 'lucide-react';
+import { ShoppingBasket, Check, Plus, Minus, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 type Product = {
@@ -21,40 +21,47 @@ type Product = {
 type SelectedIngredient = {
   productId: string;
   productName: string;
-  quantityUsed: number;
+  quantityPerServing: number;
   unit: string;
 };
 
-type DailyMenuDialogProps = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-};
-
 /**
- * DailyMenuDialog - Market-style ingredient selection for Menu du jour
+ * DailyMenuPageContent - Full-screen page for Menu du jour
  *
- * Chef picks ingredients from stock and specifies how many portions made
- * No fixed recipe - flexible daily specials based on what's available
+ * Chef configures today's menu du jour with ingredients
+ * Stock is deducted when the menu is sold, not when configured
  */
-export function DailyMenuDialog({ open, onOpenChange }: DailyMenuDialogProps) {
+export function DailyMenuPageContent() {
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [selectedIngredients, setSelectedIngredients] = useState<SelectedIngredient[]>([]);
-  const [portionsProduced, setPortionsProduced] = useState<number>(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [existingMenuId, setExistingMenuId] = useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
-  // Load available products from stock
+  // Load available products from stock and check for existing menu
   useEffect(() => {
-    if (open) {
-      loadProducts();
-      // Reset state when dialog opens
-      setSelectedIngredients([]);
-      setPortionsProduced(1);
-      setSearchQuery('');
+    loadProducts();
+    checkExistingMenu();
+  }, []);
+
+  const checkExistingMenu = async () => {
+    try {
+      const { getTodaysDailyMenuAction } = await import('@/lib/actions/menu.actions');
+      const result = await getTodaysDailyMenuAction();
+
+      if (result.success && result.data) {
+        setExistingMenuId(result.data.id);
+        setIsEditMode(true);
+        setSelectedIngredients(result.data.ingredients);
+      }
+    } catch (error) {
+      console.error('Error checking existing menu:', error);
     }
-  }, [open]);
+  };
 
   // Filter products based on search
   useEffect(() => {
@@ -108,7 +115,7 @@ export function DailyMenuDialog({ open, onOpenChange }: DailyMenuDialogProps) {
     const newIngredient: SelectedIngredient = {
       productId: product.id,
       productName: product.displayName || product.name,
-      quantityUsed: 0.1, // Default to 0.1 unit
+      quantityPerServing: 0.1, // Default quantity per serving
       unit: product.unit,
     };
 
@@ -124,7 +131,7 @@ export function DailyMenuDialog({ open, onOpenChange }: DailyMenuDialogProps) {
     if (quantity < 0) return;
     setSelectedIngredients(
       selectedIngredients.map((i) =>
-        i.productId === productId ? { ...i, quantityUsed: quantity } : i
+        i.productId === productId ? { ...i, quantityPerServing: quantity } : i
       )
     );
   };
@@ -135,13 +142,8 @@ export function DailyMenuDialog({ open, onOpenChange }: DailyMenuDialogProps) {
       return;
     }
 
-    if (portionsProduced <= 0) {
-      toast.error('Veuillez indiquer le nombre de portions produites');
-      return;
-    }
-
     // Check if any ingredient has 0 quantity
-    const hasZeroQuantity = selectedIngredients.some((i) => i.quantityUsed <= 0);
+    const hasZeroQuantity = selectedIngredients.some((i) => i.quantityPerServing <= 0);
     if (hasZeroQuantity) {
       toast.error('Toutes les quantités doivent être supérieures à 0');
       return;
@@ -151,14 +153,19 @@ export function DailyMenuDialog({ open, onOpenChange }: DailyMenuDialogProps) {
     try {
       const { recordDailyMenuAction } = await import('@/lib/actions/menu.actions');
 
+      // Save the menu configuration (upsert - creates or updates)
       const result = await recordDailyMenuAction({
         ingredients: selectedIngredients,
-        portionsProduced,
       });
 
       if (result.success) {
-        toast.success(`Menu du jour enregistré: ${portionsProduced} portions`);
-        onOpenChange(false);
+        toast.success(
+          isEditMode
+            ? 'Menu du jour modifié avec succès'
+            : 'Menu du jour configuré avec succès'
+        );
+        router.push('/prep');
+        router.refresh();
       } else {
         toast.error(result.error || 'Erreur lors de l\'enregistrement');
       }
@@ -170,25 +177,54 @@ export function DailyMenuDialog({ open, onOpenChange }: DailyMenuDialogProps) {
     }
   };
 
+  const handleCancel = () => {
+    router.push('/prep');
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
-          <div className="flex items-center gap-3">
-            <ShoppingBasket className="h-8 w-8 text-primary" />
-            <div>
-              <DialogTitle className="text-2xl">Menu du jour</DialogTitle>
-              <p className="text-muted-foreground text-sm">
-                Sélectionnez les ingrédients utilisés et le nombre de portions produites
-              </p>
+    <div className="flex flex-col h-screen bg-background -mx-4 -mt-8 -mb-20">
+      {/* Header */}
+      <div className="flex-shrink-0 border-b bg-background">
+        <div className="flex items-center justify-between px-4 md:px-6 py-4">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleCancel}
+              className="shrink-0"
+              disabled={saving}
+            >
+              <X className="h-5 w-5" />
+            </Button>
+            <div className="flex items-center gap-3">
+              <ShoppingBasket className="h-6 w-6 md:h-8 md:w-8 text-primary" />
+              <div>
+                <h1 className="text-xl md:text-2xl font-bold">
+                  {isEditMode ? 'Modifier le menu du jour' : 'Menu du jour'}
+                </h1>
+                <p className="text-xs md:text-sm text-muted-foreground hidden md:block">
+                  {isEditMode
+                    ? 'Modifiez les ingrédients du menu du jour'
+                    : 'Configurez les ingrédients qui composent le menu du jour'}
+                </p>
+              </div>
             </div>
           </div>
-        </DialogHeader>
 
-        <div className="flex-1 overflow-hidden flex flex-col lg:flex-row gap-6 py-4">
-          {/* Left: Ingredient Market */}
-          <div className="flex-1 flex flex-col min-h-0">
-            <div className="mb-4">
+          {selectedIngredients.length > 0 && (
+            <div className="text-sm text-muted-foreground">
+              <strong>{selectedIngredients.length}</strong> ingrédient{selectedIngredients.length !== 1 ? 's' : ''}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Main content area - full height with two columns */}
+      <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
+        {/* Left Column: Ingredient Market */}
+        <div className="flex-shrink-0 flex flex-col border-b lg:border-b-0 lg:border-r lg:w-1/2 overflow-hidden">
+          <div className="p-4 md:p-6 space-y-4">
+            <div>
               <Label className="text-base font-semibold mb-2 block">
                 Ingrédients disponibles
               </Label>
@@ -201,8 +237,10 @@ export function DailyMenuDialog({ open, onOpenChange }: DailyMenuDialogProps) {
                 className="w-full"
               />
             </div>
+          </div>
 
-            <div className="flex-1 overflow-y-auto border rounded-lg bg-gray-50 p-4 space-y-2">
+          <div className="flex-1 overflow-y-auto px-4 md:px-6 pb-4 md:pb-6">
+            <div className="space-y-2">
               {loading ? (
                 <div className="text-center py-8 text-muted-foreground">
                   Chargement des produits...
@@ -245,10 +283,12 @@ export function DailyMenuDialog({ open, onOpenChange }: DailyMenuDialogProps) {
               )}
             </div>
           </div>
+        </div>
 
-          {/* Right: Selected Ingredients & Portions */}
-          <div className="flex-1 flex flex-col min-h-0">
-            <div className="mb-4">
+        {/* Right Column: Selected Ingredients & Portions */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="p-4 md:p-6 space-y-4">
+            <div>
               <Label className="text-base font-semibold mb-2 flex items-center gap-2">
                 Ingrédients sélectionnés
                 {selectedIngredients.length > 0 && (
@@ -256,8 +296,10 @@ export function DailyMenuDialog({ open, onOpenChange }: DailyMenuDialogProps) {
                 )}
               </Label>
             </div>
+          </div>
 
-            <div className="flex-1 overflow-y-auto border rounded-lg bg-blue-50 p-4 space-y-3">
+          <div className="flex-1 overflow-y-auto px-4 md:px-6">
+            <div className="space-y-3 pb-4 md:pb-6">
               {selectedIngredients.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   Cliquez sur + pour ajouter des ingrédients
@@ -266,7 +308,7 @@ export function DailyMenuDialog({ open, onOpenChange }: DailyMenuDialogProps) {
                 selectedIngredients.map((ingredient) => (
                   <div
                     key={ingredient.productId}
-                    className="bg-white p-3 rounded-lg border space-y-2"
+                    className="bg-blue-50 p-3 rounded-lg border space-y-2"
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-medium">{ingredient.productName}</span>
@@ -287,7 +329,7 @@ export function DailyMenuDialog({ open, onOpenChange }: DailyMenuDialogProps) {
                         onClick={() =>
                           updateIngredientQuantity(
                             ingredient.productId,
-                            Math.max(0, ingredient.quantityUsed - 0.1)
+                            Math.max(0, ingredient.quantityPerServing - 0.1)
                           )
                         }
                         disabled={saving}
@@ -299,7 +341,7 @@ export function DailyMenuDialog({ open, onOpenChange }: DailyMenuDialogProps) {
                         type="number"
                         step="0.1"
                         min="0"
-                        value={ingredient.quantityUsed}
+                        value={ingredient.quantityPerServing}
                         onChange={(e) =>
                           updateIngredientQuantity(
                             ingredient.productId,
@@ -318,7 +360,7 @@ export function DailyMenuDialog({ open, onOpenChange }: DailyMenuDialogProps) {
                         onClick={() =>
                           updateIngredientQuantity(
                             ingredient.productId,
-                            ingredient.quantityUsed + 0.1
+                            ingredient.quantityPerServing + 0.1
                           )
                         }
                         disabled={saving}
@@ -331,73 +373,43 @@ export function DailyMenuDialog({ open, onOpenChange }: DailyMenuDialogProps) {
                 ))
               )}
             </div>
+          </div>
 
-            {/* Portions Produced */}
-            <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <Label className="text-base font-semibold mb-3 block">
-                Nombre de portions produites <span className="text-destructive">*</span>
-              </Label>
-              <div className="flex items-center gap-3">
+          {/* Actions Footer */}
+          <div className="flex-shrink-0 border-t bg-muted/30">
+            <div className="p-4 md:p-6">
+              {/* Action Buttons */}
+              <div className="flex gap-3">
                 <Button
                   variant="outline"
-                  size="icon"
-                  onClick={() => setPortionsProduced(Math.max(1, portionsProduced - 1))}
+                  onClick={handleCancel}
                   disabled={saving}
-                  className="h-12 w-12"
+                  className="flex-1"
                 >
-                  <Minus className="h-5 w-5" />
+                  Annuler
                 </Button>
-                <Input
-                  type="number"
-                  min="1"
-                  value={portionsProduced}
-                  onChange={(e) => setPortionsProduced(parseInt(e.target.value) || 1)}
-                  disabled={saving}
-                  className="flex-1 text-center text-2xl font-bold h-12"
-                />
                 <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setPortionsProduced(portionsProduced + 1)}
-                  disabled={saving}
-                  className="h-12 w-12"
+                  onClick={handleSave}
+                  disabled={saving || selectedIngredients.length === 0}
+                  className="flex-1"
                 >
-                  <Plus className="h-5 w-5" />
+                  {saving ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                      Sauvegarde...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="mr-2 h-4 w-4" />
+                      {isEditMode ? 'Modifier le menu' : 'Enregistrer le menu'}
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
           </div>
         </div>
-
-        {/* Actions */}
-        <div className="flex gap-3 pt-4 border-t">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={saving}
-            className="flex-1"
-          >
-            Annuler
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={saving || selectedIngredients.length === 0 || portionsProduced <= 0}
-            className="flex-1"
-          >
-            {saving ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
-                Sauvegarde...
-              </>
-            ) : (
-              <>
-                <Check className="mr-2 h-4 w-4" />
-                Enregistrer {portionsProduced} portion{portionsProduced > 1 ? 's' : ''}
-              </>
-            )}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }

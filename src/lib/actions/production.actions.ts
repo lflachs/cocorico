@@ -86,6 +86,78 @@ export async function getByproductSuggestionsAction(
 }
 
 /**
+ * Add a byproduct suggestion directly to stock
+ * Simplified flow: just name, no quantity or type needed
+ */
+export async function addByproductToStockAction(
+  byproductName: string,
+  productionId: string,
+  byproductType: 'STOCK' | 'REUSE'
+) {
+  try {
+    const { getSelectedRestaurantId } = await import('@/lib/actions/restaurant.actions');
+
+    // Get current restaurant
+    const restaurantId = await getSelectedRestaurantId();
+    if (!restaurantId) {
+      throw new Error('No restaurant selected');
+    }
+
+    // Find or create a product for this byproduct
+    let byproductProduct = await db.product.findFirst({
+      where: {
+        name: byproductName,
+        category: 'Byproduct',
+        restaurantId,
+      },
+    });
+
+    if (!byproductProduct) {
+      // Create new product for this byproduct
+      byproductProduct = await db.product.create({
+        data: {
+          name: byproductName,
+          quantity: 0, // Start with 0, chef will update when they weigh it
+          unit: 'KG',
+          category: 'Byproduct',
+          trackable: true,
+          restaurant: {
+            connect: { id: restaurantId },
+          },
+        },
+      });
+    }
+
+    // Create byproduct record linked to production
+    const byproduct = await db.byproduct.create({
+      data: {
+        productionId,
+        name: byproductName,
+        quantity: 0, // No need to specify, just tracking it exists
+        unit: 'KG',
+        byproductType,
+        productId: byproductProduct.id, // Link to the stock product
+        restaurant: {
+          connect: { id: restaurantId },
+        },
+      },
+    });
+
+    revalidatePath('/inventory');
+    revalidatePath('/prep');
+    revalidatePath('/insights');
+
+    return { success: true, data: byproduct };
+  } catch (error) {
+    console.error('Error adding byproduct to stock:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to add byproduct',
+    };
+  }
+}
+
+/**
  * Create a production batch
  */
 export async function createProductionAction(input: CreateProductionInput) {

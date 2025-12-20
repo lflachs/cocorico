@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
+import { getSelectedRestaurantId } from '@/lib/actions/restaurant.actions';
 
 /**
  * GET /api/products
@@ -7,7 +8,17 @@ import { db } from '@/lib/db/client';
  */
 export async function GET(request: NextRequest) {
   try {
+    // Get current restaurant
+    const restaurantId = await getSelectedRestaurantId();
+    if (!restaurantId) {
+      return NextResponse.json(
+        { error: 'No restaurant selected' },
+        { status: 403 }
+      );
+    }
+
     const products = await db.product.findMany({
+      where: { restaurantId },
       orderBy: { name: 'asc' },
       select: {
         id: true,
@@ -39,6 +50,15 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Get current restaurant
+    const restaurantId = await getSelectedRestaurantId();
+    if (!restaurantId) {
+      return NextResponse.json(
+        { error: 'No restaurant selected' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { name, displayName, aliases, quantity, unit, unitPrice, trackable, parLevel, category } = body;
 
@@ -53,6 +73,7 @@ export async function POST(request: NextRequest) {
     // Create product
     const product = await db.product.create({
       data: {
+        restaurantId,
         name,
         displayName: displayName || null,
         aliases: aliases || [],
