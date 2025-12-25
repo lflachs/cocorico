@@ -1,11 +1,25 @@
 import OpenAI from 'openai';
 
-const openAIApiKey = process.env.OPENAI_API_KEY;
+let openaiClient: OpenAI | null = null;
 
-if (!openAIApiKey) {
-  throw new Error('The OPENAI_API_KEY environment variable is missing or empty.');
+export function getOpenAI(): OpenAI {
+  if (!openaiClient) {
+    const openAIApiKey = process.env.OPENAI_API_KEY;
+
+    if (!openAIApiKey) {
+      throw new Error('The OPENAI_API_KEY environment variable is missing or empty.');
+    }
+
+    openaiClient = new OpenAI({
+      apiKey: openAIApiKey,
+    });
+  }
+  return openaiClient;
 }
 
-export const openai = new OpenAI({
-  apiKey: openAIApiKey,
+// For backward compatibility - lazy getter
+export const openai = new Proxy({} as OpenAI, {
+  get(_, prop) {
+    return getOpenAI()[prop as keyof OpenAI];
+  },
 });
