@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
+import { openai } from '@/lib/ai/openai';
 import { db } from "@/lib/db/client";
 
 /**

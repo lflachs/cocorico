@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
+import { NextRequest, NextResponse } from 'next/server';
+import { openai } from '@/lib/ai/openai';
 import { prepareTextForTTS } from "@/lib/utils/number-to-words";
 import crypto from "crypto";
 
