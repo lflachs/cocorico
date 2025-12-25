@@ -17,6 +17,7 @@ export default auth(async (req) => {
   // API routes and static files should be accessible
   if (
     pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/health") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon.ico")
   ) {
