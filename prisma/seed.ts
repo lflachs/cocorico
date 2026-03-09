@@ -1,7 +1,12 @@
 import { PrismaClient, Unit, UserRole, MovementType, PricingType, DLCStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
-const prisma = new PrismaClient();
+// Append connection_limit to DATABASE_URL to avoid "too many clients" on small DB plans
+const dbUrl = process.env.DATABASE_URL || '';
+const separator = dbUrl.includes('?') ? '&' : '?';
+const prisma = new PrismaClient({
+  datasourceUrl: `${dbUrl}${separator}connection_limit=5`,
+});
 
 async function main() {
   // Get restaurant ID from environment or error
