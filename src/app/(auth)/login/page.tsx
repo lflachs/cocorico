@@ -62,6 +62,7 @@ export default function LoginPage() {
       const formData = new FormData();
       formData.set("email", data.email);
       formData.set("password", data.password);
+      localStorage.setItem("cocorico-show-tour", "true");
       const result = await signin(formData);
       if (result.error) {
         setError(result.error);

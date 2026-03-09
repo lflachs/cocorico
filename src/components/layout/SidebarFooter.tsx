@@ -48,7 +48,7 @@ export function SidebarFooter({ isCollapsed }: SidebarFooterProps) {
             {!isCollapsed && (
               <div className="flex-1 overflow-hidden text-left">
                 <p className="truncate text-sm font-medium text-sidebar-foreground">{restaurant.name}</p>
-                <p className="truncate text-xs text-sidebar-foreground/60">Click to switch</p>
+                <p className="truncate text-xs text-sidebar-foreground/60">Changer de restaurant</p>
               </div>
             )}
           </button>
@@ -81,7 +81,7 @@ export function SidebarFooter({ isCollapsed }: SidebarFooterProps) {
             title={isCollapsed ? 'Logout' : undefined}
           >
             <LogOut className="h-4 w-4" />
-            <span className={isCollapsed ? 'lg:hidden' : ''}>Logout</span>
+            <span className={isCollapsed ? 'lg:hidden' : ''}>Se déconnecter</span>
           </Button>
         )}
 

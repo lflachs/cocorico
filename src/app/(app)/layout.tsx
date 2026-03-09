@@ -8,6 +8,7 @@ import { MobileMenuToggle } from '@/components/layout/MobileMenuToggle';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { MobileHeader } from '@/components/layout/MobileHeader';
 import { PermissionManager } from '@/components/PermissionManager';
+import { OnboardingTour } from '@/components/onboarding/OnboardingTour';
 import { useRouter } from 'next/navigation';
 
 // Lazy load VoiceAssistant for better initial page load performance
@@ -67,6 +68,9 @@ function AppContent({ children }: { children: ReactNode }) {
 
       {/* Permission Manager for PWA features */}
       <PermissionManager />
+
+      {/* Onboarding tour for demo users */}
+      <OnboardingTour />
     </div>
   );
 }
