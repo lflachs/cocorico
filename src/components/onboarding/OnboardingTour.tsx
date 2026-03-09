@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { X, ChevronRight, ChevronLeft } from 'lucide-react';
@@ -10,87 +10,165 @@ interface TourStep {
   targetSelector?: string;
   title: string;
   description: string;
-  position?: 'bottom' | 'right' | 'center';
+  scrollIntoView?: string; // selector to scroll into view (e.g. sidebar nav item)
 }
 
 const tourSteps: TourStep[] = [
+  // === TODAY ===
   {
     route: '/today',
-    title: 'Bienvenue, Chef !',
+    targetSelector: '[data-tour="impact-chart"]',
+    title: 'Ton tableau de bord',
     description:
-      "On va te faire visiter Cocorico en suivant ta journée type. Ici c'est ton tableau de bord : tu vois d'un coup d'œil ton impact du mois et les alertes à traiter.",
-    position: 'center',
+      "Quand tu commences ta journée, tu arrives ici. D'un coup d'œil tu vois combien tu as économisé ce mois, le temps gagné, et le gaspillage évité.",
+  },
+  {
+    route: '/today',
+    targetSelector: '[data-tour="quick-actions"]',
+    title: 'Tes actions rapides',
+    description:
+      "Ces 4 boutons sont tes raccourcis du quotidien. Scanner une livraison, entrer les ventes, lancer une production, ou passer une commande — tout est à un clic.",
+  },
+
+  // === RECEPTION ===
+  {
+    route: '/reception',
+    targetSelector: '[data-tour="start-reception"]',
+    title: 'Le matin : réception des livraisons',
+    description:
+      "Quand le livreur arrive, tu cliques ici. Tu scannes le bon de livraison avec ton téléphone et Cocorico reconnaît les produits, les quantités et les prix automatiquement.",
+    scrollIntoView: '[data-tour="nav-reception"]',
   },
   {
     route: '/reception',
-    targetSelector: '[data-tour="nav-reception"]',
-    title: 'Le matin, tu reçois tes livraisons',
+    targetSelector: '[data-tour="reception-tabs"]',
+    title: 'Historique des réceptions',
     description:
-      "Quand le livreur arrive, tu scannes le bon de livraison avec ton téléphone. Cocorico reconnaît les produits et met à jour ton stock automatiquement. Plus besoin de tout saisir à la main.",
-    position: 'right',
+      "L'onglet \"Historique\" te permet de retrouver toutes tes réceptions passées avec les détails : fournisseur, montant, produits reçus.",
+  },
+
+  // === PREP ===
+  {
+    route: '/prep',
+    targetSelector: '[data-tour="start-production"]',
+    title: 'La mise en place : production',
+    description:
+      "Avant le service, tu lances tes productions ici. Tu choisis le plat, la quantité, et Cocorico déduit automatiquement tous les ingrédients de ton stock.",
+    scrollIntoView: '[data-tour="nav-prep"]',
   },
   {
     route: '/prep',
-    targetSelector: '[data-tour="nav-prep"]',
-    title: 'Ensuite, tu lances la production',
+    targetSelector: '[data-tour="tab-daily-menu"]',
+    title: 'Le menu du jour',
     description:
-      "Avant le service, tu consultes ce qu'il faut préparer. Quand tu enregistres une production, les ingrédients sont déduits du stock. Tu sais toujours ce qu'il te reste.",
-    position: 'right',
+      "Chaque jour tu peux configurer ton menu du jour ici. Sélectionne entrée, plat et dessert parmi tes recettes, et Cocorico vérifie que tu as le stock nécessaire.",
   },
   {
-    route: '/sales',
-    targetSelector: '[data-tour="nav-sales"]',
-    title: 'Après le service, tu enregistres les ventes',
+    route: '/prep',
+    targetSelector: '[data-tour="tab-info"]',
+    title: "Les infos du jour",
     description:
-      "En fin de service, tu entres le nombre de plats vendus. Cocorico déduit automatiquement les ingrédients de chaque recette. Ton stock reste à jour sans effort.",
-    position: 'right',
+      "Cet onglet te montre ce qui nécessite ton attention : produits qui expirent aujourd'hui, le menu actif, et les stocks critiques à surveiller.",
+  },
+
+  // === SALES ===
+  {
+    route: '/sales',
+    title: 'Après le service : les ventes',
+    description:
+      "En fin de service, tu entres les plats vendus. Les ingrédients de chaque recette sont automatiquement déduits de ton stock. Ton inventaire reste toujours à jour.",
+    scrollIntoView: '[data-tour="nav-sales"]',
+  },
+
+  // === ORDERS ===
+  {
+    route: '/orders',
+    targetSelector: '[data-tour="tab-suggestions"]',
+    title: 'Commandes : les suggestions',
+    description:
+      "Cocorico détecte les produits qui passent sous le seuil d'alerte et te propose les quantités à commander. Les rouges sont critiques, les oranges à surveiller.",
+    scrollIntoView: '[data-tour="nav-orders"]',
   },
   {
     route: '/orders',
-    targetSelector: '[data-tour="nav-orders"]',
-    title: 'Et tu prépares les commandes du lendemain',
+    targetSelector: '[data-tour="tab-order"]',
+    title: 'Ta commande en cours',
     description:
-      "Cocorico détecte les produits qui passent sous le seuil et te propose les quantités à commander. Tu valides et tu envoies la commande à tes fournisseurs en un clic.",
-    position: 'right',
+      "Quand tu ajoutes des suggestions, elles arrivent ici groupées par fournisseur. Tu peux envoyer la commande par email ou l'exporter en PDF en un clic.",
   },
   {
-    route: '/menu',
-    targetSelector: '[data-tour="nav-menu"]',
-    title: 'Tes recettes et tes menus',
+    route: '/orders',
+    targetSelector: '[data-tour="tab-producteurs"]',
+    title: 'Tes producteurs',
     description:
-      "Tu crées tes recettes avec les ingrédients et les quantités. Cocorico calcule le coût matière de chaque plat pour que tu saches toujours si ton prix est rentable.",
-    position: 'right',
+      "Retrouve tous tes fournisseurs avec leurs coordonnées. Tu peux les appeler, leur envoyer un email, ou voir leur localisation.",
+  },
+
+  // === MENU ===
+  {
+    route: '/menu',
+    title: 'Tes recettes et menus',
+    description:
+      "Ici tu crées et gères tes recettes avec les ingrédients et quantités précises. Cocorico calcule le coût matière de chaque plat pour que tu saches si ton prix de vente est rentable.",
+    scrollIntoView: '[data-tour="nav-menu"]',
+  },
+
+  // === INVENTORY ===
+  {
+    route: '/inventory',
+    targetSelector: '[data-tour="tab-sync"]',
+    title: "L'inventaire : la synchro",
+    description:
+      "Toutes les 2 semaines ou chaque mois, tu fais ta synchro. Tu comptes physiquement tes produits et tu compares avec le stock théorique. Cocorico identifie les écarts (pertes, vol, oublis).",
+    scrollIntoView: '[data-tour="nav-inventory"]',
   },
   {
     route: '/inventory',
-    targetSelector: '[data-tour="nav-inventory"]',
-    title: 'Régulièrement, tu fais ton inventaire',
+    targetSelector: '[data-tour="tab-stock"]',
+    title: "Le tableau de stock",
     description:
-      "Toutes les deux semaines ou chaque mois, tu comptes ton stock physique et tu compares avec le théorique. Les écarts apparaissent et tu ajustes en quelques clics.",
-    position: 'right',
+      "Tout ton inventaire en temps réel. Tu peux chercher un produit, filtrer par statut (critique, bas), trier par colonne, et modifier les quantités en direct.",
   },
   {
-    route: '/dlc',
-    targetSelector: '[data-tour="nav-dlc"]',
-    title: 'Tu gardes un œil sur les DLC',
+    route: '/inventory',
+    targetSelector: '[data-tour="tab-movements"]',
+    title: "L'historique des mouvements",
     description:
-      "Cocorico te prévient avant qu'un produit expire. Tu évites le gaspillage et les pertes, et tu restes conforme aux normes HACCP.",
-    position: 'right',
+      "Chaque entrée et sortie de stock est tracée ici : réceptions, ventes, productions, ajustements. Tu sais exactement d'où vient chaque mouvement.",
+  },
+
+  // === DLC ===
+  {
+    route: '/dlc',
+    title: 'Les dates de péremption',
+    description:
+      "Cocorico suit les DLC de tes produits et te prévient avant qu'ils expirent. Tu évites le gaspillage, les pertes, et tu restes conforme aux normes HACCP.",
+    scrollIntoView: '[data-tour="nav-dlc"]',
+  },
+
+  // === FOOD COST ===
+  {
+    route: '/food-cost',
+    targetSelector: '[data-tour="food-cost-card"]',
+    title: 'Ton food cost',
+    description:
+      "Le pourcentage magique ! C'est le ratio entre tes achats et ton chiffre d'affaires. Vise entre 28% et 35% pour une bonne rentabilité. Vert = bon, rouge = attention.",
+    scrollIntoView: '[data-tour="nav-food-cost"]',
   },
   {
     route: '/food-cost',
-    targetSelector: '[data-tour="nav-food-cost"]',
-    title: 'Et tu suis ta rentabilité',
+    targetSelector: '[data-tour="confidence-indicator"]',
+    title: "L'indice de confiance",
     description:
-      "Tu visualises ton food cost par plat et par période. Tu identifies les plats les plus rentables et tu optimises ta carte pour maximiser ta marge.",
-    position: 'right',
+      "Ce score te dit à quel point les données sont fiables. Plus tu scannes de factures et enregistres de ventes, plus l'indice monte et plus ton food cost est précis.",
   },
+
+  // === FIN ===
   {
     route: '/today',
     title: "C'est parti, Chef !",
     description:
-      "Tu as fait le tour ! Explore chaque section à ton rythme. Pour te déconnecter, ouvre le menu latéral et clique sur \"Se déconnecter\" en bas.",
-    position: 'center',
+      "Tu as fait le tour complet ! Explore chaque section à ton rythme. Pour te déconnecter, ouvre le menu latéral et clique sur \"Se déconnecter\" en bas. Bon service !",
   },
 ];
 
@@ -99,10 +177,13 @@ export function OnboardingTour() {
   const pathname = usePathname();
   const [isVisible, setIsVisible] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
-  const [spotlightStyle, setSpotlightStyle] = useState<React.CSSProperties>({});
-  const [hasNavigated, setHasNavigated] = useState(false);
-  const tooltipRef = useRef<HTMLDivElement>(null);
+  const [ready, setReady] = useState(false);
+  const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number; centerMode: boolean }>({
+    top: 0,
+    left: 0,
+    centerMode: true,
+  });
+  const [spotlightRect, setSpotlightRect] = useState<DOMRect | null>(null);
 
   useEffect(() => {
     const shouldShow = localStorage.getItem('cocorico-show-tour');
@@ -114,83 +195,95 @@ export function OnboardingTour() {
 
   const positionTooltip = useCallback(() => {
     const step = tourSteps[currentStep];
-    if (!step) return;
-
-    if (step.position === 'center' || !step.targetSelector) {
-      setTooltipStyle({
-        position: 'fixed',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-      });
-      setSpotlightStyle({ display: 'none' });
+    if (!step?.targetSelector) {
+      setTooltipPos({ top: 0, left: 0, centerMode: true });
+      setSpotlightRect(null);
+      setReady(true);
       return;
     }
 
     const target = document.querySelector(step.targetSelector);
     if (!target) {
-      // Fallback to center if target not found
-      setTooltipStyle({
-        position: 'fixed',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-      });
-      setSpotlightStyle({ display: 'none' });
+      setTooltipPos({ top: 0, left: 0, centerMode: true });
+      setSpotlightRect(null);
+      setReady(true);
       return;
     }
 
-    const rect = target.getBoundingClientRect();
-    const padding = 6;
+    // Scroll target into view
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-    // Spotlight around the target element
-    setSpotlightStyle({
-      display: 'block',
-      position: 'fixed',
-      top: rect.top - padding,
-      left: rect.left - padding,
-      width: rect.width + padding * 2,
-      height: rect.height + padding * 2,
-      borderRadius: '8px',
-    });
+    setTimeout(() => {
+      const rect = target.getBoundingClientRect();
+      setSpotlightRect(rect);
 
-    // Position tooltip to the right of the target
-    setTooltipStyle({
-      position: 'fixed',
-      top: rect.top,
-      left: rect.right + 16,
-    });
+      const tooltipWidth = 380;
+      const tooltipHeight = 250;
+      const gap = 12;
+
+      let top = rect.top;
+      let left = rect.right + gap;
+
+      // If tooltip goes off right edge, try below
+      if (left + tooltipWidth > window.innerWidth - 16) {
+        left = Math.max(16, rect.left);
+        top = rect.bottom + gap;
+      }
+
+      // If tooltip goes off bottom, place above
+      if (top + tooltipHeight > window.innerHeight - 16) {
+        top = Math.max(16, rect.top - tooltipHeight - gap);
+      }
+
+      // Clamp
+      top = Math.max(16, Math.min(top, window.innerHeight - tooltipHeight - 16));
+      left = Math.max(16, Math.min(left, window.innerWidth - tooltipWidth - 16));
+
+      setTooltipPos({ top, left, centerMode: false });
+      setReady(true);
+    }, 100);
   }, [currentStep]);
 
-  // Navigate to step route when step changes
+  // Navigate to step route
   useEffect(() => {
     if (!isVisible) return;
     const step = tourSteps[currentStep];
-    if (step && pathname !== step.route) {
-      setHasNavigated(false);
+    if (!step) return;
+
+    setReady(false);
+
+    // Scroll sidebar nav item into view
+    if (step.scrollIntoView) {
+      const navEl = document.querySelector(step.scrollIntoView);
+      if (navEl) {
+        navEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    if (pathname !== step.route) {
       router.push(step.route);
     } else {
-      setHasNavigated(true);
+      // Already on the right route, position after a short delay for render
+      const timer = setTimeout(positionTooltip, 400);
+      return () => clearTimeout(timer);
     }
-  }, [currentStep, isVisible, router, pathname]);
+  }, [currentStep, isVisible, router, pathname, positionTooltip]);
 
-  // Reposition when route changes
+  // When route changes, position tooltip
   useEffect(() => {
     if (!isVisible) return;
     const step = tourSteps[currentStep];
     if (step && pathname === step.route) {
-      setHasNavigated(true);
-      // Small delay to let the page render
-      const timer = setTimeout(positionTooltip, 300);
+      const timer = setTimeout(positionTooltip, 500);
       return () => clearTimeout(timer);
     }
   }, [pathname, isVisible, currentStep, positionTooltip]);
 
-  // Reposition on resize
   useEffect(() => {
     if (!isVisible) return;
-    window.addEventListener('resize', positionTooltip);
-    return () => window.removeEventListener('resize', positionTooltip);
+    const handleResize = () => positionTooltip();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, [isVisible, positionTooltip]);
 
   const handleClose = useCallback(() => {
@@ -213,23 +306,26 @@ export function OnboardingTour() {
     }
   };
 
-  if (!isVisible || !hasNavigated) return null;
+  if (!isVisible || !ready) return null;
 
   const step = tourSteps[currentStep];
   const isLastStep = currentStep === tourSteps.length - 1;
-  const isCenter = step.position === 'center' || !step.targetSelector;
+  const pad = 6;
 
   return (
     <>
-      {/* Overlay */}
-      <div className="fixed inset-0 z-[60] bg-black/50" onClick={handleClose} />
+      {/* Overlay - click to close */}
+      <div className="fixed inset-0 z-[100] bg-black/50" onClick={handleClose} />
 
       {/* Spotlight cutout */}
-      {spotlightStyle.display !== 'none' && (
+      {spotlightRect && (
         <div
-          className="z-[61] pointer-events-none"
+          className="fixed z-[101] rounded-lg pointer-events-none"
           style={{
-            ...spotlightStyle,
+            top: spotlightRect.top - pad,
+            left: spotlightRect.left - pad,
+            width: spotlightRect.width + pad * 2,
+            height: spotlightRect.height + pad * 2,
             boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)',
           }}
         />
@@ -237,13 +333,15 @@ export function OnboardingTour() {
 
       {/* Tooltip */}
       <div
-        ref={tooltipRef}
-        className={`z-[62] w-full ${isCenter ? 'max-w-md px-4' : 'max-w-sm'}`}
-        style={tooltipStyle}
+        className="fixed z-[102] w-[380px] max-w-[calc(100vw-32px)]"
+        style={
+          tooltipPos.centerMode
+            ? { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }
+            : { top: tooltipPos.top, left: tooltipPos.left }
+        }
       >
         <div className="rounded-xl bg-card shadow-2xl border overflow-hidden">
           <div className="p-5 space-y-3">
-            {/* Header */}
             <div className="flex items-start justify-between gap-2">
               <h2 className="text-lg font-bold">{step.title}</h2>
               <button
@@ -254,7 +352,6 @@ export function OnboardingTour() {
               </button>
             </div>
 
-            {/* Description */}
             <p className="text-sm text-muted-foreground leading-relaxed">
               {step.description}
             </p>
@@ -267,7 +364,6 @@ export function OnboardingTour() {
               />
             </div>
 
-            {/* Navigation */}
             <div className="flex items-center justify-between">
               <Button
                 variant="ghost"
@@ -294,7 +390,6 @@ export function OnboardingTour() {
               </Button>
             </div>
 
-            {/* Skip link */}
             {!isLastStep && (
               <div className="text-center">
                 <button

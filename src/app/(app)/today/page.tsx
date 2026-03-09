@@ -45,7 +45,7 @@ export default async function TodayPage() {
       />
 
       {/* Hero: Impact Chart - Progress bars with goals */}
-      <div className="rounded-lg border bg-card p-6">
+      <div className="rounded-lg border bg-card p-6" data-tour="impact-chart">
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-bold">Ton impact ce mois</h2>

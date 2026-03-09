@@ -273,16 +273,16 @@ export function OrdersPageContent({ suggestions, suppliers }: OrdersPageContentP
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full max-w-2xl grid-cols-3 mb-6">
-          <TabsTrigger value="suggestions" className="gap-2">
+        <TabsList className="grid w-full max-w-2xl grid-cols-3 mb-6" data-tour="orders-tabs">
+          <TabsTrigger value="suggestions" className="gap-2" data-tour="tab-suggestions">
             <AlertCircle className="w-4 h-4" />
             Suggestions ({suggestions.length})
           </TabsTrigger>
-          <TabsTrigger value="order" className="gap-2">
+          <TabsTrigger value="order" className="gap-2" data-tour="tab-order">
             <ShoppingCart className="w-4 h-4" />
             Ma commande ({orderItems.length})
           </TabsTrigger>
-          <TabsTrigger value="producteurs" className="gap-2">
+          <TabsTrigger value="producteurs" className="gap-2" data-tour="tab-producteurs">
             <MapPin className="w-4 h-4" />
             Producteurs
           </TabsTrigger>

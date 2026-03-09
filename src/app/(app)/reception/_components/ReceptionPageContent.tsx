@@ -46,7 +46,7 @@ export function ReceptionPageContent({ initialBills }: ReceptionPageContentProps
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-      <TabsList className="grid w-full max-w-md grid-cols-2 mb-6">
+      <TabsList className="grid w-full max-w-md grid-cols-2 mb-6" data-tour="reception-tabs">
         <TabsTrigger value="reception" className="gap-2">
           <PackageCheck className="w-4 h-4" />
           Nouvelle réception
@@ -71,6 +71,7 @@ export function ReceptionPageContent({ initialBills }: ReceptionPageContentProps
             onClick={() => setReceptionFlowOpen(true)}
             size="lg"
             className="h-16 px-8 text-lg font-semibold"
+            data-tour="start-reception"
           >
             Démarrer une réception
           </Button>

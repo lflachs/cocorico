@@ -90,16 +90,16 @@ export function PrepPageContent({ expiringProducts, menuItems, lowStockItems, re
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-      <TabsList className="grid w-full max-w-3xl grid-cols-3 mb-6">
-        <TabsTrigger value="production" className="gap-2">
+      <TabsList className="grid w-full max-w-3xl grid-cols-3 mb-6" data-tour="prep-tabs">
+        <TabsTrigger value="production" className="gap-2" data-tour="tab-production">
           <ChefHat className="w-4 h-4" />
           Production
         </TabsTrigger>
-        <TabsTrigger value="daily-menu" className="gap-2">
+        <TabsTrigger value="daily-menu" className="gap-2" data-tour="tab-daily-menu">
           <CalendarDays className="w-4 h-4" />
           Menu du jour
         </TabsTrigger>
-        <TabsTrigger value="info" className="gap-2">
+        <TabsTrigger value="info" className="gap-2" data-tour="tab-info">
           <Info className="w-4 h-4" />
           Infos du jour
         </TabsTrigger>
@@ -119,6 +119,7 @@ export function PrepPageContent({ expiringProducts, menuItems, lowStockItems, re
             onClick={() => router.push('/prep/production')}
             size="lg"
             className="h-16 px-8 text-lg font-semibold"
+            data-tour="start-production"
           >
             <ChefHat className="mr-2 h-6 w-6" />
             Démarrer une production

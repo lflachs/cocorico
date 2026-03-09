@@ -532,16 +532,16 @@ Product: ${p.name}
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full overflow-hidden">
-        <TabsList className="grid w-full sm:max-w-md grid-cols-3 mb-6">
-          <TabsTrigger value="sync" className="gap-1 sm:gap-2 min-w-0">
+        <TabsList className="grid w-full sm:max-w-md grid-cols-3 mb-6" data-tour="inventory-tabs">
+          <TabsTrigger value="sync" className="gap-1 sm:gap-2 min-w-0" data-tour="tab-sync">
             <RefreshCw className="w-4 h-4 shrink-0" />
             <span className="truncate text-xs sm:text-sm">Sync</span>
           </TabsTrigger>
-          <TabsTrigger value="inventory" className="gap-1 sm:gap-2 min-w-0">
+          <TabsTrigger value="inventory" className="gap-1 sm:gap-2 min-w-0" data-tour="tab-stock">
             <Package className="w-4 h-4 shrink-0" />
             <span className="truncate text-xs sm:text-sm">Stock</span>
           </TabsTrigger>
-          <TabsTrigger value="movements" className="gap-1 sm:gap-2 min-w-0">
+          <TabsTrigger value="movements" className="gap-1 sm:gap-2 min-w-0" data-tour="tab-movements">
             <Clock className="w-4 h-4 shrink-0" />
             <span className="truncate text-xs sm:text-sm">Historique</span>
           </TabsTrigger>

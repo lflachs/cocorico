@@ -37,7 +37,7 @@ export function QuickActions() {
   ];
 
   return (
-    <div>
+    <div data-tour="quick-actions">
       <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
         Actions Rapides
       </h2>

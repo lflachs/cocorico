@@ -42,12 +42,14 @@ export default async function FoodCostPage() {
       </div>
 
       {/* Main Food Cost Card */}
-      <FoodCostCard
-        percentage={currentPeriod.foodCostPercent}
-        isGood={currentPeriod.isGood}
-        trend={currentPeriod.trend}
-        previousPercent={currentPeriod.previousPeriodPercent}
-      />
+      <div data-tour="food-cost-card">
+        <FoodCostCard
+          percentage={currentPeriod.foodCostPercent}
+          isGood={currentPeriod.isGood}
+          trend={currentPeriod.trend}
+          previousPercent={currentPeriod.previousPeriodPercent}
+        />
+      </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -93,7 +95,9 @@ export default async function FoodCostPage() {
       </div>
 
       {/* Data Confidence */}
-      <ConfidenceIndicator score={confidence.score} message={confidence.message} />
+      <div data-tour="confidence-indicator">
+        <ConfidenceIndicator score={confidence.score} message={confidence.message} />
+      </div>
 
       {/* Help Text */}
       <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/5 p-4">
