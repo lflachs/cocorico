@@ -20,6 +20,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
 
   async function handleSubmit(formData: FormData) {
     setError(null);
@@ -47,30 +48,58 @@ export default function LoginPage() {
     }
   }
 
+  async function handleDemoSignIn() {
+    setError(null);
+    setDemoLoading(true);
+    try {
+      const res = await fetch("/api/auth/demo", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Erreur lors de la connexion démo");
+        setDemoLoading(false);
+        return;
+      }
+      const formData = new FormData();
+      formData.set("email", data.email);
+      formData.set("password", data.password);
+      const result = await signin(formData);
+      if (result.error) {
+        setError(result.error);
+        setDemoLoading(false);
+      } else {
+        router.push("/today");
+        router.refresh();
+      }
+    } catch {
+      setError("Erreur lors de la connexion démo");
+      setDemoLoading(false);
+    }
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl">Welcome back</CardTitle>
+          <CardTitle className="text-2xl">Content de vous revoir</CardTitle>
           <CardDescription>
-            Sign in to your restaurant account
+            Connectez-vous à votre compte restaurant
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form action={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Adresse email</Label>
               <Input
                 id="email"
                 name="email"
                 type="email"
-                placeholder="your@email.com"
+                placeholder="votre@email.com"
                 required
                 disabled={loading}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Mot de passe</Label>
               <Input
                 id="password"
                 name="password"
@@ -85,8 +114,8 @@ export default function LoginPage() {
                 {error}
               </div>
             )}
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in..." : "Sign in"}
+            <Button type="submit" className="w-full" disabled={loading || demoLoading}>
+              {loading ? "Connexion..." : "Se connecter"}
             </Button>
           </form>
 
@@ -96,7 +125,7 @@ export default function LoginPage() {
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-card px-2 text-muted-foreground">
-                Or continue with
+                Ou continuer avec
               </span>
             </div>
           </div>
@@ -126,14 +155,35 @@ export default function LoginPage() {
                 fill="#EA4335"
               />
             </svg>
-            Sign in with Google
+            Se connecter avec Google
+          </Button>
+
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">
+                Ou
+              </span>
+            </div>
+          </div>
+
+          <Button
+            variant="secondary"
+            className="w-full"
+            onClick={handleDemoSignIn}
+            disabled={loading || demoLoading}
+            type="button"
+          >
+            {demoLoading ? "Chargement..." : "Tester avec le restaurant demo"}
           </Button>
         </CardContent>
         <CardFooter className="flex justify-center">
           <p className="text-sm text-muted-foreground">
-            Don't have an account?{" "}
+            Pas encore de compte ?{" "}
             <Link href="/signup" className="text-primary hover:underline">
-              Sign up
+              S'inscrire
             </Link>
           </p>
         </CardFooter>

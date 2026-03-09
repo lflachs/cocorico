@@ -20,26 +20,26 @@ async function main() {
 
   console.log('🌱 Starting database seed...\n');
 
-  // Clean up existing data (in reverse order of dependencies)
+  // Clean up existing data for this restaurant only (in reverse order of dependencies)
   console.log('🧹 Cleaning up existing data...');
-  await prisma.sale.deleteMany();
-  await prisma.production.deleteMany();
-  await prisma.dLC.deleteMany();
-  await prisma.menuDish.deleteMany();
-  await prisma.menuSection.deleteMany();
-  await prisma.menu.deleteMany();
-  await prisma.recipeIngredient.deleteMany();
-  await prisma.dish.deleteMany();
-  await prisma.recipeCategory.deleteMany(); // Delete recipe categories
-  await prisma.stockMovement.deleteMany();
-  await prisma.billProduct.deleteMany();
-  await prisma.disputeProduct.deleteMany();
-  await prisma.dispute.deleteMany();
-  await prisma.priceHistory.deleteMany();
-  await prisma.bill.deleteMany();
-  await prisma.compositeIngredient.deleteMany();
-  await prisma.product.deleteMany();
-  await prisma.supplier.deleteMany();
+  const where = { restaurantId };
+  await prisma.sale.deleteMany({ where });
+  await prisma.production.deleteMany({ where });
+  await prisma.dLC.deleteMany({ where });
+  await prisma.menuSection.deleteMany({ where });
+  await prisma.menu.deleteMany({ where });
+  await prisma.recipeIngredient.deleteMany({ where: { dish: { restaurantId } } });
+  await prisma.dish.deleteMany({ where });
+  await prisma.recipeCategory.deleteMany({ where });
+  await prisma.stockMovement.deleteMany({ where: { product: { restaurantId } } });
+  await prisma.billProduct.deleteMany({ where: { bill: { restaurantId } } });
+  await prisma.disputeProduct.deleteMany({ where: { dispute: { restaurantId } } });
+  await prisma.dispute.deleteMany({ where });
+  await prisma.priceHistory.deleteMany({ where });
+  await prisma.bill.deleteMany({ where });
+  await prisma.compositeIngredient.deleteMany({ where: { compositeProduct: { restaurantId } } });
+  await prisma.product.deleteMany({ where });
+  await prisma.supplier.deleteMany({ where });
   console.log('✅ Cleanup complete\n');
 
   // ============================================================================
