@@ -1,99 +1,108 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import {
-  X,
-  ChevronRight,
-  ChevronLeft,
-  PackageCheck,
-  ChefHat,
-  ShoppingCart,
-  Receipt,
-  ClipboardCheck,
-  TrendingUp,
-  BarChart3,
-  Trash2,
-  Home,
-  type LucideIcon,
-} from 'lucide-react';
+import { X, ChevronRight, ChevronLeft } from 'lucide-react';
 
 interface TourStep {
+  route: string;
+  targetSelector?: string;
   title: string;
   description: string;
-  icon: LucideIcon;
-  color: string;
+  position?: 'bottom' | 'right' | 'center';
 }
 
 const tourSteps: TourStep[] = [
   {
-    title: 'Bienvenue sur Cocorico !',
+    route: '/today',
+    title: 'Bienvenue, Chef !',
     description:
-      "Cocorico t'aide à gérer ton stock, tes commandes et tes recettes au quotidien. On te fait un petit tour ?",
-    icon: Home,
-    color: 'bg-blue-500',
+      "On va te faire visiter Cocorico en suivant ta journée type. Ici c'est ton tableau de bord : tu vois d'un coup d'œil ton impact du mois et les alertes à traiter.",
+    position: 'center',
   },
   {
-    title: 'Réception des livraisons',
+    route: '/reception',
+    targetSelector: '[data-tour="nav-reception"]',
+    title: 'Le matin, tu reçois tes livraisons',
     description:
-      'Scanne tes bons de livraison pour enregistrer automatiquement les produits reçus et mettre à jour ton stock.',
-    icon: PackageCheck,
-    color: 'bg-green-500',
+      "Quand le livreur arrive, tu scannes le bon de livraison avec ton téléphone. Cocorico reconnaît les produits et met à jour ton stock automatiquement. Plus besoin de tout saisir à la main.",
+    position: 'right',
   },
   {
-    title: 'Production & Préparation',
+    route: '/prep',
+    targetSelector: '[data-tour="nav-prep"]',
+    title: 'Ensuite, tu lances la production',
     description:
-      'Consulte ce qu\'il faut produire aujourd\'hui et enregistre tes préparations pour déduire automatiquement les ingrédients du stock.',
-    icon: ChefHat,
-    color: 'bg-orange-500',
+      "Avant le service, tu consultes ce qu'il faut préparer. Quand tu enregistres une production, les ingrédients sont déduits du stock. Tu sais toujours ce qu'il te reste.",
+    position: 'right',
   },
   {
-    title: 'Commandes fournisseurs',
+    route: '/sales',
+    targetSelector: '[data-tour="nav-sales"]',
+    title: 'Après le service, tu enregistres les ventes',
     description:
-      'Génère tes commandes de réassort en un clic basé sur tes niveaux de stock et tes seuils d\'alerte.',
-    icon: ShoppingCart,
-    color: 'bg-purple-500',
+      "En fin de service, tu entres le nombre de plats vendus. Cocorico déduit automatiquement les ingrédients de chaque recette. Ton stock reste à jour sans effort.",
+    position: 'right',
   },
   {
-    title: 'Ventes & Tickets de caisse',
+    route: '/orders',
+    targetSelector: '[data-tour="nav-orders"]',
+    title: 'Et tu prépares les commandes du lendemain',
     description:
-      'Enregistre tes ventes pour déduire automatiquement les ingrédients des plats vendus de ton stock.',
-    icon: Receipt,
-    color: 'bg-pink-500',
+      "Cocorico détecte les produits qui passent sous le seuil et te propose les quantités à commander. Tu valides et tu envoies la commande à tes fournisseurs en un clic.",
+    position: 'right',
   },
   {
-    title: 'Inventaire',
+    route: '/menu',
+    targetSelector: '[data-tour="nav-menu"]',
+    title: 'Tes recettes et tes menus',
     description:
-      'Fais ton inventaire physique et compare avec le stock théorique. Identifie les écarts et ajuste.',
-    icon: ClipboardCheck,
-    color: 'bg-teal-500',
+      "Tu crées tes recettes avec les ingrédients et les quantités. Cocorico calcule le coût matière de chaque plat pour que tu saches toujours si ton prix est rentable.",
+    position: 'right',
   },
   {
-    title: 'Dates de péremption (DLC)',
+    route: '/inventory',
+    targetSelector: '[data-tour="nav-inventory"]',
+    title: 'Régulièrement, tu fais ton inventaire',
     description:
-      'Suis les dates de péremption de tes produits pour éviter le gaspillage et les pertes.',
-    icon: Trash2,
-    color: 'bg-red-500',
+      "Toutes les deux semaines ou chaque mois, tu comptes ton stock physique et tu compares avec le théorique. Les écarts apparaissent et tu ajustes en quelques clics.",
+    position: 'right',
   },
   {
-    title: 'Food Cost & Rentabilité',
+    route: '/dlc',
+    targetSelector: '[data-tour="nav-dlc"]',
+    title: 'Tu gardes un œil sur les DLC',
     description:
-      'Visualise ton food cost par plat et par période. Optimise ta marge en identifiant les plats les plus rentables.',
-    icon: TrendingUp,
-    color: 'bg-amber-500',
+      "Cocorico te prévient avant qu'un produit expire. Tu évites le gaspillage et les pertes, et tu restes conforme aux normes HACCP.",
+    position: 'right',
   },
   {
-    title: 'Statistiques & Tendances',
+    route: '/food-cost',
+    targetSelector: '[data-tour="nav-food-cost"]',
+    title: 'Et tu suis ta rentabilité',
     description:
-      'Analyse tes données de stock, ventes et achats pour prendre de meilleures décisions.',
-    icon: BarChart3,
-    color: 'bg-indigo-500',
+      "Tu visualises ton food cost par plat et par période. Tu identifies les plats les plus rentables et tu optimises ta carte pour maximiser ta marge.",
+    position: 'right',
+  },
+  {
+    route: '/today',
+    title: "C'est parti, Chef !",
+    description:
+      "Tu as fait le tour ! Explore chaque section à ton rythme. Pour te déconnecter, ouvre le menu latéral et clique sur \"Se déconnecter\" en bas.",
+    position: 'center',
   },
 ];
 
 export function OnboardingTour() {
+  const router = useRouter();
+  const pathname = usePathname();
   const [isVisible, setIsVisible] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
+  const [spotlightStyle, setSpotlightStyle] = useState<React.CSSProperties>({});
+  const [hasNavigated, setHasNavigated] = useState(false);
+  const tooltipRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const shouldShow = localStorage.getItem('cocorico-show-tour');
@@ -103,10 +112,92 @@ export function OnboardingTour() {
     }
   }, []);
 
+  const positionTooltip = useCallback(() => {
+    const step = tourSteps[currentStep];
+    if (!step) return;
+
+    if (step.position === 'center' || !step.targetSelector) {
+      setTooltipStyle({
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+      });
+      setSpotlightStyle({ display: 'none' });
+      return;
+    }
+
+    const target = document.querySelector(step.targetSelector);
+    if (!target) {
+      // Fallback to center if target not found
+      setTooltipStyle({
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+      });
+      setSpotlightStyle({ display: 'none' });
+      return;
+    }
+
+    const rect = target.getBoundingClientRect();
+    const padding = 6;
+
+    // Spotlight around the target element
+    setSpotlightStyle({
+      display: 'block',
+      position: 'fixed',
+      top: rect.top - padding,
+      left: rect.left - padding,
+      width: rect.width + padding * 2,
+      height: rect.height + padding * 2,
+      borderRadius: '8px',
+    });
+
+    // Position tooltip to the right of the target
+    setTooltipStyle({
+      position: 'fixed',
+      top: rect.top,
+      left: rect.right + 16,
+    });
+  }, [currentStep]);
+
+  // Navigate to step route when step changes
+  useEffect(() => {
+    if (!isVisible) return;
+    const step = tourSteps[currentStep];
+    if (step && pathname !== step.route) {
+      setHasNavigated(false);
+      router.push(step.route);
+    } else {
+      setHasNavigated(true);
+    }
+  }, [currentStep, isVisible, router, pathname]);
+
+  // Reposition when route changes
+  useEffect(() => {
+    if (!isVisible) return;
+    const step = tourSteps[currentStep];
+    if (step && pathname === step.route) {
+      setHasNavigated(true);
+      // Small delay to let the page render
+      const timer = setTimeout(positionTooltip, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [pathname, isVisible, currentStep, positionTooltip]);
+
+  // Reposition on resize
+  useEffect(() => {
+    if (!isVisible) return;
+    window.addEventListener('resize', positionTooltip);
+    return () => window.removeEventListener('resize', positionTooltip);
+  }, [isVisible, positionTooltip]);
+
   const handleClose = useCallback(() => {
     setIsVisible(false);
     setCurrentStep(0);
-  }, []);
+    router.push('/today');
+  }, [router]);
 
   const handleNext = () => {
     if (currentStep < tourSteps.length - 1) {
@@ -122,81 +213,101 @@ export function OnboardingTour() {
     }
   };
 
-  if (!isVisible) return null;
+  if (!isVisible || !hasNavigated) return null;
 
   const step = tourSteps[currentStep];
-  const Icon = step.icon;
   const isLastStep = currentStep === tourSteps.length - 1;
+  const isCenter = step.position === 'center' || !step.targetSelector;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-md rounded-xl bg-card shadow-2xl border overflow-hidden">
-        {/* Header with icon */}
-        <div className={`${step.color} p-8 flex justify-center`}>
-          <div className="rounded-full bg-white/20 p-4">
-            <Icon className="h-12 w-12 text-white" />
-          </div>
-        </div>
+    <>
+      {/* Overlay */}
+      <div className="fixed inset-0 z-[60] bg-black/50" onClick={handleClose} />
 
-        {/* Content */}
-        <div className="p-6 space-y-4">
-          <div className="flex items-start justify-between">
-            <h2 className="text-xl font-bold">{step.title}</h2>
-            <button
-              onClick={handleClose}
-              className="text-muted-foreground hover:text-foreground -mt-1"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
+      {/* Spotlight cutout */}
+      {spotlightStyle.display !== 'none' && (
+        <div
+          className="z-[61] pointer-events-none"
+          style={{
+            ...spotlightStyle,
+            boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)',
+          }}
+        />
+      )}
 
-          <p className="text-muted-foreground leading-relaxed">
-            {step.description}
-          </p>
-
-          {/* Progress dots */}
-          <div className="flex justify-center gap-1.5 pt-2">
-            {tourSteps.map((_, i) => (
+      {/* Tooltip */}
+      <div
+        ref={tooltipRef}
+        className={`z-[62] w-full ${isCenter ? 'max-w-md px-4' : 'max-w-sm'}`}
+        style={tooltipStyle}
+      >
+        <div className="rounded-xl bg-card shadow-2xl border overflow-hidden">
+          <div className="p-5 space-y-3">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-2">
+              <h2 className="text-lg font-bold">{step.title}</h2>
               <button
-                key={i}
-                onClick={() => setCurrentStep(i)}
-                className={`h-2 rounded-full transition-all ${
-                  i === currentStep
-                    ? 'w-6 bg-primary'
-                    : 'w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50'
-                }`}
+                onClick={handleClose}
+                className="text-muted-foreground hover:text-foreground shrink-0"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Description */}
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {step.description}
+            </p>
+
+            {/* Progress bar */}
+            <div className="w-full bg-muted rounded-full h-1.5">
+              <div
+                className="bg-primary h-1.5 rounded-full transition-all duration-300"
+                style={{ width: `${((currentStep + 1) / tourSteps.length) * 100}%` }}
               />
-            ))}
-          </div>
+            </div>
 
-          {/* Navigation */}
-          <div className="flex items-center justify-between pt-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handlePrev}
-              disabled={currentStep === 0}
-              className="gap-1"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Précédent
-            </Button>
+            {/* Navigation */}
+            <div className="flex items-center justify-between">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handlePrev}
+                disabled={currentStep === 0}
+                className="gap-1 h-8"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Précédent
+              </Button>
 
-            <span className="text-xs text-muted-foreground">
-              {currentStep + 1} / {tourSteps.length}
-            </span>
+              <span className="text-xs text-muted-foreground">
+                {currentStep + 1} / {tourSteps.length}
+              </span>
 
-            <Button
-              size="sm"
-              onClick={handleNext}
-              className="gap-1"
-            >
-              {isLastStep ? "C'est parti !" : 'Suivant'}
-              {!isLastStep && <ChevronRight className="h-4 w-4" />}
-            </Button>
+              <Button
+                size="sm"
+                onClick={handleNext}
+                className="gap-1 h-8"
+              >
+                {isLastStep ? "C'est parti !" : 'Suivant'}
+                {!isLastStep && <ChevronRight className="h-4 w-4" />}
+              </Button>
+            </div>
+
+            {/* Skip link */}
+            {!isLastStep && (
+              <div className="text-center">
+                <button
+                  onClick={handleClose}
+                  className="text-xs text-muted-foreground hover:text-foreground underline"
+                >
+                  Passer le guide
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

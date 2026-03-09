@@ -63,6 +63,7 @@ export function NavigationMenu({ isCollapsed, onItemClick }: NavigationMenuProps
                       href={item.href}
                       onClick={onItemClick}
                       className="cursor-pointer block"
+                      data-tour={`nav-${item.id}`}
                     >
                       {isCollapsed ? (
                         <Tooltip>
