@@ -3,6 +3,7 @@ import { db } from "@/lib/db/client";
 import { hash } from "bcryptjs";
 import { exec } from "child_process";
 import { promisify } from "util";
+import { cookies } from "next/headers";
 
 const execAsync = promisify(exec);
 
@@ -77,6 +78,15 @@ export async function POST() {
         `SEED_RESTAURANT_ID=${restaurant.id} SEED_USER_ID=${user.id} npm run db:seed`
       );
     }
+
+    // Set the restaurant cookie so the demo user lands in the right restaurant
+    const cookieStore = await cookies();
+    cookieStore.set("selectedRestaurantId", restaurant.id, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 365,
+    });
 
     // Return credentials for client-side signIn
     return NextResponse.json({

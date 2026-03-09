@@ -615,10 +615,13 @@ export function MenuQuickCreateFlow({ open, onOpenChange }: MenuQuickCreateFlowP
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
         className="max-w-3xl w-full h-[90vh] p-0 gap-0 overflow-hidden [&>button]:hidden"
+        data-tour="menu-create-dialog"
         onPointerDownOutside={(e) => {
-          if (state !== 'START' && state !== 'COMPLETE' && menuData.name) {
-            e.preventDefault();
-          }
+          if ((window as any).__cocorico_tour_active) { e.preventDefault(); return; }
+          if (state !== 'START' && state !== 'COMPLETE' && menuData.name) { e.preventDefault(); }
+        }}
+        onInteractOutside={(e) => {
+          if ((window as any).__cocorico_tour_active) { e.preventDefault(); }
         }}
       >
         <VisuallyHidden>

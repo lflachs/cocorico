@@ -713,6 +713,7 @@ export function ReceptionFlow({ open, onOpenChange }: ReceptionFlowProps) {
       <DialogContent
         className="max-w-3xl w-full h-[90vh] p-0 gap-0 overflow-hidden [&>button]:hidden"
         onPointerDownOutside={(e) => {
+          if ((window as any).__cocorico_tour_active) { e.preventDefault(); return; }
           // Prevent closing when clicking outside during review
           if (state === 'REVIEW' && products.length > 0) {
             e.preventDefault();

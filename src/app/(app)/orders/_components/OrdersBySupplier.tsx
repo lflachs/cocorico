@@ -123,11 +123,12 @@ export function OrdersBySupplier({
             )}
 
             {/* Actions */}
-            <div className="flex gap-2 pt-2">
+            <div className="flex gap-2 pt-2" data-tour="order-actions">
               <Button
                 onClick={() => onSendOrder(order.supplierId)}
                 className="flex-1"
                 disabled={!order.supplierEmail}
+                data-tour="send-order-email"
               >
                 <Mail className="mr-2 h-4 w-4" />
                 Envoyer par email
@@ -136,6 +137,7 @@ export function OrdersBySupplier({
                 onClick={() => onExportOrder(order.supplierId)}
                 variant="outline"
                 className="flex-1"
+                data-tour="export-order-pdf"
               >
                 <FileText className="mr-2 h-4 w-4" />
                 Exporter

@@ -28,7 +28,7 @@ export function ProductionSummaryPhase({
     .reduce((sum, p) => sum + p.quantity, 0);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" data-tour="production-summary">
       {/* Summary header */}
       <div className="flex-shrink-0 px-6 py-6 border-b">
         <div className="text-center mb-6">

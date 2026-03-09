@@ -76,7 +76,7 @@ export function OrderSuggestionCard({
   const estimatedCost = suggestion.lastPrice ? suggestion.lastPrice * orderQuantity : null;
 
   return (
-    <Card className={`transition-all ${isAdded ? 'opacity-50 bg-green-50' : ''}`}>
+    <Card className={`transition-all ${isAdded ? 'opacity-50 bg-green-50' : ''}`} data-tour="suggestion-card">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
@@ -171,7 +171,7 @@ export function OrderSuggestionCard({
 
         {/* Add to Order Button */}
         {!isAdded ? (
-          <Button onClick={handleAddToOrder} className="w-full" disabled={orderQuantity === 0}>
+          <Button onClick={handleAddToOrder} className="w-full" disabled={orderQuantity === 0} data-tour="add-to-order">
             <Plus className="mr-2 h-4 w-4" />
             Ajouter à la commande
           </Button>

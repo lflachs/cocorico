@@ -41,6 +41,8 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    console.log(`[stock-movements] restaurantId=${restaurantId}, found ${movements.length} movements`);
+
     return NextResponse.json(movements);
   } catch (error) {
     console.error('Error fetching stock movements:', error);

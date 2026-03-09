@@ -26,7 +26,7 @@ export function UrgentAlerts({ alerts }: UrgentAlertsProps) {
   if (alerts.length === 0) return null;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" data-tour="urgent-alerts">
       <div className="flex items-center gap-2">
         <AlertTriangle className="h-5 w-5 text-destructive" />
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">

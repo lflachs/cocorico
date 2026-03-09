@@ -383,7 +383,7 @@ export function InventorySyncFlow({ open, onOpenChange, products, categories, in
             </div>
 
             {/* Category selection */}
-            <div className="p-4 rounded-lg border bg-card">
+            <div className="p-4 rounded-lg border bg-card" data-tour="sync-categories">
               <h3 className="font-semibold mb-3 text-sm">Sélectionner les catégories</h3>
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 <div className="flex items-center space-x-2 p-2 rounded hover:bg-muted">
@@ -440,6 +440,7 @@ export function InventorySyncFlow({ open, onOpenChange, products, categories, in
               size="lg"
               className="w-full h-16 text-lg font-semibold"
               disabled={filteredProducts.length === 0}
+              data-tour="sync-start-button"
             >
               <RefreshCw className="mr-3 h-6 w-6" />
               Commencer la synchronisation
@@ -457,7 +458,7 @@ export function InventorySyncFlow({ open, onOpenChange, products, categories, in
         : null; // null means never verified
 
       return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full" data-tour="sync-product-card">
           {/* Progress bar */}
           <div className="p-4 border-b bg-muted/30">
             <div className="flex items-center justify-between mb-2">
@@ -885,10 +886,13 @@ export function InventorySyncFlow({ open, onOpenChange, products, categories, in
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
         className="max-w-3xl w-full h-[90vh] p-0 gap-0 overflow-hidden [&>button]:hidden"
+        data-tour="sync-dialog"
         onPointerDownOutside={(e) => {
-          if (state === 'SYNCING' && confirmedProducts.size > 0) {
-            e.preventDefault();
-          }
+          if ((window as any).__cocorico_tour_active) { e.preventDefault(); return; }
+          if (state === 'SYNCING' && confirmedProducts.size > 0) { e.preventDefault(); }
+        }}
+        onInteractOutside={(e) => {
+          if ((window as any).__cocorico_tour_active) { e.preventDefault(); }
         }}
       >
         <VisuallyHidden>

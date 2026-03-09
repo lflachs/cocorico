@@ -147,6 +147,7 @@ export function PrepPageContent({ expiringProducts, menuItems, lowStockItems, re
             size="lg"
             className="h-16 px-8 text-lg font-semibold"
             disabled={checkingMenu}
+            data-tour="start-daily-menu"
           >
             <CalendarDays className="mr-2 h-6 w-6" />
             {checkingMenu

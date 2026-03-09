@@ -673,7 +673,7 @@ Product: ${p.name}
               </div>
 
               {/* Compact How it works */}
-              <div className="p-3 rounded-lg border bg-muted/30">
+              <div className="p-3 rounded-lg border bg-muted/30" data-tour="sync-how-it-works">
                 <h3 className="font-semibold text-sm mb-2">Comment ça marche ?</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex gap-2 items-start">
@@ -709,6 +709,7 @@ Product: ${p.name}
                 onClick={() => setSyncFlowOpen(true)}
                 size="lg"
                 className="w-full h-14 text-base font-semibold"
+                data-tour="start-sync"
               >
                 <RefreshCw className="mr-2 h-5 w-5" />
                 Commencer la synchronisation
@@ -841,6 +842,7 @@ Product: ${p.name}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
+                  data-tour="stock-search"
                 />
               </div>
             </div>

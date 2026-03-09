@@ -177,6 +177,7 @@ function SubIngredientItem({
                     ? 'border-orange-400 text-orange-700 hover:bg-orange-50'
                     : 'border-gray-300'
                 )}
+                data-tour={isMissing ? 'prepare-first' : 'prepare-also'}
               >
                 <Package className="mr-1 h-3 w-3" />
                 {isMissing ? 'Préparer maintenant' : 'Préparer aussi'}
@@ -411,7 +412,7 @@ export function ProductionStepPhase({
   };
 
   return (
-    <div className="flex h-full flex-col lg:flex-row">
+    <div className="flex h-full flex-col lg:flex-row" data-tour="production-step">
       {/* Left Column - Dish Info & Quantity */}
       <div className="flex-shrink-0 space-y-6 border-b p-6 lg:w-1/3 lg:border-r lg:border-b-0 lg:overflow-y-auto">
         {/* Progress indicator */}
@@ -434,7 +435,7 @@ export function ProductionStepPhase({
         </div>
 
         {/* Quantity selector */}
-        <div className="space-y-3">
+        <div className="space-y-3" data-tour="quantity-selector">
           <Label className="text-base font-semibold">
             Quantité à produire <span className="text-destructive">*</span>
           </Label>
@@ -470,6 +471,7 @@ export function ProductionStepPhase({
               onClick={() => handleQuantityChange(quantity + (preview?.productUnit ? 0.1 : 1))}
               disabled={loading || processing}
               className="h-12 w-12"
+              data-tour="quantity-plus"
             >
               <Plus className="h-5 w-5" />
             </Button>
@@ -704,7 +706,7 @@ export function ProductionStepPhase({
       </div>
 
       {/* Right Column - Ingredients */}
-      <div className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col" data-tour="ingredients-panel">
         <div className="flex-1 overflow-auto p-6">
           <h4 className="mb-4 text-lg font-semibold">Ingrédients requis</h4>
 
@@ -785,6 +787,7 @@ export function ProductionStepPhase({
                                   ? 'border-gray-300'
                                   : 'border-orange-400 font-medium text-orange-700 hover:bg-orange-50'
                               )}
+                              data-tour={ingredient.sufficient ? 'prepare-also' : 'prepare-first'}
                             >
                               <Package className="mr-2 h-4 w-4" />
                               {ingredient.sufficient
@@ -870,6 +873,7 @@ export function ProductionStepPhase({
               onClick={handleProcess}
               disabled={!preview || !preview.canProduce || processing || loading}
               className="from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 bg-gradient-to-r"
+              data-tour="production-produce"
             >
               {processing ? (
                 <>

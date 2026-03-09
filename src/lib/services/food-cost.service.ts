@@ -282,20 +282,67 @@ export async function getDataConfidence(period: FoodCostPeriod): Promise<{
   }
 
   // Both sales and purchases exist
-  let score = 70;
+  let score = 50;
 
   // Bonus for categorized purchases
   if (hasCategories && period.purchasesByCategory.length >= 3) {
-    score += 15;
+    score += 10;
   }
 
   // Bonus for reasonable food cost %
   if (period.foodCostPercent > 0 && period.foodCostPercent < 60) {
-    score += 15;
+    score += 10;
   }
 
-  return {
-    score,
-    message: score >= 80 ? 'Données complètes et fiables' : 'Données partielles - continuez à scanner vos factures',
-  };
+  // Check inventory sync freshness — do we have recent stock movements?
+  const { getSelectedRestaurantId } = await import('@/lib/actions/restaurant.actions');
+  const restaurantId = await getSelectedRestaurantId();
+  if (restaurantId) {
+    const recentMovements = await db.stockMovement.count({
+      where: {
+        product: { restaurantId },
+        movementDate: { gte: subDays(new Date(), 14) },
+      },
+    });
+    // More recent movements = higher confidence
+    if (recentMovements >= 20) {
+      score += 15;
+    } else if (recentMovements >= 5) {
+      score += 8;
+    }
+
+    // Check how many products have been synced (have any adjustment movements)
+    const syncedProducts = await db.stockMovement.groupBy({
+      by: ['productId'],
+      where: {
+        product: { restaurantId },
+        source: { in: ['MANUAL', 'SYSTEM_ADJUSTMENT'] },
+      },
+    });
+    const totalProducts = await db.product.count({
+      where: { restaurantId, trackable: true },
+    });
+    if (totalProducts > 0) {
+      const syncRatio = syncedProducts.length / totalProducts;
+      if (syncRatio >= 0.5) {
+        score += 15;
+      } else if (syncRatio >= 0.2) {
+        score += 8;
+      }
+    }
+  }
+
+  // Cap at 100
+  score = Math.min(score, 100);
+
+  let message: string;
+  if (score >= 80) {
+    message = 'Données complètes et fiables';
+  } else if (score >= 60) {
+    message = 'Données partielles — synchronisez votre stock et scannez plus de factures pour améliorer la précision';
+  } else {
+    message = 'Données limitées — scannez vos factures et synchronisez votre inventaire régulièrement';
+  }
+
+  return { score, message };
 }

@@ -113,5 +113,10 @@ export async function signInWithGoogle() {
 }
 
 export async function logout() {
+  // Clear restaurant selection cookie
+  const { cookies } = await import("next/headers");
+  const cookieStore = await cookies();
+  cookieStore.delete("selectedRestaurantId");
+
   await signOut({ redirectTo: "/login" });
 }

@@ -338,7 +338,7 @@ export function BatchProductionPageContent() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background -mx-4 -mt-8 -mb-20">
+    <div className="flex flex-col h-screen bg-background -mx-4 -mt-8 -mb-20" data-tour="production-flow">
       {/* Header */}
       <div className="flex-shrink-0 border-b bg-background">
         <div className="flex items-center justify-between px-4 md:px-6 py-4">

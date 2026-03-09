@@ -182,7 +182,7 @@ export function DailyMenuPageContent() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background -mx-4 -mt-8 -mb-20">
+    <div className="flex flex-col h-screen bg-background -mx-4 -mt-8 -mb-20" data-tour="daily-menu-page">
       {/* Header */}
       <div className="flex-shrink-0 border-b bg-background">
         <div className="flex items-center justify-between px-4 md:px-6 py-4">
@@ -222,7 +222,7 @@ export function DailyMenuPageContent() {
       {/* Main content area - full height with two columns */}
       <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
         {/* Left Column: Ingredient Market */}
-        <div className="flex-shrink-0 flex flex-col border-b lg:border-b-0 lg:border-r lg:w-1/2 overflow-hidden">
+        <div className="flex-shrink-0 flex flex-col border-b lg:border-b-0 lg:border-r lg:w-1/2 overflow-hidden" data-tour="daily-menu-products">
           <div className="p-4 md:p-6 space-y-4">
             <div>
               <Label className="text-base font-semibold mb-2 block">
@@ -286,7 +286,7 @@ export function DailyMenuPageContent() {
         </div>
 
         {/* Right Column: Selected Ingredients & Portions */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden" data-tour="daily-menu-selected">
           <div className="p-4 md:p-6 space-y-4">
             <div>
               <Label className="text-base font-semibold mb-2 flex items-center gap-2">

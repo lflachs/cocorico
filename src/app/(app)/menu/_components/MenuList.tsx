@@ -146,6 +146,7 @@ export function MenuList({ onSelectMenu }: MenuListProps) {
                 onClick={() => setShowQuickCreate(true)}
                 size="lg"
                 className="gap-2 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90"
+                data-tour="menu-quick-create"
               >
                 <Zap className="w-5 h-5" />
                 Création rapide
@@ -166,14 +167,15 @@ export function MenuList({ onSelectMenu }: MenuListProps) {
               </CreateButton>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {menus.map((menu) => {
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-tour="menu-grid">
+              {menus.map((menu, index) => {
                 const pricingInfo = getPricingDisplay(menu);
                 return (
                   <div
                     key={menu.id}
                     className="border rounded-lg p-5 hover:shadow-md transition-shadow cursor-pointer group"
                     onClick={() => onSelectMenu(menu.id)}
+                    data-tour={index === 0 ? 'first-menu-card' : undefined}
                   >
                     <div className="flex items-start justify-between mb-3">
                       <h3 className="font-semibold text-lg">{menu.name}</h3>

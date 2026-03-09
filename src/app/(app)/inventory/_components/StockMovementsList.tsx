@@ -28,6 +28,7 @@ export function StockMovementsList() {
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [filteredMovements, setFilteredMovements] = useState<StockMovement[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -51,15 +52,21 @@ export function StockMovementsList() {
 
   const loadMovements = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const response = await fetch('/api/stock-movements?limit=100');
+      const response = await fetch('/api/stock-movements?limit=100', { cache: 'no-store' });
       if (response.ok) {
         const data = await response.json();
         setMovements(data);
         setFilteredMovements(data);
+      } else {
+        const errData = await response.json().catch(() => null);
+        console.error('Stock movements API error:', response.status, errData);
+        setError(errData?.error || `Erreur ${response.status}`);
       }
     } catch (error) {
       console.error('Error loading movements:', error);
+      setError('Erreur de connexion');
     } finally {
       setLoading(false);
     }
@@ -125,8 +132,17 @@ export function StockMovementsList() {
         />
       </div>
 
+      {/* Error */}
+      {error && (
+        <Card>
+          <CardContent className="py-8 text-center">
+            <p className="text-destructive text-sm">{error}</p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Movements List */}
-      {filteredMovements.length === 0 ? (
+      {!error && filteredMovements.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Package className="mx-auto h-12 w-12 text-muted-foreground/50" />

@@ -366,9 +366,9 @@ export function MenuDetail({ menuId, onBack }: MenuDetailProps) {
 
   return (
     <>
-      <Card>
+      <Card data-tour="menu-detail">
         <CardHeader>
-          <Button variant="ghost" size="sm" onClick={onBack} className="mb-2 w-fit">
+          <Button variant="ghost" size="sm" onClick={onBack} className="mb-2 w-fit" data-tour="menu-back">
             <ArrowLeft className="mr-1 h-4 w-4" />
             {t('menu.backToMenus')}
           </Button>

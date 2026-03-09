@@ -51,7 +51,7 @@ export function ReceptionPageContent({ initialBills }: ReceptionPageContentProps
           <PackageCheck className="w-4 h-4" />
           Nouvelle réception
         </TabsTrigger>
-        <TabsTrigger value="history" className="gap-2">
+        <TabsTrigger value="history" className="gap-2" data-tour="tab-history">
           <History className="w-4 h-4" />
           Historique
         </TabsTrigger>
