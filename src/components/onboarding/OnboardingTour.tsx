@@ -10,22 +10,34 @@ interface TourStep {
   targetSelector?: string;
   title: string;
   description: string;
-  scrollIntoView?: string; // selector to scroll into view (e.g. sidebar nav item)
+  emoji?: string;
+  scrollIntoView?: string;
+  isWelcome?: boolean;
 }
 
 const tourSteps: TourStep[] = [
+  // === WELCOME ===
+  {
+    route: '/today',
+    title: 'Bienvenue dans Cocorico ! 🐓',
+    description:
+      "Cocorico, c'est ton assistant de cuisine. Il gère ton stock, tes commandes, tes recettes et ta rentabilité — pour que tu puisses te concentrer sur ce que tu fais de mieux : cuisiner.\n\nOn va te montrer comment ça marche en suivant ta journée type.",
+    emoji: '👨‍🍳',
+    isWelcome: true,
+  },
+
   // === TODAY ===
   {
     route: '/today',
     targetSelector: '[data-tour="impact-chart"]',
-    title: 'Ton tableau de bord',
+    title: '📊 Ton tableau de bord',
     description:
       "Quand tu commences ta journée, tu arrives ici. D'un coup d'œil tu vois combien tu as économisé ce mois, le temps gagné, et le gaspillage évité.",
   },
   {
     route: '/today',
     targetSelector: '[data-tour="quick-actions"]',
-    title: 'Tes actions rapides',
+    title: '⚡ Tes actions rapides',
     description:
       "Ces 4 boutons sont tes raccourcis du quotidien. Scanner une livraison, entrer les ventes, lancer une production, ou passer une commande — tout est à un clic.",
   },
@@ -34,7 +46,7 @@ const tourSteps: TourStep[] = [
   {
     route: '/reception',
     targetSelector: '[data-tour="start-reception"]',
-    title: 'Le matin : réception des livraisons',
+    title: '📦 Le matin : réception des livraisons',
     description:
       "Quand le livreur arrive, tu cliques ici. Tu scannes le bon de livraison avec ton téléphone et Cocorico reconnaît les produits, les quantités et les prix automatiquement.",
     scrollIntoView: '[data-tour="nav-reception"]',
@@ -42,7 +54,7 @@ const tourSteps: TourStep[] = [
   {
     route: '/reception',
     targetSelector: '[data-tour="reception-tabs"]',
-    title: 'Historique des réceptions',
+    title: '📋 Historique des réceptions',
     description:
       "L'onglet \"Historique\" te permet de retrouver toutes tes réceptions passées avec les détails : fournisseur, montant, produits reçus.",
   },
@@ -51,7 +63,7 @@ const tourSteps: TourStep[] = [
   {
     route: '/prep',
     targetSelector: '[data-tour="start-production"]',
-    title: 'La mise en place : production',
+    title: '👨‍🍳 La mise en place : production',
     description:
       "Avant le service, tu lances tes productions ici. Tu choisis le plat, la quantité, et Cocorico déduit automatiquement tous les ingrédients de ton stock.",
     scrollIntoView: '[data-tour="nav-prep"]',
@@ -59,14 +71,14 @@ const tourSteps: TourStep[] = [
   {
     route: '/prep',
     targetSelector: '[data-tour="tab-daily-menu"]',
-    title: 'Le menu du jour',
+    title: '📅 Le menu du jour',
     description:
       "Chaque jour tu peux configurer ton menu du jour ici. Sélectionne entrée, plat et dessert parmi tes recettes, et Cocorico vérifie que tu as le stock nécessaire.",
   },
   {
     route: '/prep',
     targetSelector: '[data-tour="tab-info"]',
-    title: "Les infos du jour",
+    title: "ℹ️ Les infos du jour",
     description:
       "Cet onglet te montre ce qui nécessite ton attention : produits qui expirent aujourd'hui, le menu actif, et les stocks critiques à surveiller.",
   },
@@ -74,7 +86,7 @@ const tourSteps: TourStep[] = [
   // === SALES ===
   {
     route: '/sales',
-    title: 'Après le service : les ventes',
+    title: '🧾 Après le service : les ventes',
     description:
       "En fin de service, tu entres les plats vendus. Les ingrédients de chaque recette sont automatiquement déduits de ton stock. Ton inventaire reste toujours à jour.",
     scrollIntoView: '[data-tour="nav-sales"]',
@@ -84,7 +96,7 @@ const tourSteps: TourStep[] = [
   {
     route: '/orders',
     targetSelector: '[data-tour="tab-suggestions"]',
-    title: 'Commandes : les suggestions',
+    title: '🔔 Commandes : les suggestions',
     description:
       "Cocorico détecte les produits qui passent sous le seuil d'alerte et te propose les quantités à commander. Les rouges sont critiques, les oranges à surveiller.",
     scrollIntoView: '[data-tour="nav-orders"]',
@@ -92,14 +104,14 @@ const tourSteps: TourStep[] = [
   {
     route: '/orders',
     targetSelector: '[data-tour="tab-order"]',
-    title: 'Ta commande en cours',
+    title: '🛒 Ta commande en cours',
     description:
       "Quand tu ajoutes des suggestions, elles arrivent ici groupées par fournisseur. Tu peux envoyer la commande par email ou l'exporter en PDF en un clic.",
   },
   {
     route: '/orders',
     targetSelector: '[data-tour="tab-producteurs"]',
-    title: 'Tes producteurs',
+    title: '🌾 Tes producteurs',
     description:
       "Retrouve tous tes fournisseurs avec leurs coordonnées. Tu peux les appeler, leur envoyer un email, ou voir leur localisation.",
   },
@@ -107,7 +119,7 @@ const tourSteps: TourStep[] = [
   // === MENU ===
   {
     route: '/menu',
-    title: 'Tes recettes et menus',
+    title: '📖 Tes recettes et menus',
     description:
       "Ici tu crées et gères tes recettes avec les ingrédients et quantités précises. Cocorico calcule le coût matière de chaque plat pour que tu saches si ton prix de vente est rentable.",
     scrollIntoView: '[data-tour="nav-menu"]',
@@ -117,7 +129,7 @@ const tourSteps: TourStep[] = [
   {
     route: '/inventory',
     targetSelector: '[data-tour="tab-sync"]',
-    title: "L'inventaire : la synchro",
+    title: "🔄 L'inventaire : la synchro",
     description:
       "Toutes les 2 semaines ou chaque mois, tu fais ta synchro. Tu comptes physiquement tes produits et tu compares avec le stock théorique. Cocorico identifie les écarts (pertes, vol, oublis).",
     scrollIntoView: '[data-tour="nav-inventory"]',
@@ -125,14 +137,14 @@ const tourSteps: TourStep[] = [
   {
     route: '/inventory',
     targetSelector: '[data-tour="tab-stock"]',
-    title: "Le tableau de stock",
+    title: "📦 Le tableau de stock",
     description:
       "Tout ton inventaire en temps réel. Tu peux chercher un produit, filtrer par statut (critique, bas), trier par colonne, et modifier les quantités en direct.",
   },
   {
     route: '/inventory',
     targetSelector: '[data-tour="tab-movements"]',
-    title: "L'historique des mouvements",
+    title: "📜 L'historique des mouvements",
     description:
       "Chaque entrée et sortie de stock est tracée ici : réceptions, ventes, productions, ajustements. Tu sais exactement d'où vient chaque mouvement.",
   },
@@ -140,7 +152,7 @@ const tourSteps: TourStep[] = [
   // === DLC ===
   {
     route: '/dlc',
-    title: 'Les dates de péremption',
+    title: '⏰ Les dates de péremption',
     description:
       "Cocorico suit les DLC de tes produits et te prévient avant qu'ils expirent. Tu évites le gaspillage, les pertes, et tu restes conforme aux normes HACCP.",
     scrollIntoView: '[data-tour="nav-dlc"]',
@@ -150,7 +162,7 @@ const tourSteps: TourStep[] = [
   {
     route: '/food-cost',
     targetSelector: '[data-tour="food-cost-card"]',
-    title: 'Ton food cost',
+    title: '💰 Ton food cost',
     description:
       "Le pourcentage magique ! C'est le ratio entre tes achats et ton chiffre d'affaires. Vise entre 28% et 35% pour une bonne rentabilité. Vert = bon, rouge = attention.",
     scrollIntoView: '[data-tour="nav-food-cost"]',
@@ -158,7 +170,7 @@ const tourSteps: TourStep[] = [
   {
     route: '/food-cost',
     targetSelector: '[data-tour="confidence-indicator"]',
-    title: "L'indice de confiance",
+    title: "🎯 L'indice de confiance",
     description:
       "Ce score te dit à quel point les données sont fiables. Plus tu scannes de factures et enregistres de ventes, plus l'indice monte et plus ton food cost est précis.",
   },
@@ -166,9 +178,11 @@ const tourSteps: TourStep[] = [
   // === FIN ===
   {
     route: '/today',
-    title: "C'est parti, Chef !",
+    title: "🚀 C'est parti, Chef !",
     description:
-      "Tu as fait le tour complet ! Explore chaque section à ton rythme. Pour te déconnecter, ouvre le menu latéral et clique sur \"Se déconnecter\" en bas. Bon service !",
+      "Tu as fait le tour complet ! Explore chaque section à ton rythme. Pour te déconnecter, ouvre le menu latéral et clique sur \"Se déconnecter\" en bas.\n\nBon service ! 🐓",
+    isWelcome: true,
+    emoji: '✨',
   },
 ];
 
@@ -314,11 +328,11 @@ export function OnboardingTour() {
 
   return (
     <>
-      {/* Overlay - click to close */}
-      <div className="fixed inset-0 z-[100] bg-black/50" onClick={handleClose} />
+      {/* Overlay - no click to close */}
+      <div className="fixed inset-0 z-[100] bg-black/30 pointer-events-none" />
 
       {/* Spotlight cutout */}
-      {spotlightRect && (
+      {spotlightRect && !step.isWelcome && (
         <div
           className="fixed z-[101] rounded-lg pointer-events-none"
           style={{
@@ -326,14 +340,15 @@ export function OnboardingTour() {
             left: spotlightRect.left - pad,
             width: spotlightRect.width + pad * 2,
             height: spotlightRect.height + pad * 2,
-            boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)',
+            boxShadow: '0 0 0 9999px rgba(0,0,0,0.3)',
+            border: '2px solid hsl(var(--primary))',
           }}
         />
       )}
 
       {/* Tooltip */}
       <div
-        className="fixed z-[102] w-[380px] max-w-[calc(100vw-32px)]"
+        className={`fixed z-[102] max-w-[calc(100vw-32px)] ${step.isWelcome ? 'w-[440px]' : 'w-[380px]'}`}
         style={
           tooltipPos.centerMode
             ? { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }
@@ -341,9 +356,16 @@ export function OnboardingTour() {
         }
       >
         <div className="rounded-xl bg-card shadow-2xl border overflow-hidden">
-          <div className="p-5 space-y-3">
+          {/* Welcome header with big emoji */}
+          {step.isWelcome && step.emoji && (
+            <div className="bg-primary/10 py-8 flex justify-center">
+              <span className="text-6xl">{step.emoji}</span>
+            </div>
+          )}
+
+          <div className={`${step.isWelcome ? 'p-6' : 'p-5'} space-y-3`}>
             <div className="flex items-start justify-between gap-2">
-              <h2 className="text-lg font-bold">{step.title}</h2>
+              <h2 className={`font-bold ${step.isWelcome ? 'text-xl' : 'text-lg'}`}>{step.title}</h2>
               <button
                 onClick={handleClose}
                 className="text-muted-foreground hover:text-foreground shrink-0"
@@ -352,7 +374,7 @@ export function OnboardingTour() {
               </button>
             </div>
 
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
               {step.description}
             </p>
 
@@ -385,8 +407,8 @@ export function OnboardingTour() {
                 onClick={handleNext}
                 className="gap-1 h-8"
               >
-                {isLastStep ? "C'est parti !" : 'Suivant'}
-                {!isLastStep && <ChevronRight className="h-4 w-4" />}
+                {isLastStep ? "C'est parti !" : currentStep === 0 ? "Commencer la visite" : 'Suivant'}
+                {!isLastStep && currentStep > 0 && <ChevronRight className="h-4 w-4" />}
               </Button>
             </div>
 
