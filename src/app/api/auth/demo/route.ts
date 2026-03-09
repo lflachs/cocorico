@@ -45,11 +45,12 @@ export async function POST() {
       });
       needsSeed = true;
     } else {
-      // Check if restaurant already has data
+      // Check if restaurant has enough data (seed creates 30+ products)
+      // If partially seeded, re-seed to fix incomplete data
       const productCount = await db.product.count({
         where: { restaurantId: restaurant.id },
       });
-      needsSeed = productCount === 0;
+      needsSeed = productCount < 20;
     }
 
     // Ensure user is linked to the restaurant
