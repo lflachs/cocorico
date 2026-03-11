@@ -60,3 +60,4 @@ storybook-static
 .claude/
 .claude-flow/
 CLAUDE.md
+.mcp.json
