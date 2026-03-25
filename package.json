@@ -68,7 +68,7 @@
     "@storybook/addon-a11y": "^10.0.2",
     "@storybook/addon-docs": "^10.0.2",
     "@storybook/addon-onboarding": "^10.0.2",
-    "@storybook/addon-vitest": "^10.0.2",
+    "@storybook/addon-vitest": "^10.3.3",
     "@storybook/nextjs-vite": "^10.0.2",
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^3.0.0",
