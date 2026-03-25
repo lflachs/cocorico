@@ -80,7 +80,7 @@
     "@vitest/browser-playwright": "^4.0.6",
     "@vitest/coverage-v8": "^4.0.6",
     "eslint": "^9",
-    "eslint-config-next": "15.5.5",
+    "eslint-config-next": "16.2.1",
     "eslint-plugin-storybook": "^10.0.2",
     "jspdf": "^3.0.3",
     "pdfkit": "^0.17.2",
